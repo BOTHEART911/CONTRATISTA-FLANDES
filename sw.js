@@ -15,7 +15,7 @@
    propio scope y no tiene nada que ver con este.
    ============================================================ */
 
-var VERSION = 'contratista-v4.1.0';
+var VERSION = 'contratista-v4.1.1';
 
 var ARMAZON = [
   './',
@@ -38,7 +38,8 @@ var ARMAZON = [
   './kit/soporte.js', './kit/soporte.css',
   './kit/antidoble.js', './kit/antidoble.css',
   './kit/creditos.js', './kit/creditos.css',
-  './kit/avisos.js'
+  './kit/avisos.js',
+  './kit/bienvenida.js', './kit/bienvenida.css'
 ];
 
 self.addEventListener('install', function (e) {

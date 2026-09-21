@@ -33,11 +33,23 @@
     registrarSW();
     if (K.piezas.instalar) K.piezas.instalar.vigilar();
 
-    K.piezas.sesion.entrar({
-      titulo: 'CONTRATISTA',
-      sub: 'Ingresa con tu documento y contraseña',
-      imagen: K.medio(M.APP_ICON || 'img/contratista.webp'),
-      alEntrar: arrancar
+    /* Lo primero de todo es la puerta: instalar o seguir en el navegador.
+       Solo sale la primera vez y solo si la app no está ya instalada. */
+    var puerta = K.piezas.bienvenida
+      ? K.piezas.bienvenida.abrir({
+          titulo: 'Contratista',
+          sub: M.MUNICIPIO || 'Alcaldía de Flandes',
+          imagen: K.medio(M.APP_ICON || 'img/contratista.webp')
+        })
+      : Promise.resolve('saltada');
+
+    puerta.then(function () {
+      K.piezas.sesion.entrar({
+        titulo: 'CONTRATISTA',
+        sub: 'Ingresa con tu documento y contraseña',
+        imagen: K.medio(M.APP_ICON || 'img/contratista.webp'),
+        alEntrar: arrancar
+      });
     });
   });
 
@@ -55,11 +67,11 @@
     YO = yo || {};
     montarBanner();
 
-    /* Firebase silencioso: se intenta apenas entra, sin molestar. Si el
-       navegador rechaza el permiso por el gesto, el botón de Avisos que
-       está en el inicio lo recoge después con un toque de verdad. */
+    /* Los avisos: si el permiso ya está dado, el token se renueva en
+       silencio. Si no, sale NUESTRA hoja explicando de qué va, y el cuadro
+       del sistema aparece después, colgando del toque de la persona. */
     if (K.piezas.avisos) {
-      K.piezas.avisos.autoActivar();
+      K.piezas.avisos.autoActivar({ espera: 1600 });
       K.piezas.avisos.alLlegar(function (a) {
         K.aviso(a.titulo ? (a.titulo + ': ' + a.cuerpo) : a.cuerpo, 'info', 6000);
       });
@@ -128,7 +140,7 @@
 
     var rejilla = K.nodo('<div class="kit-rejilla kit-rejilla--auto accesos"></div>');
     rejilla.appendChild(acceso('Datos del proceso', 'Tu contrato, su valor y quién lo supervisa', 'img/datos_de_procesos.webp', function () { irA('proceso'); }));
-    rejilla.appendChild(acceso('Mis datos', 'Teléfono, dirección y correo', 'img/contratista_2.webp', function () { irA('personales'); }));
+    rejilla.appendChild(acceso('Mis datos', 'Teléfono, dirección y correo', 'img/user.png', function () { irA('personales'); }));
     rejilla.appendChild(acceso('Avisos', textoAvisos(), 'img/notificacion.webp', tocarAvisos));
     caja.appendChild(rejilla);
 
@@ -167,8 +179,10 @@
     var b = K.nodo(
       '<button type="button" class="kit-tarjeta acceso">' +
       '  <img class="acceso__img" src="' + K.esc(K.medio(medio)) + '" alt="" loading="lazy">' +
-      '  <span class="acceso__t">' + K.esc(titulo) + '</span>' +
-      '  <span class="acceso__p">' + K.esc(texto) + '</span>' +
+      '  <span class="acceso__txt">' +
+      '    <span class="acceso__t">' + K.esc(titulo) + '</span>' +
+      '    <span class="acceso__p">' + K.esc(texto) + '</span>' +
+      '  </span>' +
       '</button>'
     );
     b.addEventListener('click', function () { K.vibrar(8); al(); });
@@ -187,7 +201,14 @@
 
   function tocarAvisos() {
     if (!K.piezas.avisos) return;
-    K.piezas.avisos.activar({ forzar: true }).then(function () { enrutar(); });
+    var e = K.piezas.avisos.estado();
+    /* Si nunca se le preguntó, se le explica antes; si ya dijo que sí o el
+       caso no tiene arreglo desde aquí (iPhone sin instalar, bloqueado),
+       activar() ya enseña la hoja que corresponde. */
+    var paso = (e === 'sin-permiso')
+      ? K.piezas.avisos.proponer()
+      : K.piezas.avisos.activar({ forzar: true });
+    paso.then(function () { enrutar(); });
   }
 
   /* ---------- datos del proceso ---------- */

@@ -1,113 +1,233 @@
 /* ============================================================
    CONTRATISTA-FLANDES · ESTILOS PROPIOS
-   Entrega 4.1
+   Entrega 4.1.1
 
    Solo lo que es de ESTA app. Los colores, el modo oscuro, las
    tarjetas, los botones y la rejilla vienen de kit/base.css: aquí
-   no se redefine ni un color a mano, se usan sus variables. Si se
-   escribieran colores literales, el modo oscuro se rompería en
-   esta app y solo en esta.
+   no se escribe ni un color a mano, se usan sus variables. Con
+   colores literales, el modo oscuro se rompería en esta app y solo
+   en esta.
    ============================================================ */
 
 .vista {
-  padding: 16px 16px 28px;
+  padding: 0 16px calc(28px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-/* ---------- saludo ---------- */
+/* Cada bloque de la vista entra escalonado. Es lo que separa una
+   pantalla que "aparece" de una que se monta con intención. */
+.vista > * {
+  animation: sube .42s cubic-bezier(.22, 1, .36, 1) both;
+}
+.vista > *:nth-child(1) { animation-delay: .02s; }
+.vista > *:nth-child(2) { animation-delay: .07s; }
+.vista > *:nth-child(3) { animation-delay: .12s; }
+.vista > *:nth-child(4) { animation-delay: .17s; }
+.vista > *:nth-child(5) { animation-delay: .22s; }
+@keyframes sube {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
 
-.saludo { margin: 4px 0 0; }
+/* ---------- cabecera con saludo ----------
+   Ocupa todo el ancho y se sale del padding de la vista a propósito:
+   una franja de marca de borde a borde ancla la pantalla y da la
+   profundidad que una tarjeta blanca sobre gris no da. */
+
+.saludo {
+  position: relative;
+  margin: 0 -16px;
+  padding: 18px 20px 58px;
+  overflow: hidden;
+  color: #fff;
+  background:
+    radial-gradient(120% 90% at 12% 0%, var(--k-marca-clara) 0%, var(--k-marca) 46%, var(--k-marca-2) 100%);
+}
+.saludo::after {
+  /* Luz que cruza la franja, muy tenue. */
+  content: '';
+  position: absolute;
+  inset: -40% -20% auto -20%;
+  height: 130%;
+  background: radial-gradient(40% 46% at 70% 24%, rgba(255, 255, 255, .20), transparent 68%);
+  pointer-events: none;
+}
 .saludo__hola {
   margin: 0;
-  color: var(--k-apagado);
-  font-size: .95rem;
+  font-size: .92rem;
+  color: rgba(255, 255, 255, .78);
 }
 .saludo__nombre {
   margin: 2px 0 0;
-  font-family: var(--k-fuente-titulo);
-  font-size: 1.5rem;
-  line-height: 1.2;
-  color: var(--k-tinta);
+  font: 700 1.62rem/1.15 var(--k-fuente-titulo);
+  letter-spacing: -.3px;
 }
 .saludo__doc {
-  margin: 4px 0 0;
-  color: var(--k-apagado);
-  font-size: .85rem;
+  margin: 6px 0 0;
+  display: inline-block;
+  font-size: .78rem;
+  padding: 4px 10px;
+  border-radius: var(--k-r-pill);
+  background: rgba(255, 255, 255, .16);
+  border: 1px solid rgba(255, 255, 255, .22);
 }
 
-/* ---------- resumen del contrato ---------- */
+/* ---------- resumen del contrato ----------
+   Monta sobre la franja verde, mitad dentro y mitad fuera. */
 
+.resumen {
+  margin-top: -46px;
+  position: relative;
+  z-index: 1;
+}
 .resumen__caja {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 14px 16px;
+  gap: 2px;
+  padding: 6px 16px;
+  border-radius: 18px;
+  background: var(--k-papel);
+  border: 1px solid var(--k-linea);
+  box-shadow: 0 20px 44px -26px rgba(var(--k-marca-rgb), .7);
 }
 .resumen__fila {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  padding: 11px 0;
+  border-top: 1px solid var(--k-linea);
 }
+.resumen__fila:first-child { border-top: 0; }
 .resumen__fila span {
   color: var(--k-apagado);
-  font-size: .88rem;
+  font-size: .86rem;
 }
 .resumen__fila b {
   color: var(--k-tinta);
   text-align: right;
   font-weight: 600;
+  min-width: 0;
+  /* "SECRETARÍA DE EDUCACIÓN, DESARROLLO ECONÓMICO Y SOCIAL" es un valor
+     real de la hoja: sin esto empuja la tarjeta hasta el borde. */
+  font-size: .92rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
-/* ---------- accesos del inicio ---------- */
+/* ---------- accesos ---------- */
 
 .accesos { gap: 12px; }
 
 .acceso {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  padding: 16px;
+  align-items: center;
+  gap: 14px;
+  padding: 15px 16px;
   text-align: left;
-  border: 0;
+  border: 1px solid var(--k-linea);
+  border-radius: 18px;
   cursor: pointer;
   font: inherit;
   color: inherit;
+  overflow: hidden;
   background: var(--k-papel);
-  transition: transform .14s ease, box-shadow .14s ease;
+  transition: transform .15s cubic-bezier(.22, 1, .36, 1), box-shadow .2s ease, border-color .2s ease;
 }
-.acceso:hover { box-shadow: var(--k-sombra-2); }
+.acceso:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--k-marca) 30%, transparent);
+  box-shadow: 0 18px 36px -20px rgba(var(--k-marca-rgb), .75);
+}
 .acceso:active { transform: scale(.985); }
 
+/* Filo de marca en el canto izquierdo: marca el bloque sin gritar. */
+.acceso::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 14%; bottom: 14%;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(180deg, var(--k-marca-clara), var(--k-marca-2));
+  opacity: .9;
+}
+
 .acceso__img {
-  width: 44px;
-  height: 44px;
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
   object-fit: contain;
-  margin-bottom: 2px;
+  padding: 7px;
+  border-radius: 14px;
+  background: rgba(var(--k-marca-rgb), .08);
 }
 .acceso__t {
+  display: block;
   font-family: var(--k-fuente-titulo);
-  font-size: 1.02rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--k-tinta);
 }
 .acceso__p {
-  font-size: .86rem;
+  display: block;
+  margin-top: 2px;
+  font-size: .82rem;
   line-height: 1.35;
   color: var(--k-apagado);
 }
 
+/* La flecha de "entra aquí", dibujada con CSS. */
+.acceso::after {
+  content: '';
+  position: absolute;
+  right: 16px;
+  width: 8px; height: 8px;
+  border-right: 2px solid var(--k-apagado);
+  border-top: 2px solid var(--k-apagado);
+  transform: rotate(45deg);
+  transition: transform .18s ease, border-color .18s ease;
+}
+.acceso:hover::after {
+  border-color: var(--k-marca);
+  transform: rotate(45deg) translate(2px, -2px);
+}
+
+/* El texto va en columna y con sitio para la flecha. Sin esta columna, el
+   título y la descripción compiten por el ancho y "Datos del proceso" se
+   parte en dos líneas mientras la descripción se queda a su lado. */
+.acceso__txt {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-right: 16px;
+}
+
 /* ---------- fichas de datos ---------- */
 
-.grupo { padding: 14px 16px 6px; }
+.grupo {
+  padding: 16px 16px 8px;
+  border-radius: 18px;
+  border: 1px solid var(--k-linea);
+  background: var(--k-papel);
+}
 .grupo__t {
-  margin: 0 0 10px;
+  margin: 0 0 12px;
+  padding-left: 11px;
+  position: relative;
   font-family: var(--k-fuente-titulo);
-  font-size: 1.05rem;
+  font-size: 1.02rem;
   color: var(--k-tinta);
+}
+.grupo__t::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 3px; bottom: 3px;
+  width: 3px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--k-marca-clara), var(--k-marca));
 }
 
 .dato {
@@ -115,7 +235,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 14px;
-  padding: 9px 0;
+  padding: 10px 0;
   border-top: 1px solid var(--k-linea);
 }
 .dato:first-of-type { border-top: 0; }
@@ -123,7 +243,7 @@
 .dato__e {
   flex: 0 0 auto;
   color: var(--k-apagado);
-  font-size: .85rem;
+  font-size: .84rem;
 }
 .dato__v {
   flex: 1 1 auto;
@@ -135,27 +255,44 @@
 
 /* El objeto del contrato es un párrafo entero: al lado de su etiqueta
    queda ilegible en un teléfono, así que baja a su propia línea. */
-.dato--largo { flex-direction: column; align-items: stretch; gap: 4px; }
-.dato--largo .dato__v { text-align: left; font-weight: 400; line-height: 1.45; }
+.dato--largo { flex-direction: column; align-items: stretch; gap: 5px; }
+.dato--largo .dato__v {
+  text-align: left;
+  font-weight: 400;
+  line-height: 1.5;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--k-papel-2);
+}
 
 /* ---------- formulario de mis datos ---------- */
 
 .formulario {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 13px;
   padding: 16px;
+  border-radius: 18px;
+  border: 1px solid var(--k-linea);
+  background: var(--k-papel);
 }
 .formulario__nota {
   margin: 0;
-  font-size: .82rem;
-  line-height: 1.4;
+  font-size: .8rem;
+  line-height: 1.45;
   color: var(--k-apagado);
+}
+.formulario .kit-btn--marca {
+  margin-top: 4px;
+  border-radius: var(--k-r-pill);
+  padding: 14px 18px;
+  background: linear-gradient(135deg, var(--k-marca-clara), var(--k-marca) 60%, var(--k-marca-2));
+  box-shadow: 0 16px 32px -16px rgba(var(--k-marca-rgb), .85);
 }
 
 .campo { display: flex; flex-direction: column; gap: 6px; }
 .campo > span {
-  font-size: .85rem;
+  font-size: .84rem;
   color: var(--k-apagado);
 }
 .campo input {
@@ -163,26 +300,43 @@
   color: var(--k-tinta);
   background: var(--k-papel-2);
   border: 1px solid var(--k-linea);
-  border-radius: var(--k-r-sm);
-  padding: 11px 12px;
+  border-radius: 13px;
+  padding: 13px 14px;
   /* 16px reales: por debajo de eso, iOS hace zoom al enfocar el campo
      y la pantalla se descoloca. */
   font-size: 16px;
+  transition: border-color .16s ease, box-shadow .16s ease;
 }
 .campo input:focus {
-  outline: 2px solid rgba(var(--k-marca-rgb), .35);
-  outline-offset: 1px;
+  outline: none;
   border-color: var(--k-marca-clara);
+  box-shadow: 0 0 0 3px rgba(var(--k-marca-rgb), .16);
 }
 
 /* ---------- error ---------- */
 
-.error { padding: 16px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.error {
+  padding: 16px;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+  border: 1px solid color-mix(in srgb, var(--k-malo) 26%, transparent);
+  background: var(--k-papel);
+}
 .error__t { margin: 0; color: var(--k-malo); }
 
 /* ---------- pantallas anchas ---------- */
 
 @media (min-width: 760px) {
-  .vista { padding: 22px 22px 34px; }
-  .saludo__nombre { font-size: 1.8rem; }
+  .vista { padding: 0 22px calc(34px + env(safe-area-inset-bottom)); }
+  .saludo { margin: 0 -22px; padding: 26px 26px 66px; border-radius: 0 0 26px 26px; }
+  .saludo__nombre { font-size: 1.9rem; }
+  .acceso { padding: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vista > * { animation: none; }
+  .acceso:hover { transform: none; }
 }
