@@ -15,7 +15,7 @@
    propio scope y no tiene nada que ver con este.
    ============================================================ */
 
-var VERSION = 'contratista-v4.1.1';
+var VERSION = 'contratista-v4.1.2';
 
 var ARMAZON = [
   './',
@@ -26,6 +26,7 @@ var ARMAZON = [
   './manifest.json',
   './img/icono-192.png',
   './img/icono-512.png',
+  './img/icono-mask-512.png',
   './kit/kit.js',
   './kit/base.css',
   './kit/banner.js', './kit/banner.css',
