@@ -1,0 +1,188 @@
+/* ============================================================
+   CONTRATISTA-FLANDES · ESTILOS PROPIOS
+   Entrega 4.1
+
+   Solo lo que es de ESTA app. Los colores, el modo oscuro, las
+   tarjetas, los botones y la rejilla vienen de kit/base.css: aquí
+   no se redefine ni un color a mano, se usan sus variables. Si se
+   escribieran colores literales, el modo oscuro se rompería en
+   esta app y solo en esta.
+   ============================================================ */
+
+.vista {
+  padding: 16px 16px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ---------- saludo ---------- */
+
+.saludo { margin: 4px 0 0; }
+.saludo__hola {
+  margin: 0;
+  color: var(--k-apagado);
+  font-size: .95rem;
+}
+.saludo__nombre {
+  margin: 2px 0 0;
+  font-family: var(--k-fuente-titulo);
+  font-size: 1.5rem;
+  line-height: 1.2;
+  color: var(--k-tinta);
+}
+.saludo__doc {
+  margin: 4px 0 0;
+  color: var(--k-apagado);
+  font-size: .85rem;
+}
+
+/* ---------- resumen del contrato ---------- */
+
+.resumen__caja {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+}
+.resumen__fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.resumen__fila span {
+  color: var(--k-apagado);
+  font-size: .88rem;
+}
+.resumen__fila b {
+  color: var(--k-tinta);
+  text-align: right;
+  font-weight: 600;
+}
+
+/* ---------- accesos del inicio ---------- */
+
+.accesos { gap: 12px; }
+
+.acceso {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 16px;
+  text-align: left;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  background: var(--k-papel);
+  transition: transform .14s ease, box-shadow .14s ease;
+}
+.acceso:hover { box-shadow: var(--k-sombra-2); }
+.acceso:active { transform: scale(.985); }
+
+.acceso__img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  margin-bottom: 2px;
+}
+.acceso__t {
+  font-family: var(--k-fuente-titulo);
+  font-size: 1.02rem;
+  font-weight: 600;
+  color: var(--k-tinta);
+}
+.acceso__p {
+  font-size: .86rem;
+  line-height: 1.35;
+  color: var(--k-apagado);
+}
+
+/* ---------- fichas de datos ---------- */
+
+.grupo { padding: 14px 16px 6px; }
+.grupo__t {
+  margin: 0 0 10px;
+  font-family: var(--k-fuente-titulo);
+  font-size: 1.05rem;
+  color: var(--k-tinta);
+}
+
+.dato {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 0;
+  border-top: 1px solid var(--k-linea);
+}
+.dato:first-of-type { border-top: 0; }
+
+.dato__e {
+  flex: 0 0 auto;
+  color: var(--k-apagado);
+  font-size: .85rem;
+}
+.dato__v {
+  flex: 1 1 auto;
+  text-align: right;
+  color: var(--k-tinta);
+  font-weight: 500;
+  word-break: break-word;
+}
+
+/* El objeto del contrato es un párrafo entero: al lado de su etiqueta
+   queda ilegible en un teléfono, así que baja a su propia línea. */
+.dato--largo { flex-direction: column; align-items: stretch; gap: 4px; }
+.dato--largo .dato__v { text-align: left; font-weight: 400; line-height: 1.45; }
+
+/* ---------- formulario de mis datos ---------- */
+
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+.formulario__nota {
+  margin: 0;
+  font-size: .82rem;
+  line-height: 1.4;
+  color: var(--k-apagado);
+}
+
+.campo { display: flex; flex-direction: column; gap: 6px; }
+.campo > span {
+  font-size: .85rem;
+  color: var(--k-apagado);
+}
+.campo input {
+  font: inherit;
+  color: var(--k-tinta);
+  background: var(--k-papel-2);
+  border: 1px solid var(--k-linea);
+  border-radius: var(--k-r-sm);
+  padding: 11px 12px;
+  /* 16px reales: por debajo de eso, iOS hace zoom al enfocar el campo
+     y la pantalla se descoloca. */
+  font-size: 16px;
+}
+.campo input:focus {
+  outline: 2px solid rgba(var(--k-marca-rgb), .35);
+  outline-offset: 1px;
+  border-color: var(--k-marca-clara);
+}
+
+/* ---------- error ---------- */
+
+.error { padding: 16px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.error__t { margin: 0; color: var(--k-malo); }
+
+/* ---------- pantallas anchas ---------- */
+
+@media (min-width: 760px) {
+  .vista { padding: 22px 22px 34px; }
+  .saludo__nombre { font-size: 1.8rem; }
+}
