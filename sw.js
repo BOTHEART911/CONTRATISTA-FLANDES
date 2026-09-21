@@ -15,7 +15,7 @@
    propio scope y no tiene nada que ver con este.
    ============================================================ */
 
-var VERSION = 'contratista-v4.1.2';
+var VERSION = 'contratista-v4.1.3';
 
 var ARMAZON = [
   './',
