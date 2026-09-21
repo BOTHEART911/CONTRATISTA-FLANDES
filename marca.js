@@ -35,7 +35,13 @@
     STORAGE_NS: 'contratista.',
 
     APP_ICON: 'img/contratista.webp',
-    APP_BANNER: 'img/contratista_2.webp',
+
+    /* APP_BANNER se quitó el 21/09. Apuntaba a img/contratista_2.webp, que
+       es un CÓDIGO QR: en cuanto alguna vista lo pintara habría salido un QR
+       de cabecera. No se cambió por otra imagen porque no hay ninguna que
+       sirva de banner en ALCALDIA-MEDIOS y porque nadie lo usaba: el banner
+       del kit ya lleva la foto de la persona. Si algún día hace falta, se
+       añade con una imagen de verdad, no con un relleno. */
 
     FIREBASE: {
       apiKey: 'AIzaSyDdGOATvG-tZ5ii5n_U6ExtKzh1CvNTVUE',

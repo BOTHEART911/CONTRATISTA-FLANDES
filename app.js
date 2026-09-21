@@ -71,7 +71,10 @@
        silencio. Si no, sale NUESTRA hoja explicando de qué va, y el cuadro
        del sistema aparece después, colgando del toque de la persona. */
     if (K.piezas.avisos) {
-      K.piezas.avisos.autoActivar({ espera: 1600 });
+      /* Solo desde el inicio. Quien entra con un enlace directo a una
+         obligación (por ejemplo desde un aviso) estaría escribiendo cuando
+         la hoja de permisos le tapa la pantalla a los 1,6 s. */
+      if (enInicio()) K.piezas.avisos.autoActivar({ espera: 1600 });
       K.piezas.avisos.alLlegar(function (a) {
         K.aviso(a.titulo ? (a.titulo + ': ' + a.cuerpo) : a.cuerpo, 'info', 6000);
       });
@@ -108,23 +111,41 @@
   var VISTAS = {
     inicio: vistaInicio,
     proceso: vistaProceso,
-    personales: vistaPersonales
+    personales: vistaPersonales,
+    borrador: vistaBorrador,
+    avisos: vistaAvisos
   };
 
   function irA(v) { location.hash = '#/' + v; }
 
+  function enInicio() {
+    var v = String(location.hash || '').replace(/^#\/?/, '').split('/')[0];
+    return !v || v === 'inicio';
+  }
+
   function enrutar() {
-    var v = String(location.hash || '').replace(/^#\/?/, '') || 'inicio';
+    /* La ruta puede traer un tramo más (#/borrador/7). El primero elige la
+       vista; el segundo se lo queda ella. */
+    var partes = String(location.hash || '').replace(/^#\/?/, '').split('/');
+    var v = partes[0] || 'inicio';
     if (!VISTAS[v]) v = 'inicio';
 
     K.piezas.banner.vista(v === 'inicio' ? 'Contratista' : titulos[v]);
     K.piezas.banner.atras(v === 'inicio' ? null : function () { irA('inicio'); });
 
-    app.innerHTML = '';
-    VISTAS[v]();
+    /* El borrador pinta su propia pantalla y se encarga de avisar si hay
+       algo sin guardar; el enrutador no le vacía el sitio por debajo. */
+    if (v !== 'borrador') app.innerHTML = '';
+    VISTAS[v](partes[1]);
   }
 
-  var titulos = { inicio: 'Contratista', proceso: 'Datos del proceso', personales: 'Mis datos' };
+  var titulos = {
+    inicio: 'Contratista',
+    proceso: 'Datos del proceso',
+    personales: 'Mis datos',
+    borrador: 'Mi informe',
+    avisos: 'Mis avisos'
+  };
 
   /* ---------- inicio ---------- */
 
@@ -139,9 +160,18 @@
     ));
 
     var rejilla = K.nodo('<div class="kit-rejilla kit-rejilla--auto accesos"></div>');
+    rejilla.appendChild(acceso('Mi informe', 'Escribe tus actividades y sube las evidencias', 'img/datos_de_procesos.webp', function () { irA('borrador'); }));
+
+    /* La burbuja de sin leer va aquí y no en una campana aparte: es donde
+       la persona mira al entrar, y así el aviso guardado se ve aunque el
+       push se haya perdido. El número lo trae la misma llamada del inicio. */
+    var tarjetaAvisos = acceso('Mis avisos', 'Todo lo que te hemos avisado', 'img/notificacion.webp', function () { irA('avisos'); });
+    rejilla.appendChild(tarjetaAvisos);
+    pintarBurbuja(tarjetaAvisos);
+
     rejilla.appendChild(acceso('Datos del proceso', 'Tu contrato, su valor y quién lo supervisa', 'img/datos_de_procesos.webp', function () { irA('proceso'); }));
     rejilla.appendChild(acceso('Mis datos', 'Teléfono, dirección y correo', 'img/user.png', function () { irA('personales'); }));
-    rejilla.appendChild(acceso('Avisos', textoAvisos(), 'img/notificacion.webp', tocarAvisos));
+    rejilla.appendChild(acceso('Avisos al teléfono', textoAvisos(), 'img/notificacion.webp', tocarAvisos));
     caja.appendChild(rejilla);
 
     app.appendChild(caja);
@@ -187,6 +217,63 @@
     );
     b.addEventListener('click', function () { K.vibrar(8); al(); });
     return b;
+  }
+
+  /* ---------- mi informe (borrador) ---------- */
+
+  function vistaBorrador(sub) {
+    window.BORRADOR.abrir(sub);
+  }
+
+  /* ---------- mis avisos ---------- */
+
+  function vistaAvisos() {
+    var caja = K.nodo('<div class="kit-ancho vista"></div>');
+    app.appendChild(caja);
+
+    var zona = K.nodo('<section id="buzon"></section>');
+    caja.appendChild(zona);
+
+    var b = K.piezas.buzon.montar(zona, {
+      pedir: function () { return K.pedir('misAvisos'); },
+      marcar: function (ids) { return K.pedir('avisoLeido', { ids: ids }); },
+      alContar: function (n) { K.piezas.buzon.recordar(n); },
+      /* Un aviso de cuenta lleva al informe: leerlo y no poder hacer nada
+         desde ahí obliga a volver al inicio y buscar. */
+      alTocar: function (aviso) {
+        if (/CUENTA|INFORME|DEVUEL/i.test(aviso.tipo || '')) irA('borrador');
+      }
+    });
+
+    K.piezas.esqueletos.mientras(zona, b.cargar(), { forma: 'tarjetas', cuantos: 3 })
+      ['catch'](function (e) { caja.appendChild(errorCaja(e)); });
+
+    K.piezas.creditos.montar(caja);
+  }
+
+  /* El número rojo de avisos sin leer. Se pide aparte y en segundo plano:
+     si tarda o falla, el inicio ya está pintado y nadie se queda mirando
+     una pantalla en blanco por una burbuja. */
+  function pintarBurbuja(tarjeta) {
+    var ya = K.piezas.buzon ? K.piezas.buzon.noLeidos() : 0;
+    if (ya) poner(ya);
+
+    K.pedir('misAvisos', { cuantos: 1 })
+      .then(function (d) {
+        var n = (d && d.noLeidos) || 0;
+        if (K.piezas.buzon) K.piezas.buzon.recordar(n);
+        poner(n);
+      })
+      ['catch'](function () {});
+
+    function poner(n) {
+      var vieja = tarjeta.querySelector('.acceso__burbuja');
+      if (vieja) vieja.remove();
+      if (!n) return;
+      tarjeta.appendChild(K.nodo(
+        '<span class="acceso__burbuja">' + (n > 9 ? '9+' : n) + '</span>'
+      ));
+    }
   }
 
   function textoAvisos() {

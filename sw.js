@@ -15,12 +15,13 @@
    propio scope y no tiene nada que ver con este.
    ============================================================ */
 
-var VERSION = 'contratista-v4.1.3';
+var VERSION = 'contratista-v4.2.0';
 
 var ARMAZON = [
   './',
   './index.html',
   './app.js',
+  './borrador.js',
   './styles.css',
   './marca.js',
   './manifest.json',
@@ -40,7 +41,12 @@ var ARMAZON = [
   './kit/antidoble.js', './kit/antidoble.css',
   './kit/creditos.js', './kit/creditos.css',
   './kit/avisos.js',
-  './kit/bienvenida.js', './kit/bienvenida.css'
+  './kit/bienvenida.js', './kit/bienvenida.css',
+  './kit/adjuntos.js', './kit/adjuntos.css',
+  './kit/imagenes.js',
+  './kit/carrusel.js', './kit/carrusel.css',
+  './kit/insights.js', './kit/insights.css',
+  './kit/buzon.js', './kit/buzon.css'
 ];
 
 self.addEventListener('install', function (e) {

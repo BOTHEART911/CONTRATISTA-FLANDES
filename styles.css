@@ -340,3 +340,272 @@
   .vista > * { animation: none; }
   .acceso:hover { transform: none; }
 }
+
+/* ============================================================
+   ENTREGA 4.2 · BORRADOR, EVIDENCIAS Y AVISOS
+   Todo sale de los tokens del kit: el modo oscuro no necesita
+   una sola regla propia aquí abajo.
+   ============================================================ */
+
+/* ── resumen del informe ── */
+
+.resumen-inf { padding: 16px 18px; margin-bottom: 16px; }
+
+.resumen-inf__alto {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.resumen-inf__e {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: var(--k-apagado);
+}
+
+.resumen-inf__n {
+  margin: 2px 0 0;
+  font-family: Sora, system-ui, sans-serif;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--k-tinta);
+}
+
+.resumen-inf__n span { font-size: 15px; font-weight: 600; color: var(--k-apagado); }
+
+.resumen-inf__p { margin: 10px 0 0; font-size: 13px; color: var(--k-tinta-2); }
+
+/* La barra nunca baja del 4 %: una barra a cero parece rota, no vacía. */
+.barra {
+  margin-top: 14px;
+  height: 8px;
+  border-radius: var(--k-r-pill);
+  background: var(--k-papel-2);
+  border: 1px solid var(--k-linea);
+  overflow: hidden;
+}
+
+.barra > i {
+  display: block;
+  height: 100%;
+  border-radius: var(--k-r-pill);
+  background: linear-gradient(90deg, var(--k-marca-clara), var(--k-marca));
+  transition: width .35s ease;
+}
+
+/* ── tablero de obligaciones ── */
+
+.obl-rejilla { display: grid; gap: 10px; }
+
+/* Con 26 obligaciones, en un portátil verlas de dos en dos ahorra la mitad
+   del recorrido; a partir de 1100 px caben tres sin apretarse. */
+@media (min-width: 720px) { .obl-rejilla { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 1100px) { .obl-rejilla { grid-template-columns: 1fr 1fr 1fr; } }
+
+.obl {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  background: var(--k-papel);
+  border: 1px solid var(--k-linea);
+  border-left: 4px solid var(--k-linea);
+  border-radius: var(--k-r-md);
+  box-shadow: var(--k-sombra-1);
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .2s ease;
+}
+
+.obl:active { transform: scale(.985); }
+.obl:hover { box-shadow: var(--k-sombra-2); }
+
+.obl--lista { border-left-color: var(--k-ok); }
+.obl--escrita { border-left-color: var(--k-aviso); }
+.obl--pendiente { border-left-color: var(--k-linea); }
+
+.obl__n {
+  flex: 0 0 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--k-papel-2);
+  border: 1px solid var(--k-linea);
+  font-family: Sora, system-ui, sans-serif;
+  font-weight: 700;
+  color: var(--k-tinta);
+}
+
+.obl--lista .obl__n { background: var(--k-ok-fondo); border-color: transparent; color: #14532d; }
+.obl--escrita .obl__n { background: var(--k-aviso-fondo); border-color: transparent; color: #7c2d12; }
+
+.obl__cuerpo { flex: 1 1 auto; min-width: 0; }
+
+.obl__txt {
+  display: block;
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--k-tinta);
+}
+
+.obl__pie { display: flex; gap: 10px; margin-top: 5px; }
+
+.obl__estado, .obl__foto { font-size: 11.5px; font-weight: 600; color: var(--k-apagado); }
+.obl--lista .obl__estado { color: var(--k-ok); }
+.obl--escrita .obl__estado { color: var(--k-aviso); }
+
+.obl__flecha { flex: 0 0 auto; font-size: 22px; color: var(--k-apagado); line-height: 1; }
+
+.obl-pie { margin-top: 20px; text-align: center; }
+.obl-pie .kit-btn { width: 100%; max-width: 340px; }
+.obl-pie__p {
+  margin: 10px auto 0;
+  max-width: 40ch;
+  font-size: 12.5px;
+  color: var(--k-apagado);
+}
+
+/* ── editor de una obligación ── */
+
+.edi { display: grid; gap: 12px; }
+
+.edi__obl { padding: 14px 16px; background: var(--k-papel-2); }
+
+.edi__e {
+  margin: 0 0 6px;
+  font-size: 11.5px;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: var(--k-apagado);
+}
+
+.edi__texto { margin: 0; font-size: 14px; line-height: 1.5; color: var(--k-tinta); }
+
+.edi__campo { padding: 14px 16px; }
+
+.edi__lab {
+  display: block;
+  margin-bottom: 8px;
+  font-family: Sora, system-ui, sans-serif;
+  font-weight: 700;
+  color: var(--k-tinta);
+}
+
+/* 16px o más: por debajo de eso iOS hace zoom al enfocar y descuadra la
+   pantalla. Es el mismo motivo por el que se subieron los campos del login. */
+.edi__area {
+  width: 100%;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.5;
+  padding: 12px 14px;
+  color: var(--k-tinta);
+  background: var(--k-papel-2);
+  border: 1px solid var(--k-linea);
+  border-radius: var(--k-r-sm);
+  resize: vertical;
+}
+
+.edi__area:focus {
+  outline: none;
+  border-color: var(--k-marca-clara);
+  box-shadow: 0 0 0 3px rgba(var(--k-marca-rgb), .14);
+}
+
+.edi__cuenta { margin: 6px 0 0; font-size: 12px; color: var(--k-apagado); text-align: right; }
+
+.edi__evi { padding: 14px 16px; }
+
+.edi__nav { display: flex; gap: 10px; }
+.edi__nav .kit-btn { flex: 1 1 0; }
+.edi__nav .kit-btn[disabled] { opacity: .4; pointer-events: none; }
+
+/* ── evidencia cargada ── */
+
+.evi-ok {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px;
+  border: 1px solid var(--k-linea);
+  border-radius: var(--k-r-sm);
+  background: var(--k-papel-2);
+}
+
+.evi-ok__mini {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: var(--k-r-sm);
+  border: 1px solid var(--k-linea);
+  background: var(--k-papel);
+}
+
+.evi-ok__txt { flex: 1 1 140px; min-width: 0; }
+.evi-ok__t { margin: 0; font-weight: 700; color: var(--k-ok); font-size: 14px; }
+.evi-ok__p { margin: 2px 0 0; font-size: 12.5px; color: var(--k-apagado); }
+
+.evi-ok__btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.evi-ok__b { width: auto; padding: 7px 12px; font-size: 12.5px; }
+
+.evi-nota {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--k-apagado);
+}
+
+/* ── puertas y total ── */
+
+.puerta { text-align: center; padding: 30px 20px; }
+.puerta__ico { margin: 0; font-size: 40px; line-height: 1; }
+.puerta__t {
+  margin: 12px 0 8px;
+  font-family: Sora, system-ui, sans-serif;
+  font-size: 18px;
+  color: var(--k-tinta);
+}
+.puerta__p {
+  margin: 0 auto;
+  max-width: 42ch;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--k-tinta-2);
+}
+
+.total { padding: 20px; }
+.total__t { margin: 0 0 8px; font-family: Sora, system-ui, sans-serif; color: var(--k-tinta); }
+.total__p { margin: 0 0 16px; font-size: 13.5px; line-height: 1.5; color: var(--k-tinta-2); }
+.total .kit-btn { width: 100%; margin-top: 8px; }
+
+/* ── burbuja de avisos sin leer sobre el acceso del inicio ── */
+
+.acceso { position: relative; }
+
+.acceso__burbuja {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--k-r-pill);
+  background: var(--k-malo);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, .4);
+}
+
+/* El botón flotante de Insights vive abajo a la derecha. Sin este hueco,
+   en un teléfono se planta encima del último botón de la vista. */
+.vista { padding-bottom: 84px; }
