@@ -155,14 +155,17 @@
 
   function puertaCerrada() {
     var s = K.nodo('<section class="kit-tarjeta cta-cerrada"></section>');
+    /* 4.4: ya no hay puerta 'faltan'. Desde esta entrega se ENTRA a la
+       cuenta con el borrador a medias, igual que en la app vieja, y lo que
+       falta se avisa en el índice y bloquea el botón de radicar. Aquí solo
+       quedan los casos en los que de verdad no hay nada que hacer. */
     var titulos = {
-      sinBorrador: 'Primero escribe tus actividades',
-      faltan: 'Te faltan actividades por escribir',
+      sinBorrador: 'Primero empieza tu borrador',
       espera: 'Esta cuenta ya está radicada'
     };
     s.appendChild(K.nodo('<h3 class="grupo__t">' + K.esc(titulos[E.puerta] || 'Todavía no') + '</h3>'));
     s.appendChild(K.nodo('<p class="cta-cerrada__p">' + K.esc(E.motivo || '') + '</p>'));
-    if (E.puerta === 'sinBorrador' || E.puerta === 'faltan') {
+    if (E.puerta === 'sinBorrador') {
       var b = K.nodo('<button type="button" class="kit-btn kit-btn--marca">Ir a BORRADOR ACTIVIDADES</button>');
       b.addEventListener('click', function () { location.hash = '#/borrador'; });
       s.appendChild(b);
@@ -197,6 +200,10 @@
   /* El índice: de un vistazo, qué falta. Es lo que la app vieja no tenía. */
   function indice(caja) {
     var ul = K.nodo('<ul class="cta-indice"></ul>');
+    /* 4.4: las actividades son el primer renglón. En la app vieja estaban
+       DENTRO de esta misma pantalla; aquí viven en el borrador, así que lo
+       que se enseña es cómo van y un atajo para ir a terminarlas. */
+    ul.appendChild(renglonActividades());
     BLOQUES.forEach(function (b) {
       var est = estadoBloque(b);
       var li = K.nodo(
@@ -226,7 +233,7 @@
       var faltan = ARCHIVOS.filter(function (a) { return a.obliga && !tieneArchivo(a.k); });
       if (!faltan.length) {
         var n = ARCHIVOS.filter(function (a) { return tieneArchivo(a.k); }).length;
-        return { clase: 'ok', icono: '✓', detalle: n + (n === 1 ? ' documento cargado' : ' documentos cargados') };
+        return { clase: 'ok', icono: K.icono('check', 15), detalle: n + (n === 1 ? ' documento cargado' : ' documentos cargados') };
       }
       return {
         clase: 'falta', icono: '!',
@@ -234,7 +241,7 @@
       };
     }
     var vacios = b.campos.filter(function (c) { return !String(D[c] || '').trim(); });
-    if (!vacios.length) return { clase: 'ok', icono: '✓', detalle: resumenBloque(b) };
+    if (!vacios.length) return { clase: 'ok', icono: K.icono('check', 15), detalle: resumenBloque(b) };
     return {
       clase: 'falta', icono: '!',
       detalle: vacios.length === b.campos.length ? b.pista : ('Te faltan ' + vacios.length + ' datos')
@@ -276,8 +283,42 @@
     return s;
   }
 
+  /* Cuántas actividades faltan, según lo que dijo el CORE al abrir. */
+  function faltanActividades() {
+    return (E.faltanActividades || []).length;
+  }
+
+  function renglonActividades() {
+    var n = faltanActividades();
+    var ok = n === 0;
+    var li = K.nodo(
+      '<li class="cta-idx cta-idx--' + (ok ? 'ok' : 'falta') + '">' +
+      '  <button type="button" class="cta-idx__btn">' +
+      '    <span class="cta-idx__marca" aria-hidden="true">' +
+           (ok ? K.icono('check', 15) : '!') + '</span>' +
+      '    <span class="cta-idx__txt">' +
+      '      <span class="cta-idx__t">Actividades del informe</span>' +
+      '      <span class="cta-idx__p">' +
+           (ok ? 'Todas escritas'
+               : (n === 1 ? 'Falta 1 obligación por escribir'
+                          : 'Faltan ' + n + ' obligaciones por escribir')) +
+      '      </span>' +
+      '    </span>' +
+      '  </button>' +
+      '</li>'
+    );
+    li.querySelector('button').addEventListener('click', function () {
+      K.vibrar(8);
+      location.hash = '#/borrador';
+    });
+    return li;
+  }
+
   function loQueFalta() {
     var falta = [];
+    /* Sin las actividades escritas el CORE no deja radicar (lo comprueba
+       FC_validarCuenta_), así que aquí se dice antes y no se deja pulsar. */
+    if (faltanActividades()) falta.push('escribir tus actividades');
     BLOQUES.forEach(function (b) {
       var e = estadoBloque(b);
       if (e.clase !== 'ok') falta.push(b.titulo.toLowerCase());
@@ -517,7 +558,7 @@
       );
       listo.querySelector('.cta-doc__quitar').addEventListener('click', function () {
         if (!confirm('¿Quitar ' + a.t + '? Se borra de tu carpeta de Drive.')) return;
-        K.piezas.guardado.abrir({ titulo: 'Quitando el archivo', sub: 'Un momento 🚀' });
+        K.piezas.guardado.abrir({ titulo: 'Quitando el archivo', sub: 'Un momento.' });
         K.pedir('cuentaArchivoQuitar', { archivo: a.k })
           .then(function () {
             delete E.archivos[a.k];
@@ -550,7 +591,7 @@
   function subir(adj, cuerpo, a) {
     K.piezas.guardado.abrir({
       titulo: 'Subiendo ' + a.t,
-      sub: 'Se guarda ahora mismo en tu carpeta de Drive 🚀'
+      sub: 'Se guarda ahora mismo en tu carpeta de Drive.'
     });
     adj.aBase64()
       .then(function (arch) {
@@ -560,7 +601,7 @@
       .then(function (r) {
         E.archivos = E.archivos || {};
         E.archivos[a.k] = r.url;
-        K.piezas.guardado.listo({ sub: a.t + ' quedó guardado 🎉' });
+        K.piezas.guardado.listo({ sub: a.t + ' quedó guardado.' });
         pintarFicha(cuerpo, a);
       })
       ['catch'](function (e) {
@@ -636,7 +677,7 @@
 
     K.piezas.guardado.abrir({
       titulo: 'Guardando tu cuenta',
-      sub: 'Primero los datos, después tus documentos 🚀',
+      sub: 'Primero los datos, después tus documentos.',
       pasos: ['Guardando los datos', 'Creando tus documentos', 'Terminando']
     });
 
@@ -652,7 +693,7 @@
       .then(function (r) {
         K.ocupado = false;
         K.guardar.borrar(RESPALDO + '.' + E.idContrato);
-        K.piezas.guardado.listo({ sub: 'Tu cuenta quedó radicada 🎉' });
+        K.piezas.guardado.listo({ sub: 'Tu cuenta quedó radicada.' });
         exito(caja, r);
       })
       ['catch'](function (e) {
@@ -670,7 +711,7 @@
   }
 
   function comprobar(caja) {
-    K.piezas.guardado.abrir({ titulo: 'Comprobando', sub: 'Se perdió la respuesta. Miramos cómo quedó tu cuenta 🚀' });
+    K.piezas.guardado.abrir({ titulo: 'Comprobando', sub: 'Se perdió la respuesta. Estamos verificando cómo quedó tu cuenta.' });
     K.pedir('cuentaComo', {}, { ms: 60000 })
       .then(function (r) {
         K.piezas.guardado.cerrar();

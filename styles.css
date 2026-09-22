@@ -896,3 +896,150 @@
   .cta-indice { grid-template-columns: 1fr 1fr; }
   .cta-pie__btn { width: auto; min-width: 260px; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   4.4 · FORMULARIOS DE DATOS DEL CONTRATO Y DATOS PERSONALES
+   ------------------------------------------------------------
+   Antes solo había tres campos de texto y bastaba con `.campo input`.
+   Ahora hay selects, áreas, ayudas por campo, un buscador de municipios
+   con sugerencias y la firma: todo eso vive aquí y no en el kit, porque
+   es de esta app.
+   ══════════════════════════════════════════════════════════════ */
+
+/* Los tres controles se ven IGUAL. Un select que no case con el input de
+   al lado hace que el formulario parezca mal armado. */
+.campo select,
+.campo textarea {
+  font: inherit;
+  color: var(--k-tinta);
+  background: var(--k-papel-2);
+  border: 1px solid var(--k-linea);
+  border-radius: 13px;
+  padding: 13px 14px;
+  /* 16px reales: por debajo, iOS hace zoom al enfocar. */
+  font-size: 16px;
+  transition: border-color .16s ease, box-shadow .16s ease;
+}
+.campo textarea { resize: vertical; min-height: 68px; line-height: 1.45; }
+.campo select:focus,
+.campo textarea:focus {
+  outline: none;
+  border-color: var(--k-marca-clara);
+  box-shadow: 0 0 0 3px rgba(var(--k-marca-rgb), .16);
+}
+
+.campo__ayuda {
+  margin: 0;
+  font-size: .78rem;
+  line-height: 1.45;
+  color: var(--k-apagado);
+}
+.campo__ayuda b { color: var(--k-tinta-2); }
+
+/* Verde = el dato ya tiene la pinta correcta (el RP de 10 dígitos, el
+   municipio elegido de la lista). Es la señal que la gente ya conoce de
+   la app vieja, donde el borde del RP se ponía verde. */
+.campo--ok {
+  border-color: var(--k-ok) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--k-ok) 18%, transparent) !important;
+}
+/* Un campo que se calcula solo: se lee, no se escribe. */
+.campo--quieto {
+  background: var(--k-papel);
+  color: var(--k-tinta-2);
+  font-weight: 600;
+}
+
+.campo-fila { display: flex; gap: 12px; }
+.campo-fila > .campo { flex: 1 1 0; min-width: 0; }
+.campo-fila--botones { margin-top: 6px; }
+.campo-fila--botones .kit-btn { flex: 1 1 0; }
+
+/* ---------- municipio con sugerencias ---------- */
+
+.campo--busca { position: relative; }
+.campo__sug {
+  position: absolute;
+  z-index: 40;
+  left: 0; right: 0;
+  /* justo debajo del input: la etiqueta de arriba mide ~26px */
+  top: calc(100% - 22px);
+  max-height: 232px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--k-linea);
+  border-radius: 13px;
+  background: var(--k-papel);
+  box-shadow: 0 22px 44px -22px rgba(0, 0, 0, .35);
+}
+.campo__sug-i {
+  font: inherit;
+  text-align: left;
+  padding: 12px 14px;
+  border: 0;
+  border-top: 1px solid var(--k-linea);
+  background: transparent;
+  color: var(--k-tinta);
+  cursor: pointer;
+}
+.campo__sug-i:first-child { border-top: 0; }
+.campo__sug-i:hover, .campo__sug-i:focus { background: var(--k-papel-2); outline: none; }
+
+/* ---------- firma ---------- */
+
+.campo__firma {
+  max-width: 100%;
+  max-height: 120px;
+  align-self: flex-start;
+  padding: 8px 12px;
+  border: 1px solid var(--k-linea);
+  border-radius: 13px;
+  /* fondo claro siempre: una firma en tinta negra sobre el papel oscuro
+     del modo noche no se ve */
+  background: #fff;
+}
+
+/* ---------- lista de obligaciones ---------- */
+
+.obl-lista__i {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 10px 0;
+  border-top: 1px solid var(--k-linea);
+}
+.obl-lista__i:first-of-type { border-top: 0; }
+.obl-lista__n {
+  flex: 0 0 auto;
+  min-width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(var(--k-marca-rgb), .12);
+  color: var(--k-marca);
+  font: 700 .76rem/1 var(--k-fuente);
+}
+:root[data-tema="oscuro"] .obl-lista__n { color: var(--k-marca-clara); }
+.obl-lista__t { font-size: .88rem; line-height: 1.5; color: var(--k-tinta-2); }
+
+/* ---------- subtítulos dentro de un formulario largo ---------- */
+
+.grupo__t--sub {
+  margin-top: 10px;
+  font-size: .82rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--k-apagado);
+}
+.grupo__t--sub::before { display: none; }
+
+.formulario__nota--fuerte {
+  padding: 11px 13px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--k-aviso) 34%, transparent);
+  background: color-mix(in srgb, var(--k-aviso) 12%, transparent);
+  color: var(--k-tinta);
+}

@@ -86,7 +86,7 @@
       .then(function (d) {
         E = d;
         textos = (d.actividades || []).slice();
-        evidencias = (d.evidencias || []).slice();
+        evidencias = (d.evidencias || []).map(listaEvi);
         if (recuperarRespaldo()) {
           K.aviso('Recuperamos lo que estabas escribiendo la última vez.', 'info', 5000);
         }
@@ -114,7 +114,7 @@
   /* ══════════════ puertas ══════════════ */
 
   function puertaCerrada() {
-    var iconos = { devuelta: '↩️', espera: '⏳', completa: '🎉' };
+    var iconos = { devuelta: 'atras', espera: 'reloj', completa: 'check' };
     var titulos = {
       devuelta: 'Esta cuenta está devuelta',
       espera: 'Todavía no',
@@ -122,7 +122,7 @@
     };
     var c = K.nodo(
       '<section class="kit-tarjeta puerta">' +
-      '  <p class="puerta__ico">' + (iconos[E.puerta] || 'ℹ️') + '</p>' +
+      '  <p class="puerta__ico">' + K.icono(iconos[E.puerta] || 'aviso', 34) + '</p>' +
       '  <h3 class="puerta__t">' + K.esc(titulos[E.puerta] || 'Aviso') + '</h3>' +
       '  <p class="puerta__p">' + K.esc(E.motivo || '') + '</p>' +
       '</section>'
@@ -193,7 +193,7 @@
 
   function cabecera() {
     var escritas = textos.filter(function (t) { return String(t || '').trim(); }).length;
-    var conFoto = evidencias.filter(function (u) { return u; }).length;
+    var conFoto = evidencias.filter(function (u) { return u && u.length; }).length;
     var total = E.obligaciones.length;
     var pct = total ? Math.round(escritas * 100 / total) : 0;
 
@@ -218,9 +218,9 @@
 
   function tarjetaObligacion(o, i, caja) {
     var escrito = String(textos[i] || '').trim();
-    var foto = evidencias[i];
+    var foto = (evidencias[i] || []).length;
     var estado = escrito ? (foto ? 'lista' : 'escrita') : 'pendiente';
-    var rotulos = { lista: 'Lista', escrita: 'Falta la foto', pendiente: 'Sin escribir' };
+    var rotulos = { lista: 'Completa', escrita: 'Falta la evidencia', pendiente: 'Sin diligenciar' };
 
     var t = K.nodo(
       '<button type="button" class="obl obl--' + estado + '">' +
@@ -229,7 +229,8 @@
       '    <span class="obl__txt">' + K.esc(recortar(o.texto, 110)) + '</span>' +
       '    <span class="obl__pie">' +
       '      <span class="obl__estado">' + rotulos[estado] + '</span>' +
-           (foto ? '<span class="obl__foto">📎 con foto</span>' : '') +
+           (foto ? '<span class="obl__foto">' + K.icono('clip', 14) + ' ' + foto +
+             (foto === 1 ? ' evidencia' : ' evidencias') + '</span>' : '') +
       '    </span>' +
       '  </span>' +
       '  <span class="obl__flecha">›</span>' +
@@ -266,22 +267,23 @@
     var v = K.nodo(
       '<section class="edi">' +
       '  <div class="kit-tarjeta edi__obl">' +
-      '    <p class="edi__e">Lo que dice tu contrato</p>' +
+      '    <p class="edi__e">Obligación contractual</p>' +
       '    <p class="edi__texto">' + K.esc(o.texto) + '</p>' +
       '  </div>' +
       '  <div class="kit-tarjeta edi__campo">' +
-      '    <label class="edi__lab" for="edi-act">Qué hiciste para cumplirla</label>' +
+      '    <label class="edi__lab" for="edi-act">Actividades ejecutadas para su cumplimiento</label>' +
       '    <textarea id="edi-act" class="edi__area" rows="8" ' +
-      '      placeholder="Cuenta con tus palabras las actividades que realizaste."></textarea>' +
+      '      placeholder="Redacta de forma cuantitativa y usando verbos en pasado, las ' +
+      '      actividades que realizaste en este periodo."></textarea>' +
       '    <p class="edi__cuenta"><span id="edi-cuenta">0</span> caracteres</p>' +
       '  </div>' +
       '  <div class="kit-tarjeta edi__evi">' +
-      '    <p class="edi__e">Evidencia</p>' +
+      '    <p class="edi__e">Evidencias del cumplimiento</p>' +
       '    <div id="edi-zona"></div>' +
       '  </div>' +
       '  <div class="edi__nav">' +
-      '    <button type="button" class="kit-btn kit-btn--plano" id="edi-ant">← Anterior</button>' +
-      '    <button type="button" class="kit-btn kit-btn--marca" id="edi-sig">Siguiente →</button>' +
+      '    <button type="button" class="kit-btn kit-btn--plano" id="edi-ant">' + K.icono('atras', 17) + ' Anterior</button>' +
+      '    <button type="button" class="kit-btn kit-btn--marca" id="edi-sig">Siguiente ' + K.icono('adelante', 17) + '</button>' +
       '  </div>' +
       '</section>'
     );
@@ -303,7 +305,7 @@
 
     var ant = v.querySelector('#edi-ant'), sig = v.querySelector('#edi-sig');
     ant.disabled = n <= 1;
-    if (n >= E.obligaciones.length) sig.textContent = 'Terminar';
+    if (n >= E.obligaciones.length) sig.innerHTML = 'Terminar ' + K.icono('check', 17);
 
     ant.addEventListener('click', function () { mover(n - 1); });
     sig.addEventListener('click', function () {
@@ -326,102 +328,183 @@
     location.hash = '#/borrador/' + n;
   }
 
-  /* ══════════════ evidencia ══════════════ */
+  /* ══════════════ evidencia ══════════════
+     4.4: hasta TRES por obligación. Antes era una sola, y cuando la
+     persona elegía varias fotos el navegador las pegaba en un collage
+     para que cupieran en la única celda que había. El collage salía
+     borroso y ya no se podía separar. Ahora cada foto sube entera y por
+     su cuenta, y el formato de evidencias las acomoda lado a lado. */
+
+  var EVI_TOPE = 3;
+
+  /* El CORE devuelve una lista; las cuentas viejas traen una sola url en
+     texto. Se admiten las dos formas para que un borrador de ayer siga
+     abriéndose. */
+  function listaEvi(v) {
+    if (!v) return [];
+    if (Object.prototype.toString.call(v) === '[object Array]') {
+      return v.filter(function (u) { return !!u; });
+    }
+    return String(v).split(/\s*\|\s*|\s+/).filter(function (u) { return !!u; });
+  }
+
+  function evisDe(i) {
+    if (!evidencias[i]) evidencias[i] = [];
+    return evidencias[i];
+  }
 
   function zonaEvidencia(destino, i) {
     destino.innerHTML = '';
+    var lista = evisDe(i);
 
-    if (evidencias[i]) {
-      var ver = K.nodo(
-        '<div class="evi-ok">' +
-        '  <img class="evi-ok__mini" src="' + K.esc(miniatura(evidencias[i])) + '" alt="Evidencia cargada">' +
-        '  <div class="evi-ok__txt">' +
-        '    <p class="evi-ok__t">Evidencia cargada</p>' +
-        '    <p class="evi-ok__p">Ya quedó guardada.</p>' +
-        '  </div>' +
-        '  <div class="evi-ok__btns">' +
-        '    <button type="button" class="kit-btn evi-ok__b" data-a="ver">Ver</button>' +
-        '    <button type="button" class="kit-btn evi-ok__b" data-a="cambiar">Cambiar</button>' +
-        '    <button type="button" class="kit-btn kit-btn--malo evi-ok__b" data-a="quitar">Quitar</button>' +
-        '  </div>' +
-        '</div>'
-      );
-      ver.querySelector('[data-a="ver"]').addEventListener('click', function () {
-        K.piezas.carrusel.abrir([{ url: verEnGrande(evidencias[i]), titulo: 'Obligación ' + (i + 1) }]);
+    lista.forEach(function (url, k) {
+      destino.appendChild(fichaEvidencia(destino, i, url, k + 1, lista.length));
+    });
+
+    if (lista.length < EVI_TOPE) {
+      var zona = K.nodo('<div id="evi-caja-' + i + '"></div>');
+      destino.appendChild(zona);
+
+      K.piezas.adjuntos.montar(zona, {
+        acepta: 'image/*',
+        varios: true,
+        maximo: EVI_TOPE - lista.length,
+        maximoMB: 25,
+        alCambiar: function (archivos) {
+          if (archivos && archivos.length) subir(destino, i, archivos);
+        }
       });
-      ver.querySelector('[data-a="cambiar"]').addEventListener('click', function () {
-        elegir(destino, i);
-      });
-      ver.querySelector('[data-a="quitar"]').addEventListener('click', function () {
-        quitar(destino, i);
-      });
-      destino.appendChild(ver);
-      return;
+
+      destino.appendChild(K.nodo(
+        '<p class="evi-nota">' +
+        (lista.length
+          ? 'Puedes añadir ' + (EVI_TOPE - lista.length) +
+            (EVI_TOPE - lista.length === 1 ? ' evidencia más.' : ' evidencias más.')
+          : 'Hasta ' + EVI_TOPE + ' imágenes por obligación. El formato las acomoda ' +
+            'solo: ya no tienes que juntarlas en una sola foto.') +
+        '</p>'
+      ));
     }
+  }
 
-    var zona = K.nodo('<div id="evi-caja-' + i + '"></div>');
-    destino.appendChild(zona);
+  /* Cada evidencia ya cargada, con su número y sus tres acciones. */
+  function fichaEvidencia(destino, i, url, ranura, cuantas) {
+    var f = K.nodo(
+      '<div class="evi-ok">' +
+      '  <img class="evi-ok__mini" src="' + K.esc(miniatura(url)) + '" alt="Evidencia ' + ranura + '">' +
+      '  <div class="evi-ok__txt">' +
+      '    <p class="evi-ok__t">Evidencia ' + ranura + (cuantas > 1 ? ' de ' + cuantas : '') + '</p>' +
+      '    <p class="evi-ok__p">Ya quedó guardada.</p>' +
+      '  </div>' +
+      '  <div class="evi-ok__btns">' +
+      '    <button type="button" class="kit-btn evi-ok__b" data-a="ver">' + K.icono('buscar', 16) + ' Ver</button>' +
+      '    <button type="button" class="kit-btn evi-ok__b" data-a="cambiar">' + K.icono('recargar', 16) + ' Cambiar</button>' +
+      '    <button type="button" class="kit-btn kit-btn--malo evi-ok__b" data-a="quitar">' + K.icono('basura', 16) + ' Quitar</button>' +
+      '  </div>' +
+      '</div>'
+    );
+
+    f.querySelector('[data-a="ver"]').addEventListener('click', function () {
+      /* El carrusel recibe TODAS las de la obligación y se abre en esta:
+         así se comparan sin salir y sin volver a cargar. */
+      var lista = evisDe(i);
+      K.piezas.carrusel.abrir(lista.map(function (u, k) {
+        return { url: verEnGrande(u), titulo: 'Obligación ' + (i + 1) + ' · evidencia ' + (k + 1) };
+      }), { indice: ranura - 1 });
+    });
+    f.querySelector('[data-a="cambiar"]').addEventListener('click', function () {
+      cambiar(destino, i, ranura);
+    });
+    f.querySelector('[data-a="quitar"]').addEventListener('click', function () {
+      quitar(destino, i, ranura);
+    });
+
+    return f;
+  }
+
+  /* Cambiar una: se pide la foto nueva y se manda a ESA ranura. La vieja
+     la borra el CORE cuando la nueva ya está arriba, no antes. */
+  function cambiar(destino, i, ranura) {
+    var caja = K.nodo('<div class="evi-cambiar"><p class="evi-nota">Elige la imagen que reemplaza a la ' + ranura + '.</p></div>');
+    destino.innerHTML = '';
+    destino.appendChild(caja);
+    var zona = K.nodo('<div></div>');
+    caja.appendChild(zona);
 
     K.piezas.adjuntos.montar(zona, {
-      acepta: 'image/*',
-      varios: true,
-      maximo: 4,
-      maximoMB: 25,
+      acepta: 'image/*', varios: false, maximo: 1, maximoMB: 25,
       alCambiar: function (archivos) {
-        if (archivos && archivos.length) subir(destino, i, archivos);
+        if (archivos && archivos.length) subir(destino, i, [archivos[0]], ranura);
       }
     });
 
-    destino.appendChild(K.nodo(
-      '<p class="evi-nota">Una foto por obligación. Si tienes varias, súbelas todas: ' +
-      'las juntamos en una sola imagen.</p>'
-    ));
+    var no = K.nodo('<button type="button" class="kit-btn kit-btn--plano">Dejarla como está</button>');
+    no.addEventListener('click', function () { zonaEvidencia(destino, i); });
+    caja.appendChild(no);
   }
 
-  function elegir(destino, i) {
-    evidencias[i] = '';
-    zonaEvidencia(destino, i);
-  }
-
-  function subir(destino, i, archivos) {
-    var preparar = archivos.length > 1
-      ? K.piezas.imagenes.collage(archivos)
-      : K.piezas.imagenes.preparar(archivos[0]);
+  /* Las fotos suben de una en una y en fila: cada una queda guardada en su
+     ranura antes de empezar la siguiente. Si la tercera falla, las dos
+     primeras ya están a salvo. */
+  function subir(destino, i, archivos, ranuraFija) {
+    var lista = evisDe(i);
+    var cupo = ranuraFija ? 1 : Math.max(0, EVI_TOPE - lista.length);
+    var tanda = archivos.slice(0, cupo);
+    if (!tanda.length) {
+      K.aviso('Esta obligación ya tiene sus ' + EVI_TOPE + ' evidencias.', 'info', 4000);
+      zonaEvidencia(destino, i);
+      return;
+    }
 
     K.piezas.guardado.abrir({
-      titulo: archivos.length > 1 ? 'Juntando tus fotos' : 'Subiendo tu evidencia',
-      sub: 'No cierres esta ventana 🚀',
+      titulo: tanda.length > 1 ? 'Subiendo tus evidencias' : 'Subiendo tu evidencia',
+      sub: 'No cierres esta ventana hasta que termine.',
       pasos: ['Preparando la imagen…', 'Subiéndola a tu carpeta…', 'Dejándola guardada…']
     });
 
-    preparar
-      .then(function (img) {
-        return K.pedir('evidenciaSubir', {
-          obligacion: i + 1,
-          imagen: img.dataUrl,
-          total: E.total || ''
+    var puestas = 0;
+
+    function siguiente(k) {
+      if (k >= tanda.length) {
+        K.piezas.guardado.listo({
+          sub: puestas > 1 ? 'Las ' + puestas + ' evidencias quedaron guardadas.'
+                           : 'La evidencia quedó guardada.'
         });
-      })
-      .then(function (r) {
-        evidencias[i] = r.url;
-        if (r.informe) E.informe = r.informe;
-        K.piezas.guardado.listo({ sub: 'Evidencia guardada 🎉' });
         zonaEvidencia(destino, i);
-      })
-      ['catch'](function (e) {
-        K.piezas.guardado.fallo();
-        K.aviso(e && e.message ? e.message : 'No se pudo subir la foto.', 'malo', 6000);
-        zonaEvidencia(destino, i);
-      });
+        return;
+      }
+      K.piezas.imagenes.preparar(tanda[k])
+        .then(function (img) {
+          return K.pedir('evidenciaSubir', {
+            obligacion: i + 1,
+            imagen: img.dataUrl,
+            ranura: ranuraFija || (evisDe(i).length + 1),
+            total: E.total || ''
+          });
+        })
+        .then(function (r) {
+          evidencias[i] = listaEvi(r.urls && r.urls.length ? r.urls : r.url);
+          if (r.informe) E.informe = r.informe;
+          puestas++;
+          siguiente(k + 1);
+        })
+        ['catch'](function (e) {
+          K.piezas.guardado.fallo();
+          K.aviso(e && e.message ? e.message : 'No se pudo subir la foto.', 'malo', 6000);
+          zonaEvidencia(destino, i);
+        });
+    }
+
+    siguiente(0);
   }
 
-  function quitar(destino, i) {
-    if (!window.confirm('¿Quitar la evidencia de esta obligación?')) return;
+  function quitar(destino, i, ranura) {
+    if (!window.confirm('¿Quitar la evidencia ' + ranura + ' de esta obligación?')) return;
     K.piezas.guardado.abrir({ titulo: 'Quitando la evidencia' });
-    K.pedir('evidenciaQuitar', { obligacion: i + 1 })
-      .then(function () {
-        evidencias[i] = '';
-        K.piezas.guardado.listo({ sub: 'Ya la quitamos' });
+    K.pedir('evidenciaQuitar', { obligacion: i + 1, ranura: ranura })
+      .then(function (r) {
+        evidencias[i] = listaEvi(r && r.urls);
+        K.piezas.guardado.listo({ sub: 'Ya la quitamos.' });
         zonaEvidencia(destino, i);
       })
       ['catch'](function (e) {
@@ -465,7 +548,7 @@
     if (conAviso) {
       K.piezas.guardado.abrir({
         titulo: 'Guardando tu informe',
-        sub: 'No cierres esta ventana hasta que termine 🚀',
+        sub: 'No cierres esta ventana hasta que termine.',
         pasos: ['Revisando lo que escribiste…', 'Enviando al servidor…', 'Guardando en tu cuenta…']
       });
     }
@@ -510,17 +593,36 @@
 
   /* ══════════════ insights ══════════════ */
 
+  /* 4.4 · Insights que sirven para algo.
+     Lo de antes contaba tres cosas (obligaciones, escritas, con evidencia)
+     y eso ya se ve en la barra de arriba: era repetir la pantalla con
+     otras palabras. Ahora responde lo que de verdad decide si la cuenta
+     pasa o la devuelven: si la redacción es CUANTITATIVA (que es lo que
+     pide el formato), si hay obligaciones flacas de texto, cuántas
+     evidencias lleva cada una y qué falta exactamente para radicar. */
+
+  function cifrasDe(txt) {
+    return (String(txt || '').match(/\d+([.,]\d+)?/g) || []).length;
+  }
+
   function montarInsights() {
     if (!K.piezas.insights) return;
     K.piezas.insights.montar({
       vista: 'Mi informe ' + E.informe,
       filas: function () {
         return E.obligaciones.map(function (o, i) {
+          var txt = String(textos[i] || '').trim();
+          var palabras = txt ? txt.split(/\s+/).filter(Boolean).length : 0;
           return {
             n: o.n,
-            escrita: String(textos[i] || '').trim() ? 'Sí' : 'No',
-            evidencia: evidencias[i] ? 'Sí' : 'No',
-            palabras: String(textos[i] || '').trim().split(/\s+/).filter(Boolean).length
+            escrita: txt ? 'Sí' : 'No',
+            evidencias: (evidencias[i] || []).length,
+            palabras: palabras,
+            cifras: cifrasDe(txt),
+            /* "verbos en pasado" no se puede comprobar de verdad sin
+               analizar la frase; lo que sí se puede es avisar de que no
+               hay NINGUNA cifra, que es el error que se repite. */
+            cuantitativa: (txt && cifrasDe(txt) > 0) ? 'Sí' : 'No'
           };
         });
       },
@@ -529,32 +631,80 @@
         { titulo: 'Escritas', calcula: function (f) {
             return f.filter(function (x) { return x.escrita === 'Sí'; }).length; } },
         { titulo: 'Con evidencia', calcula: function (f) {
-            return f.filter(function (x) { return x.evidencia === 'Sí'; }).length; } }
+            return f.filter(function (x) { return x.evidencias > 0; }).length; } },
+        { titulo: 'Evidencias en total', calcula: function (f) {
+            return f.reduce(function (s, x) { return s + x.evidencias; }, 0); } },
+        { titulo: 'Palabras por obligación', calcula: function (f) {
+            var e = f.filter(function (x) { return x.escrita === 'Sí'; });
+            if (!e.length) return 0;
+            return Math.round(e.reduce(function (s, x) { return s + x.palabras; }, 0) / e.length); } },
+        { titulo: 'Con cifras', calcula: function (f) {
+            return f.filter(function (x) { return x.cuantitativa === 'Sí'; }).length; } }
       ],
       botones: [
-        { texto: '¿Qué me falta?', responde: function (f) {
+        { texto: '¿Qué me falta para radicar?', responde: function (f) {
             var sinTexto = f.filter(function (x) { return x.escrita === 'No'; })
                             .map(function (x) { return x.n; });
-            var sinFoto = f.filter(function (x) { return x.escrita === 'Sí' && x.evidencia === 'No'; })
+            var sinFoto = f.filter(function (x) { return x.escrita === 'Sí' && !x.evidencias; })
                            .map(function (x) { return x.n; });
             if (!sinTexto.length && !sinFoto.length) {
-              return 'No te falta nada: todas las obligaciones están escritas y con su evidencia.';
+              return 'Nada: las ' + f.length + ' obligaciones están escritas y con su evidencia. ' +
+                     'Ya puedes ir a INGRESAR CUENTA.';
             }
             var s = '';
-            if (sinTexto.length) s += 'Sin escribir: ' + sinTexto.join(', ') + '.\n';
-            if (sinFoto.length) s += 'Escritas pero sin foto: ' + sinFoto.join(', ') + '.';
+            if (sinTexto.length) {
+              s += 'Sin escribir (' + sinTexto.length + '): ' + sinTexto.join(', ') + '.\n' +
+                   'Sin estas no se puede radicar.\n';
+            }
+            if (sinFoto.length) {
+              s += 'Escritas pero sin evidencia (' + sinFoto.length + '): ' + sinFoto.join(', ') + '.\n' +
+                   'La cuenta se radica igual, pero el formato de evidencias sale con esos campos en N/A.';
+            }
             return s;
           } },
-        { texto: '¿Voy muy corto de texto?', responde: function (f) {
-            var cortas = f.filter(function (x) { return x.escrita === 'Sí' && x.palabras < 12; })
-                          .map(function (x) { return x.n; });
-            if (!cortas.length) return 'Todas las que escribiste tienen un texto con cuerpo.';
-            return 'Estas quedaron con menos de doce palabras y puede que al supervisor ' +
-                   'le sepan a poco: ' + cortas.join(', ') + '.';
+        { texto: '¿Estoy redactando en cuantitativo?', responde: function (f) {
+            var escritas = f.filter(function (x) { return x.escrita === 'Sí'; });
+            if (!escritas.length) return 'Todavía no has escrito ninguna obligación.';
+            var sinCifras = escritas.filter(function (x) { return x.cuantitativa === 'No'; })
+                                    .map(function (x) { return x.n; });
+            if (!sinCifras.length) {
+              return 'Bien: las ' + escritas.length + ' que escribiste traen cifras. ' +
+                     'Es lo que pide el formato: cuántos, cuánto, en cuántos días.';
+            }
+            return 'Estas ' + sinCifras.length + ' no tienen ni una cifra: ' + sinCifras.join(', ') + '.\n' +
+                   'El informe se lee mejor con números: cuántas visitas, cuántos expedientes, ' +
+                   'cuántos días. Y es lo que el supervisor busca cuando revisa.';
+          } },
+        { texto: '¿Voy corto de texto?', responde: function (f) {
+            var escritas = f.filter(function (x) { return x.escrita === 'Sí'; });
+            if (!escritas.length) return 'Todavía no has escrito ninguna obligación.';
+            var cortas = escritas.filter(function (x) { return x.palabras < 12; });
+            var media = Math.round(escritas.reduce(function (s, x) { return s + x.palabras; }, 0) / escritas.length);
+            if (!cortas.length) {
+              return 'Todas las que escribiste tienen cuerpo. Promedio: ' + media + ' palabras.';
+            }
+            return 'Promedio: ' + media + ' palabras por obligación.\n' +
+                   'Estas ' + cortas.length + ' quedaron por debajo de doce y puede que al ' +
+                   'supervisor le sepan a poco: ' +
+                   cortas.map(function (x) { return x.n + ' (' + x.palabras + ')'; }).join(', ') + '.';
+          } },
+        { texto: '¿Cómo van mis evidencias?', responde: function (f) {
+            var con = f.filter(function (x) { return x.evidencias > 0; });
+            if (!con.length) return 'Todavía no has subido ninguna evidencia.';
+            var una = f.filter(function (x) { return x.evidencias === 1; }).length;
+            var dos = f.filter(function (x) { return x.evidencias === 2; }).length;
+            var tres = f.filter(function (x) { return x.evidencias === 3; }).length;
+            var total = f.reduce(function (s, x) { return s + x.evidencias; }, 0);
+            return total + (total === 1 ? ' evidencia' : ' evidencias') + ' en ' + con.length +
+                   ' obligaciones.\n' +
+                   'Con una: ' + una + ' · con dos: ' + dos + ' · con tres: ' + tres + '.\n' +
+                   'Desde esta versión el formato acomoda hasta tres por obligación y las reparte ' +
+                   'solo: ya no tienes que juntarlas en una sola foto.';
           } }
       ]
     });
   }
+
 
   function errorCaja(e) {
     var msg = (e && e.message) ? e.message : 'No se pudo cargar.';

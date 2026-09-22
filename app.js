@@ -319,57 +319,266 @@
     paso.then(function () { enrutar(); });
   }
 
-  /* ---------- datos del proceso ---------- */
+  /* ---------- datos del contrato ---------- */
+  /*
+   * 4.4: esta vista era solo lectura y le faltaban nueve campos que sí
+   * enseña la app vieja. Ahora enseña el contrato completo y, debajo, deja
+   * DILIGENCIARLO, que es lo que el contratista tiene que hacer al empezar:
+   * el N° de proceso, las fechas del acta de inicio, el RP y las tres
+   * preguntas del RUT (régimen simple, factura electrónica y costos).
+   *
+   * Lo que se puede editar NO lo decide esta vista: lo decide el CORE con
+   * la columna CONTRACTUAL y lo manda en `modoEdicion`. En un contrato
+   * cedido o adicionado, lo único que se toca es el RP que corresponde.
+   */
 
   function vistaProceso() {
     var caja = K.nodo('<div class="kit-ancho vista"></div>');
     app.appendChild(caja);
 
-    K.piezas.esqueletos.mientras(caja, cargarInicio(), { forma: 'texto', cuantos: 6 })
-      .then(function () {
-        var c = CONTRATO || {};
-
-        caja.appendChild(grupo('El contrato', [
-          dato('Número', c.contrato),
-          dato('Tipo', c.tipo),
-          dato('Objeto', c.objeto, true),
-          dato('Secretaría', c.secretaria),
-          dato('Supervisor', c.supervisor),
-          dato('Fecha del contrato', c.fechaContrato),
-          dato('Tramo', c.tramo),
-          dato('Régimen', c.regimen)
-        ]));
-
-        caja.appendChild(grupo('La plata', [
-          dato('Valor inicial', plata(c.valorInicial)),
-          dato('1ª adición', plata(c.adicion1)),
-          dato('2ª adición', plata(c.adicion2)),
-          dato('Valor final', plata(c.valorFinal)),
-          dato('Informes del primario', c.totalInformesPrimario),
-          dato('Informes de la 1ª adición', c.totalInformesAdicion1)
-        ]));
-
-        caja.appendChild(grupo('Respaldos presupuestales', [
-          dato('CDP', c.cdp),
-          dato('RP', c.rp),
-          dato('CDP adición', c.cdpAdicion),
-          dato('RP adición', c.rpAdicion),
-          dato('CDP 2ª adición', c.cdpAdicion2),
-          dato('RP 2ª adición', c.rpAdicion2)
-        ]));
-
-        if (K.norm(c.cesion) === 'SI' || c.nombreCedente) {
-          caja.appendChild(grupo('Cesión', [
-            dato('Fecha', c.fechaCesion),
-            dato('Cedente', c.nombreCedente),
-            dato('Documento del cedente', c.documentoCedente),
-            dato('Inicio del cesionario', c.inicioCesionario)
-          ]));
-        }
-
-        K.piezas.creditos.montar(caja);
-      })
+    /* Las listas hacen falta para las tres preguntas de si/no del
+       formulario: se piden de una vez con el contrato. */
+    var todo = Promise.all([cargarInicio(), listas()]);
+    K.piezas.esqueletos.mientras(caja, todo, { forma: 'texto', cuantos: 6 })
+      .then(function () { pintarContrato(caja); })
       ['catch'](function (e) { caja.appendChild(errorCaja(e)); });
+  }
+
+  function pintarContrato(caja) {
+    caja.innerHTML = '';
+    var c = CONTRATO || {};
+
+    caja.appendChild(grupo('El contrato', [
+      dato('Número', c.contrato),
+      dato('N° de proceso SECOP II', c.numProceso),
+      dato('Tipo', c.tipo),
+      dato('Objeto', c.objeto, true),
+      dato('Secretaría', c.secretaria),
+      dato('Supervisor', c.supervisor),
+      dato('Fecha del contrato', c.fechaContrato),
+      dato('Tramo', c.tramo),
+      dato('Régimen simple', c.regimen),
+      dato('Factura electrónica', c.factura),
+      dato('Costos o deducciones', c.costos)
+    ]));
+
+    caja.appendChild(grupo('El plazo', [
+      dato('Fecha de inicio', c.fechaInicio),
+      dato('Fecha de terminación', c.fechaTermino),
+      dato('Tiempo de ejecución', c.ejecucion)
+    ]));
+
+    caja.appendChild(grupo('La plata', [
+      dato('Valor inicial', plata(c.valorInicial)),
+      dato('1ª adición', plata(c.adicion1)),
+      dato('2ª adición', plata(c.adicion2)),
+      dato('Valor final', plata(c.valorFinal)),
+      dato('Informes del primario', c.totalInformesPrimario),
+      dato('Informes de la 1ª adición', c.totalInformesAdicion1)
+    ]));
+
+    caja.appendChild(grupo('Respaldos presupuestales', [
+      dato('CDP', c.cdp),
+      dato('RP', c.rp),
+      dato('CDP adición', c.cdpAdicion),
+      dato('RP adición', c.rpAdicion),
+      dato('CDP 2ª adición', c.cdpAdicion2),
+      dato('RP 2ª adición', c.rpAdicion2)
+    ]));
+
+    if (K.norm(c.cesion) === 'SI' || c.nombreCedente) {
+      caja.appendChild(grupo('Cesión', [
+        dato('Fecha', c.fechaCesion),
+        dato('Cedente', c.nombreCedente),
+        dato('Documento del cedente', c.documentoCedente),
+        dato('Inicio del cesionario', c.inicioCesionario)
+      ]));
+    }
+
+    /* Las obligaciones son el contrato de verdad: es lo que el supervisor
+       revisa una por una y lo que hay que responder en el informe. */
+    if ((c.obligaciones || []).length) {
+      var g = K.nodo('<section class="kit-tarjeta grupo"><h3 class="grupo__t">Tus obligaciones (' +
+        c.obligaciones.length + ')</h3></section>');
+      c.obligaciones.forEach(function (o) {
+        g.appendChild(K.nodo(
+          '<div class="obl-lista__i">' +
+          '  <span class="obl-lista__n">' + o.n + '</span>' +
+          '  <span class="obl-lista__t">' + K.esc(o.texto) + '</span>' +
+          '</div>'
+        ));
+      });
+      caja.appendChild(g);
+    }
+
+    caja.appendChild(zonaEditarContrato(caja, c));
+    K.piezas.creditos.montar(caja);
+  }
+
+  /* Lo que se puede tocar, dicho en el idioma de cada caso. */
+  var ROTULO_MODO = {
+    primario: 'Actualizar los datos de mi contrato',
+    adicion1: 'Actualizar el RP de la 1ª adición',
+    adicion2: 'Actualizar el RP de la 2ª adición',
+    cedido: 'Actualizar el RP de mi contrato'
+  };
+
+  function zonaEditarContrato(caja, c) {
+    var s = K.nodo('<section class="kit-tarjeta grupo"></section>');
+
+    if (!c.yaDiligenciado) {
+      s.appendChild(K.nodo(
+        '<p class="formulario__nota formulario__nota--fuerte">Todavía te faltan datos ' +
+        'obligatorios del contrato. Sin ellos no se pueden generar los formatos de tu ' +
+        'primera cuenta.</p>'
+      ));
+    }
+
+    var b = K.nodo('<button type="button" class="kit-btn kit-btn--marca">' +
+      K.icono('llave', 17) + ' ' + K.esc(ROTULO_MODO[c.modoEdicion] || ROTULO_MODO.primario) +
+      '</button>');
+    b.addEventListener('click', function () {
+      b.disabled = true;
+      s.appendChild(formularioContrato(caja, c, function () { b.disabled = false; }));
+      s.querySelector('.formulario').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+    s.appendChild(b);
+    return s;
+  }
+
+  function formularioContrato(caja, c, alCerrar) {
+    var f = K.nodo('<form class="formulario" novalidate></form>');
+    var D = {};
+
+    if (c.modoEdicion === 'primario') {
+      f.appendChild(K.nodo('<h3 class="grupo__t">Datos de tu contrato</h3>'));
+      f.appendChild(K.nodo(
+        '<p class="formulario__nota">Estos datos salen de tu <b>clausulado</b> y de tu ' +
+        '<b>acta de inicio</b>. Ténlos a la mano: van impresos en todos los formatos de tus cuentas.</p>'
+      ));
+
+      campoTexto(f, D, 'numProceso', 'N° de proceso SECOP II',
+        'En el clausulado, el número que va en CPS-(aquí)-' + (new Date().getFullYear()) + '. Ejemplo: 021',
+        { valor: (c.numProceso || '').replace(/\D/g, '').slice(-3), numerico: 3, marcador: 'Ej: 021' });
+
+      campoFecha(f, D, 'fechaInicio', 'Fecha de inicio',
+        'La que dice tu ACTA DE INICIO.', c.fechaInicio);
+      campoFecha(f, D, 'fechaTermino', 'Fecha de terminación',
+        'Corrobórala en el acta de inicio.', c.fechaTermino);
+
+      /* El plazo lo calcula el CORE con las dos fechas. Aquí solo se
+         enseña, y se deja editar para el caso de siempre: que el acta diga
+         otra cosa. */
+      var plazo = K.nodo(
+        '<div class="campo"><span>Tiempo de ejecución</span>' +
+        '  <input type="text" class="campo--quieto" readonly value="' + K.esc(c.ejecucion || '') + '">' +
+        '  <p class="campo__ayuda">Se calcula con las dos fechas. Edita los meses o los días ' +
+        '     <b>solo si no coincide</b> con tu acta de inicio.</p>' +
+        '</div>'
+      );
+      f.appendChild(plazo);
+
+      var fila = K.nodo('<div class="campo-fila"></div>');
+      campoTexto(fila, D, 'meses', 'Meses', '', { valor: c.meses || '', numerico: 3, marcador: 'Automático' });
+      campoTexto(fila, D, 'dias', 'Días', '', { valor: c.dias || '', numerico: 3, marcador: 'Automático' });
+      f.appendChild(fila);
+
+      campoTexto(f, D, 'rp', 'Registro Presupuestal (RP)',
+        'Son 10 dígitos. Empieza por el año de la vigencia.',
+        { valor: c.rp || '', numerico: 10, marcador: 'N° de RP', rp: true });
+
+      campoSiNo(f, D, 'regimen', '¿Perteneces al Régimen Simple de Tributación?',
+        'Revisa tu RUT. Si aparece que perteneces al “Régimen Simple de Tributación”, marca SÍ.',
+        c.regimen);
+      campoSiNo(f, D, 'factura', '¿Estás obligado a facturar electrónicamente?',
+        'Revisa tu RUT. Si dice que estás obligado, o ya facturas electrónicamente ante la DIAN, marca SÍ.',
+        c.factura);
+      campoSiNo(f, D, 'costos', '¿Tomarás costos y deducciones en tu declaración de renta?',
+        'Es si vas a descontar gastos de este contrato: arriendo de oficina, internet, equipos, ' +
+        'transporte, software o personal de apoyo.',
+        c.costos);
+
+    } else {
+      var rotulo = c.modoEdicion === 'adicion1' ? 'RP de la 1ª adición'
+                 : c.modoEdicion === 'adicion2' ? 'RP de la 2ª adición'
+                 : 'Registro Presupuestal (RP)';
+      var explica = c.modoEdicion === 'cedido'
+        ? 'Tu contrato es <b>cedido</b>: lo único que tienes que actualizar es el RP.'
+        : 'Tu contrato tiene <b>adición</b>: lo único que tienes que actualizar es el RP de la adición.';
+      f.appendChild(K.nodo('<h3 class="grupo__t">' + K.esc(rotulo) + '</h3>'));
+      f.appendChild(K.nodo('<p class="formulario__nota">' + explica + '</p>'));
+      campoTexto(f, D, 'rp', rotulo, 'Son 10 dígitos.', {
+        valor: (c.modoEdicion === 'adicion1' ? c.rpAdicion : c.modoEdicion === 'adicion2' ? c.rpAdicion2 : c.rp) || '',
+        numerico: 10, marcador: 'N° de RP', rp: true
+      });
+    }
+
+    var botones = K.nodo('<div class="campo-fila campo-fila--botones"></div>');
+    var cancelar = K.nodo('<button type="button" class="kit-btn kit-btn--plano">Cancelar</button>');
+    var guardar = K.nodo('<button type="submit" class="kit-btn kit-btn--marca">Guardar cambios</button>');
+    botones.appendChild(cancelar);
+    botones.appendChild(guardar);
+    f.appendChild(botones);
+
+    cancelar.addEventListener('click', function () {
+      f.remove();
+      if (alCerrar) alCerrar();
+    });
+
+    f.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      mandarContrato(caja, c, D);
+    });
+
+    /* La rueda de fechas se engancha una vez, con el formulario ya montado. */
+    if (K.piezas.fechas) K.piezas.fechas.montar(f);
+    return f;
+  }
+
+  /* El resumen antes de guardar. La app vieja lo tenía y no era adorno: un
+     dedazo en el RP se descubre cuando el pago no sale. */
+  function mandarContrato(caja, c, D) {
+    var ROTULOS = {
+      numProceso: 'N° de proceso', fechaInicio: 'Fecha de inicio',
+      fechaTermino: 'Fecha de terminación', meses: 'Meses', dias: 'Días',
+      rp: 'RP', regimen: 'Régimen simple', factura: 'Factura electrónica',
+      costos: 'Costos o deducciones'
+    };
+    var lista = [];
+    Object.keys(ROTULOS).forEach(function (k) {
+      var v = String(D[k] === undefined || D[k] === null ? '' : D[k]).trim();
+      if (!v) return;
+      if (k === 'numProceso') v = 'CPS-' + ('00' + v).slice(-3) + '-' + (new Date().getFullYear());
+      lista.push([ROTULOS[k], v]);
+    });
+
+    if (!lista.length) {
+      K.aviso('No cambiaste ningún dato.', 'info', 4000);
+      return;
+    }
+
+    K.piezas.confirmar.abrir({
+      titulo: 'Resumen de cambios',
+      lista: lista,
+      nota: 'Revísalo con calma: estos datos van impresos en los formatos de todas tus cuentas.',
+      si: 'Confirmar', no: 'Editar'
+    }).then(function (ok) {
+      if (!ok) return;
+      K.piezas.guardado.abrir({
+        titulo: 'Guardando los datos de tu contrato',
+        sub: 'No cierres esta ventana hasta que termine.'
+      });
+      K.pedir('guardarContrato', D)
+        .then(function (r) {
+          CONTRATO = r.contrato;
+          K.piezas.guardado.listo({ sub: 'Tu contrato quedó al día.' });
+          pintarContrato(caja);
+        })
+        ['catch'](function (e) {
+          K.piezas.guardado.fallo();
+          K.aviso(e && e.message ? e.message : 'No se pudo guardar.', 'malo', 7000);
+        });
+    });
   }
 
   function plata(v) {
@@ -405,61 +614,335 @@
   }
 
   /* ---------- mis datos ---------- */
+  /*
+   * 4.4: pasa de tres campos a los trece de la app vieja. Los diez que
+   * faltaban (municipio de expedición, residencia, cuenta bancaria, EPS,
+   * AFP, ARL, firma y fecha de nacimiento) son justo los que salen
+   * impresos en los formatos de la cuenta: un banco mal escrito o una
+   * cuenta sin el cero de la izquierda devuelve el pago.
+   */
+
+  var LISTAS = null;
+
+  function listas() {
+    if (LISTAS) return Promise.resolve(LISTAS);
+    return K.pedir('listasDatos').then(function (l) { LISTAS = l; return l; });
+  }
 
   function vistaPersonales() {
     var caja = K.nodo('<div class="kit-ancho vista"></div>');
     app.appendChild(caja);
 
-    K.piezas.esqueletos.mientras(caja, K.pedir('misDatos'), { forma: 'texto', cuantos: 4 })
-      .then(function (d) { pintarFormulario(caja, d); })
+    var todo = Promise.all([K.pedir('misDatos'), listas()]);
+    K.piezas.esqueletos.mientras(caja, todo, { forma: 'texto', cuantos: 6 })
+      .then(function (r) { pintarFormulario(caja, r[0]); })
       ['catch'](function (e) { caja.appendChild(errorCaja(e)); });
   }
 
   function pintarFormulario(caja, d) {
-    var f = K.nodo(
-      '<form class="kit-tarjeta formulario" novalidate>' +
-      '  <h3 class="grupo__t">DATOS PERSONALES</h3>' +
-      '  <p class="formulario__nota">El nombre y el documento los cambia Contratación, no la app.</p>' +
-      '  <div class="dato"><span class="dato__e">Nombre</span><span class="dato__v">' + K.esc(d.nombre || '') + '</span></div>' +
-      '  <div class="dato"><span class="dato__e">Documento</span><span class="dato__v">' + K.esc(d.documento || '') + '</span></div>' +
-      '  <label class="campo"><span>Teléfono</span>' +
-      '    <input name="telefono" type="tel" inputmode="numeric" autocomplete="tel" value="' + K.esc(d.telefono || '') + '">' +
-      '  </label>' +
-      '  <label class="campo"><span>Dirección</span>' +
-      '    <input name="direccion" type="text" autocomplete="street-address" value="' + K.esc(d.direccion || '') + '">' +
-      '  </label>' +
-      '  <label class="campo"><span>Correo</span>' +
-      '    <input name="correo" type="email" inputmode="email" autocomplete="email" value="' + K.esc(d.correo || '') + '">' +
-      '  </label>' +
-      '  <p class="formulario__nota">Al correo llegan los avisos de orden de pago y de pago. Si lo cambias, cámbialo bien.</p>' +
-      '  <button type="submit" class="kit-btn kit-btn--marca">Guardar</button>' +
-      '</form>'
-    );
+    caja.innerHTML = '';
+    var D = {};
+    var f = K.nodo('<form class="kit-tarjeta formulario" novalidate></form>');
+
+    f.appendChild(K.nodo('<h3 class="grupo__t">DATOS PERSONALES</h3>'));
+    f.appendChild(K.nodo(
+      '<p class="formulario__nota">El nombre y el documento los cambia Contratación, no la app. ' +
+      'Todo lo demás lo puedes corregir tú, y queda al día en todos tus contratos a la vez.</p>'
+    ));
+    f.appendChild(K.nodo('<div class="dato"><span class="dato__e">Nombre</span>' +
+      '<span class="dato__v">' + K.esc(d.nombre || '') + '</span></div>'));
+    f.appendChild(K.nodo('<div class="dato"><span class="dato__e">Documento</span>' +
+      '<span class="dato__v">' + K.esc(d.documento || '') + '</span></div>'));
+
+    campoMunicipio(f, D, 'expedida', 'Municipio de expedición del documento',
+      'Escribe y elige de la lista. No aplica para personas jurídicas.', d.expedida);
+    campoTexto(f, D, 'telefono', 'Teléfono (línea de WhatsApp)',
+      'Diez dígitos. Por aquí te llegan los avisos de tus cuentas.',
+      { valor: d.telefono || '', numerico: 10, marcador: '3XXXXXXXXX' });
+    campoTexto(f, D, 'direccion', 'Dirección de residencia',
+      'Usa abreviaciones y no escribas el municipio. Ejemplo: Mz 5 Casa 16 B/ Orquídeas II',
+      { valor: d.direccion || '', area: true });
+    campoMunicipio(f, D, 'municipio', 'Municipio de residencia',
+      'Escribe y elige de la lista.', d.municipio);
+    campoTexto(f, D, 'correo', 'Correo personal',
+      'Uno que sea tuyo, no el institucional. Aquí llegan la orden de pago y el pago.',
+      { valor: d.correo || '', marcador: 'tucorreo@gmail.com' });
+
+    f.appendChild(K.nodo('<h3 class="grupo__t grupo__t--sub">Para el pago</h3>'));
+    campoLista(f, D, 'tipoCuenta', 'Tipo de cuenta', '', LISTAS.tiposCuenta, d.tipoCuenta);
+    campoTexto(f, D, 'numeroCuenta', 'Número de cuenta',
+      'Sin puntos ni guiones. Si empieza por cero, escríbelo: hace falta.',
+      { valor: d.numeroCuenta || '', numerico: 16 });
+    campoLista(f, D, 'banco', 'Banco', '', LISTAS.bancos, d.banco);
+
+    f.appendChild(K.nodo('<h3 class="grupo__t grupo__t--sub">Seguridad social</h3>'));
+    campoLista(f, D, 'eps', 'EPS', '', LISTAS.eps, d.eps);
+    campoLista(f, D, 'pension', 'Fondo de pensiones (AFP)',
+      'Si eres pensionado(a) elige N/A. Eso implica que en cada cuenta tienes que presentar ' +
+      'la certificación de pensionado, la resolución de pensión o la certificación de ' +
+      'devolución de saldo por vejez.', LISTAS.afp, d.pension);
+    campoLista(f, D, 'arl', 'ARL', '', LISTAS.arl, d.arl);
+
+    f.appendChild(K.nodo('<h3 class="grupo__t grupo__t--sub">Firma y nacimiento</h3>'));
+    campoFirma(f, D, d);
+    campoFecha(f, D, 'nacimiento', 'Fecha de nacimiento',
+      'No aplica para personas jurídicas.', d.nacimiento, { desde: 1930, hastaHoy: true });
+
+    var botones = K.nodo('<div class="campo-fila campo-fila--botones"></div>');
+    var guardar = K.nodo('<button type="submit" class="kit-btn kit-btn--marca">Guardar cambios</button>');
+    botones.appendChild(guardar);
+    f.appendChild(botones);
 
     f.addEventListener('submit', function (ev) {
       ev.preventDefault();
-      var campos = {
-        telefono: f.telefono.value.trim(),
-        direccion: f.direccion.value.trim(),
-        correo: f.correo.value.trim()
-      };
+      mandarMisDatos(caja, d, D);
+    });
 
-      K.piezas.guardado.abrir({ titulo: 'Guardando tus datos' });
+    caja.appendChild(f);
+    if (K.piezas.fechas) K.piezas.fechas.montar(f);
+    K.piezas.creditos.montar(caja);
+  }
+
+  function mandarMisDatos(caja, d, D) {
+    var ROTULOS = {
+      expedida: 'Municipio de expedición', telefono: 'Teléfono',
+      direccion: 'Dirección', municipio: 'Municipio de residencia',
+      correo: 'Correo', tipoCuenta: 'Tipo de cuenta',
+      numeroCuenta: 'Número de cuenta', banco: 'Banco', eps: 'EPS',
+      pension: 'Fondo de pensiones', arl: 'ARL', nacimiento: 'Fecha de nacimiento'
+    };
+
+    /* Solo lo que CAMBIÓ de verdad: mandar los trece campos cada vez
+       escribiría en trece columnas por gusto y llenaría la traza. */
+    var campos = {}, lista = [];
+    Object.keys(ROTULOS).forEach(function (k) {
+      if (D[k] === undefined) return;
+      var v = String(D[k]).trim();
+      if (!v || v === String(d[k] || '').trim()) return;
+      campos[k] = v;
+      lista.push([ROTULOS[k], v]);
+    });
+    if (D.firma) { campos.firma = D.firma; lista.push(['Firma', 'una imagen nueva']); }
+
+    if (!lista.length) {
+      K.aviso('No cambiaste ningún dato.', 'info', 4000);
+      return;
+    }
+
+    K.piezas.confirmar.abrir({
+      titulo: 'Resumen de cambios',
+      lista: lista,
+      nota: 'Estos datos salen impresos en los formatos de tus cuentas.',
+      si: 'Confirmar', no: 'Editar'
+    }).then(function (ok) {
+      if (!ok) return;
+      K.piezas.guardado.abrir({
+        titulo: 'Guardando tus datos',
+        sub: 'No cierres esta ventana hasta que termine.'
+      });
       K.pedir('guardarMisDatos', { campos: campos })
-        .then(function () {
-          if (YO) YO.telefono = campos.telefono;
-          K.piezas.guardado.listo({ sub: 'Tus datos quedaron al día 🎉' });
+        .then(function (r) {
+          if (YO && campos.telefono) YO.telefono = campos.telefono;
+          K.piezas.guardado.listo({ sub: 'Tus datos quedaron al día.' });
+          pintarFormulario(caja, r.datos || d);
         })
         ['catch'](function (e) {
           /* fallo() solo cierra el cohete; el porqué se dice con un aviso,
              que es donde el usuario está mirando. */
           K.piezas.guardado.fallo();
-          K.aviso(e && e.message ? e.message : 'No se pudo guardar', 'malo', 5000);
+          K.aviso(e && e.message ? e.message : 'No se pudo guardar', 'malo', 7000);
         });
     });
+  }
 
-    caja.appendChild(f);
-    K.piezas.creditos.montar(caja);
+  /* ══════════════ piezas de formulario ══════════════ */
+
+  function conAyuda(campo, ayuda) {
+    if (ayuda) campo.appendChild(K.nodo('<p class="campo__ayuda">' + ayuda + '</p>'));
+    return campo;
+  }
+
+  function campoTexto(donde, D, clave, titulo, ayuda, o) {
+    o = o || {};
+    var c = K.nodo('<label class="campo"><span>' + K.esc(titulo) + '</span></label>');
+    var inp = o.area
+      ? K.nodo('<textarea rows="2" placeholder="' + K.esc(o.marcador || '') + '"></textarea>')
+      : K.nodo('<input type="text" ' +
+          (o.numerico ? 'inputmode="numeric" ' : '') +
+          'placeholder="' + K.esc(o.marcador || '') + '">');
+    inp.value = o.valor || '';
+    c.appendChild(inp);
+    conAyuda(c, ayuda);
+
+    inp.addEventListener('input', function () {
+      if (o.numerico) {
+        inp.value = inp.value.replace(/\D/g, '').slice(0, o.numerico);
+      }
+      /* El borde verde del RP: la señal que la gente ya conoce de la app
+         vieja de que el número tiene la pinta correcta. */
+      if (o.rp) {
+        var v = inp.value;
+        inp.classList.toggle('campo--ok', v.length === 10 && v.indexOf(String(new Date().getFullYear())) === 0);
+      }
+      D[clave] = inp.value.trim();
+    });
+    if (o.rp && (o.valor || '').length === 10) inp.classList.add('campo--ok');
+
+    donde.appendChild(c);
+    return inp;
+  }
+
+  function campoLista(donde, D, clave, titulo, ayuda, opciones, valor) {
+    var c = K.nodo('<label class="campo"><span>' + K.esc(titulo) + '</span></label>');
+    var sel = K.nodo('<select><option value="">Selecciona</option></select>');
+    (opciones || []).forEach(function (op) {
+      var o = K.nodo('<option></option>');
+      o.value = op;
+      o.textContent = op;
+      if (K.norm(op) === K.norm(valor || '')) o.selected = true;
+      sel.appendChild(o);
+    });
+    c.appendChild(sel);
+    conAyuda(c, ayuda);
+    sel.addEventListener('change', function () { D[clave] = sel.value; });
+    donde.appendChild(c);
+    return sel;
+  }
+
+  /* Sí / No que guarda la frase completa que espera la hoja. */
+  function campoSiNo(donde, D, clave, titulo, ayuda, valor) {
+    var opciones = (LISTAS && LISTAS[clave]) || [];
+    var c = K.nodo('<label class="campo"><span>' + K.esc(titulo) + '</span></label>');
+    var sel = K.nodo('<select><option value="">Selecciona</option></select>');
+    opciones.forEach(function (op) {
+      var o = K.nodo('<option></option>');
+      o.value = op.valor;
+      o.textContent = op.etiqueta;
+      if (K.norm(op.valor) === K.norm(valor || '')) o.selected = true;
+      sel.appendChild(o);
+    });
+    c.appendChild(sel);
+    conAyuda(c, ayuda);
+    sel.addEventListener('change', function () { D[clave] = sel.value; });
+    donde.appendChild(c);
+    return sel;
+  }
+
+  function campoFecha(donde, D, clave, titulo, ayuda, valor, o) {
+    o = o || {};
+    var c = K.nodo('<label class="campo"><span>' + K.esc(titulo) + '</span></label>');
+    var inp = K.nodo('<input type="text" readonly data-kit-fecha placeholder="dd/mm/aaaa" ' +
+      'data-titulo="' + K.esc(titulo) + '"' +
+      (o.desde ? ' data-desde="' + o.desde + '"' : '') +
+      (o.hastaHoy ? ' max="' + isoDeHoy() + '"' : '') + '>');
+    inp.value = valor || '';
+    c.appendChild(inp);
+    conAyuda(c, ayuda);
+    inp.addEventListener('change', function () {
+      /* La rueda del kit deja el valor en ISO y el texto en dd/mm/aaaa.
+         A la hoja va SIEMPRE dd/mm/aaaa: es como está escrito el resto de
+         CONTRATISTAS. Es el mismo cabo que se cazó en la 4.3. */
+      D[clave] = K.fecha(inp.value.trim());
+    });
+    donde.appendChild(c);
+    return inp;
+  }
+
+  /* Municipio con sugerencias del CORE. La lista son 1.121 nombres: no se
+     bajan al teléfono, se pregunta a medida que se escribe. */
+  function campoMunicipio(donde, D, clave, titulo, ayuda, valor) {
+    var c = K.nodo('<label class="campo campo--busca"><span>' + K.esc(titulo) + '</span></label>');
+    var inp = K.nodo('<input type="text" autocomplete="off" placeholder="Escribe y elige">');
+    inp.value = valor || '';
+    var caja = K.nodo('<div class="campo__sug kit-oculto"></div>');
+    c.appendChild(inp);
+    c.appendChild(caja);
+    conAyuda(c, ayuda);
+
+    var elegido = valor || '';
+
+    function pintar(nombres) {
+      caja.innerHTML = '';
+      if (!nombres.length) { caja.classList.add('kit-oculto'); return; }
+      nombres.forEach(function (n) {
+        var b = K.nodo('<button type="button" class="campo__sug-i">' + K.esc(n) + '</button>');
+        b.addEventListener('click', function () {
+          inp.value = n;
+          elegido = n;
+          D[clave] = n;
+          caja.classList.add('kit-oculto');
+          inp.classList.add('campo--ok');
+        });
+        caja.appendChild(b);
+      });
+      caja.classList.remove('kit-oculto');
+    }
+
+    var buscar = K.debounce(function () {
+      var q = inp.value.trim();
+      if (q.length < 2) { caja.classList.add('kit-oculto'); return; }
+      K.pedir('municipios', { texto: q })
+        .then(function (r) { pintar((r && r.municipios) || []); })
+        ['catch'](function () { caja.classList.add('kit-oculto'); });
+    }, 260);
+
+    inp.addEventListener('input', function () {
+      inp.classList.remove('campo--ok');
+      /* Solo cuenta como cambio lo que se eligió de la lista: el CORE
+         rechaza cualquier otra cosa, así que no se manda a medio escribir. */
+      if (inp.value.trim() !== elegido) delete D[clave];
+      buscar();
+    });
+    inp.addEventListener('blur', function () {
+      setTimeout(function () { caja.classList.add('kit-oculto'); }, 160);
+    });
+    if (valor) inp.classList.add('campo--ok');
+
+    donde.appendChild(c);
+    return inp;
+  }
+
+  /* La firma: una imagen que va impresa en los formatos. Se comprime en el
+     teléfono antes de subirla, como las evidencias. */
+  function campoFirma(donde, D, d) {
+    var c = K.nodo('<div class="campo"><span>Firma</span></div>');
+    if (d.firma) {
+      c.appendChild(K.nodo('<img class="campo__firma" alt="Tu firma actual" src="' +
+        K.esc(miniaturaDrive(d.firma)) + '">'));
+    }
+    var zona = K.nodo('<div></div>');
+    c.appendChild(zona);
+    conAyuda(c, d.firma
+      ? 'Si subes otra, reemplaza la que está. Tiene que ser una imagen clara y sin marcas de agua.'
+      : 'Todavía no tienes firma cargada. Sin ella, los formatos salen sin firmar.');
+
+    K.piezas.adjuntos.montar(zona, {
+      acepta: 'image/*', varios: false, maximo: 1, maximoMB: 10,
+      alCambiar: function (archivos) {
+        if (!archivos || !archivos.length) { delete D.firma; return; }
+        K.piezas.imagenes.preparar(archivos[0])
+          .then(function (img) {
+            D.firma = img.dataUrl;
+            K.aviso('Firma lista. Toca Guardar cambios para dejarla.', 'info', 4000);
+          })
+          ['catch'](function (e) {
+            K.aviso(e && e.message ? e.message : 'No se pudo preparar la imagen.', 'malo', 5000);
+          });
+      }
+    });
+
+    donde.appendChild(c);
+  }
+
+  function isoDeHoy() {
+    var h = new Date();
+    return h.getFullYear() + '-' + ('0' + (h.getMonth() + 1)).slice(-2) + '-' + ('0' + h.getDate()).slice(-2);
+  }
+
+  function miniaturaDrive(url) {
+    var m = String(url || '').match(/(?:\/d\/|id=)([a-zA-Z0-9_-]{15,})/);
+    var id = m ? m[1] : (/^[a-zA-Z0-9_-]{20,}$/.test(String(url || '').trim()) ? String(url).trim() : '');
+    return id ? ('https://drive.google.com/thumbnail?id=' + id + '&sz=w480') : url;
   }
 
   /* ══════════════ auxiliares ══════════════ */
