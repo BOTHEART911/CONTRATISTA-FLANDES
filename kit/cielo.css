@@ -19,8 +19,32 @@
      KIT.piezas.cielo.poner(elemento, {burbujas: 2, luz: 'suave'});
      KIT.piezas.cielo.quitar(elemento);
 
+   DOS VERSIONES, Y HAY QUE ELEGIR BIEN  (4.6.2)
+
+     1) .kit-cielo — la buena, con burbujas. Mete nodos dentro del elemento.
+        SOLO para contenedores de contenido llano: una franja con textos,
+        una portada. NO para una barra fija ni para nada que tenga dentro un
+        menú desplegable o algo posicionado en absoluto.
+
+     2) .kit-cielo-fondo — solo fondo, sin nodos, sin tocar la posición ni
+        crear contexto de apilado. Para barras fijas y cualquier sitio
+        delicado. Da la luz que cruza, sin burbujas.
+
+   POR QUÉ ESTÁ ESCRITO ESTO  (me costó una entrega, 22/09/2026)
+     La primera versión ponía `position: relative` e `isolation: isolate` al
+     elemento. Se la puse a la barra de arriba, que es `position: fixed`:
+       · el `relative` la sacó de su sitio -> la barra se fue con el scroll y
+         quedó un hueco blanco arriba, porque el body reserva su alto.
+       · el `isolate` creó un contexto de apilado nuevo -> el menú del perfil,
+         que se dibuja dentro de la barra, quedó ATRAPADO ahí y salía POR
+         DETRÁS de las tarjetas.
+     Una pieza de adorno JAMÁS puede cambiar la posición ni el apilado de lo
+     que decora. Ahora no lo hace: si el elemento ya tiene posición propia,
+     no se le toca.
+
    Reglas que se respetan
      · Va SIEMPRE detrás: nada de lo que se pinte encima cambia de sitio.
+     · NO cambia la posición de nada ni crea contextos de apilado.
      · Se apaga solo si la persona pidió menos movimiento en su sistema
        (prefers-reduced-motion), y entonces queda como un fondo quieto.
      · No depende del tema: la aurora y las burbujas son luz blanca a muy
@@ -28,10 +52,33 @@
        y sobre el verde apagado del modo oscuro.
    ============================================================ */
 
-.kit-cielo {
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
+.kit-cielo { overflow: hidden; }
+
+/* La posición SOLO se toca si el elemento no tenía ninguna. La pieza la pone
+   kit/cielo.js después de mirar el estilo ya calculado. */
+.kit-cielo--relativo { position: relative; }
+
+/* ══════════════════════════════════════════════════════════
+   VERSIÓN 2 · SOLO FONDO — para barras fijas y sitios delicados
+   No mete nodos, no toca la posición, no crea contexto de apilado.
+   ══════════════════════════════════════════════════════════ */
+
+.kit-cielo-fondo {
+  background-image:
+    radial-gradient(58% 190% at 18% 50%, rgba(255, 255, 255, .10), transparent 70%),
+    radial-gradient(44% 170% at 80% 50%, rgba(255, 255, 255, .07), transparent 72%);
+  background-repeat: no-repeat;
+  background-size: 150% 100%, 130% 100%;
+  animation: kit-cielo-cruza 17s ease-in-out infinite alternate;
+}
+:root[data-tema="oscuro"] .kit-cielo-fondo {
+  background-image:
+    radial-gradient(58% 190% at 18% 50%, rgba(255, 255, 255, .055), transparent 70%),
+    radial-gradient(44% 170% at 80% 50%, rgba(255, 255, 255, .04), transparent 72%);
+}
+@keyframes kit-cielo-cruza {
+  from { background-position: -14% 0, 112% 0; }
+  to   { background-position:  22% 0,  78% 0; }
 }
 
 .kit-cielo__capa {
@@ -136,6 +183,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .kit-cielo-fondo { animation: none; }
   .kit-cielo__aurora { animation: none; }
   .kit-cielo__burbujas i { animation: none; opacity: .5; bottom: auto; top: 10%; }
 }

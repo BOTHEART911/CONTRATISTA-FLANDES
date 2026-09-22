@@ -193,13 +193,13 @@
         { texto: 'Cerrar sesión', al: salir, peligro: true }
       ]
     });
-    /* la barra de arriba es el otro espacio oscuro fijo de la app. Va con
-       'franja' y luz suave: en 60 px de alto una burbuja de 200 no sube,
-       solo tapa. */
-    if (K.piezas.cielo) {
-      K.piezas.cielo.poner(document.querySelector('.kit-banner'),
-        { burbujas: 3, luz: 'suave', franja: true });
-    }
+    /* 4.6.2 · LA BARRA LLEVA LA VERSIÓN SIN NODOS.
+       La barra es position:fixed y dentro va el menú del perfil. La versión
+       con nodos le ponía position:relative (se iba con el scroll y dejaba un
+       hueco blanco arriba) e isolation:isolate (el menú quedaba atrapado y
+       salía por detrás de las tarjetas). soloFondo() pinta la misma luz en
+       el fondo y no toca ni la posición ni el apilado. */
+    if (K.piezas.cielo) K.piezas.cielo.soloFondo(document.querySelector('.kit-banner'));
   }
 
   function salir() {
