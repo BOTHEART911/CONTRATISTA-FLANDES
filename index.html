@@ -37,13 +37,20 @@
 <link rel="stylesheet" href="kit/buzon.css">
 <link rel="stylesheet" href="styles.css">
 
+<!-- version.js antes que el kit: la pieza de versión lee APP_VERSION al
+     cargarse, y el pie lo enseña junto a la firma. -->
+<script src="version.js"></script>
+
 <!-- marca.js SIEMPRE antes que kit.js: de ahí salen API_URL y el resto -->
 <script src="marca.js"></script>
 <script src="kit/kit.js"></script>
+<script src="kit/version.js"></script>
 <script src="kit/banner.js"></script>
 <script src="kit/sesion.js"></script>
 <script src="kit/esqueletos.js"></script>
 <script src="kit/guardado.js"></script>
+<!-- la rueda de fechas: la usa la vista de la cuenta para el periodo -->
+<script src="kit/fechas.js"></script>
 <script src="kit/conexion.js"></script>
 <script src="kit/instalar.js"></script>
 <script src="kit/soporte.js"></script>
@@ -60,8 +67,10 @@
 
 <body>
   <main id="app" class="app"></main>
-  <!-- borrador.js antes que app.js: app.js lo enruta y espera que exista -->
+  <!-- borrador.js y cuenta.js antes que app.js: app.js los enruta y espera
+       que existan -->
   <script src="borrador.js"></script>
+  <script src="cuenta.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

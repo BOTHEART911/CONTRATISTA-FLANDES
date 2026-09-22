@@ -609,3 +609,290 @@
 /* El botón flotante de Insights vive abajo a la derecha. Sin este hueco,
    en un teléfono se planta encima del último botón de la vista. */
 .vista { padding-bottom: 84px; }
+
+/* ============================================================
+   INGRESAR Y CORREGIR CUENTA (entrega 4.3)
+   Pareja de cuenta.js. Todo lo de aquí empieza por .cta-
+   ============================================================ */
+
+.cta-cab { margin-bottom: 14px; }
+.cta-cab__fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.cta-cab__inf {
+  font: 600 .9rem/1.2 var(--k-fuente-titulo);
+  color: var(--k-apagado);
+}
+.cta-cab__nota {
+  margin: 10px 0 0;
+  font-size: .86rem;
+  line-height: 1.45;
+  color: var(--k-apagado);
+}
+
+/* Lo que pidió corregir Supervisión: es lo primero que hay que leer. */
+.cta-devuelta {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-left: 4px solid var(--k-aviso);
+  border-radius: var(--k-r-sm);
+  background: var(--k-aviso-fondo);
+}
+.cta-devuelta b { display: block; margin-bottom: 4px; font-size: .84rem; }
+.cta-devuelta p { margin: 0; font-size: .92rem; line-height: 1.45; }
+
+/* ---------- el índice de bloques ---------- */
+
+.cta-indice { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+
+.cta-idx__btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  text-align: left;
+  border: 1px solid var(--k-linea);
+  border-radius: var(--k-r-md);
+  background: var(--k-papel);
+  box-shadow: var(--k-sombra-1);
+  cursor: pointer;
+}
+.cta-idx__btn:active { transform: scale(.995); }
+
+.cta-idx__marca {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: .95rem;
+  color: #fff;
+}
+.cta-idx--ok .cta-idx__marca { background: var(--k-ok); }
+.cta-idx--falta .cta-idx__marca { background: var(--k-aviso); }
+
+.cta-idx__txt { display: flex; flex-direction: column; min-width: 0; }
+.cta-idx__t {
+  font: 600 .95rem/1.25 var(--k-fuente-titulo);
+  color: var(--k-tinta);
+  letter-spacing: .01em;
+}
+.cta-idx__p {
+  margin-top: 3px;
+  font-size: .82rem;
+  line-height: 1.35;
+  color: var(--k-apagado);
+}
+
+/* ---------- el pie de guardar ---------- */
+
+.cta-pie { margin-top: 18px; }
+.cta-pie__falta {
+  margin: 0 0 10px;
+  font-size: .86rem;
+  line-height: 1.4;
+  color: var(--k-apagado);
+}
+.cta-pie__btn { width: 100%; }
+.cta-pie__btn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ---------- un bloque abierto ---------- */
+
+.cta-bloque__cab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.cta-bloque__volver {
+  border: 0;
+  background: transparent;
+  padding: 6px 8px 6px 0;
+  font-size: .92rem;
+  color: var(--k-marca);
+  cursor: pointer;
+}
+.cta-bloque__t {
+  margin: 0;
+  font: 700 1.05rem/1.2 var(--k-fuente-titulo);
+  color: var(--k-tinta);
+}
+.cta-bloque__ok { width: 100%; margin-top: 18px; }
+
+.cta-campo { display: block; margin-bottom: 16px; }
+.cta-campo__t {
+  display: block;
+  font: 600 .9rem/1.3 var(--k-fuente-titulo);
+  color: var(--k-tinta);
+}
+.cta-campo__p {
+  display: block;
+  margin-top: 2px;
+  font-size: .8rem;
+  line-height: 1.4;
+  color: var(--k-apagado);
+}
+
+.cta-inp {
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px 14px;
+  font-size: 1rem;
+  color: var(--k-tinta);
+  background: var(--k-papel);
+  border: 1px solid var(--k-linea);
+  border-radius: var(--k-r-sm);
+}
+.cta-inp:focus {
+  outline: none;
+  border-color: var(--k-marca);
+  box-shadow: 0 0 0 3px rgba(var(--k-marca-rgb), .16);
+}
+/* Los importes se leen mejor alineados a la derecha, como en un recibo. */
+.cta-inp--pesos { text-align: right; font-variant-numeric: tabular-nums; }
+
+.cta-calc {
+  display: block;
+  margin-top: 8px;
+  padding: 12px 14px;
+  font: 700 1.05rem/1.2 var(--k-fuente-titulo);
+  text-align: right;
+  color: var(--k-marca);
+  background: var(--k-papel-2);
+  border-radius: var(--k-r-sm);
+  font-variant-numeric: tabular-nums;
+}
+.cta-calc--mal { color: var(--k-malo); font-size: .9rem; }
+
+.cta-aviso {
+  margin: -6px 0 16px;
+  padding: 10px 12px;
+  font-size: .85rem;
+  line-height: 1.4;
+  border-radius: var(--k-r-sm);
+  background: var(--k-aviso-fondo);
+  color: var(--k-tinta);
+}
+
+/* Las tres fechas de radicación posibles: no hay calendario que valga,
+   solo se puede radicar hoy y los dos días hábiles siguientes. */
+.cta-fechas { display: flex; gap: 8px; margin-top: 8px; }
+.cta-fecha {
+  flex: 1 1 0;
+  padding: 12px 6px;
+  border: 1px solid var(--k-linea);
+  border-radius: var(--k-r-md);
+  background: var(--k-papel);
+  cursor: pointer;
+}
+.cta-fecha__d {
+  display: block;
+  font: 700 1.1rem/1.1 var(--k-fuente-titulo);
+  color: var(--k-tinta);
+  font-variant-numeric: tabular-nums;
+}
+.cta-fecha__n {
+  display: block;
+  margin-top: 3px;
+  font-size: .74rem;
+  color: var(--k-apagado);
+}
+.cta-fecha--on {
+  border-color: var(--k-marca);
+  background: var(--k-marca-clara);
+}
+.cta-fecha--on .cta-fecha__d { color: var(--k-marca-2); }
+
+.cta-anexa {
+  margin: 8px 0 16px;
+  padding: 12px 14px;
+  border: 1px dashed var(--k-linea);
+  border-radius: var(--k-r-md);
+}
+.cta-anexa > summary {
+  cursor: pointer;
+  font: 600 .9rem/1.3 var(--k-fuente-titulo);
+  color: var(--k-marca);
+}
+.cta-anexa[open] > summary { margin-bottom: 14px; }
+.cta-limpiar { width: 100%; color: var(--k-malo); }
+
+/* ---------- documentos ---------- */
+
+.cta-nota {
+  margin: 0 0 14px;
+  font-size: .86rem;
+  line-height: 1.45;
+  color: var(--k-apagado);
+}
+.cta-doc {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--k-linea);
+  border-radius: var(--k-r-md);
+  background: var(--k-papel);
+}
+.cta-doc--obliga { border-left: 4px solid var(--k-marca); }
+.cta-doc__cab { display: flex; flex-direction: column; margin-bottom: 8px; }
+.cta-doc__t {
+  font: 600 .92rem/1.3 var(--k-fuente-titulo);
+  color: var(--k-tinta);
+}
+.cta-doc__t em {
+  margin-left: 6px;
+  padding: 2px 7px;
+  border-radius: var(--k-r-pill);
+  font: 600 .68rem/1.4 var(--k-fuente-titulo);
+  font-style: normal;
+  color: #fff;
+  background: var(--k-marca);
+  vertical-align: middle;
+}
+.cta-doc__n {
+  margin-top: 3px;
+  font-size: .78rem;
+  color: var(--k-apagado);
+}
+.cta-doc__listo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--k-r-sm);
+  background: var(--k-ok-fondo);
+}
+.cta-doc__ver { font-size: .88rem; color: var(--k-marca-2); }
+.cta-doc__quitar { color: var(--k-malo); padding: 6px 10px; }
+
+/* ---------- puerta cerrada y éxito ---------- */
+
+.cta-cerrada__p, .cta-exito p {
+  margin: 8px 0 14px;
+  font-size: .92rem;
+  line-height: 1.5;
+  color: var(--k-apagado);
+}
+.cta-exito .kit-btn { width: 100%; margin-top: 8px; }
+.cta-exito__docs { font-size: .86rem; }
+.cta-exito__aviso {
+  padding: 10px 12px;
+  border-radius: var(--k-r-sm);
+  background: var(--k-aviso-fondo);
+  color: var(--k-tinta);
+  font-size: .86rem;
+}
+
+/* En pantalla ancha el índice va a dos columnas: con cuatro bloques,
+   en un portátil se ven todos sin bajar. */
+@media (min-width: 720px) {
+  .cta-indice { grid-template-columns: 1fr 1fr; }
+  .cta-pie__btn { width: auto; min-width: 260px; }
+}

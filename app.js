@@ -1,16 +1,17 @@
 /* ============================================================
    CONTRATISTA-FLANDES · APP
-   Ecosistema Flandes · Fase 4, entrega 4.1
+   Ecosistema Flandes · Fase 4, entrega 4.3
 
    Lo que entra en esta entrega
-     · Entrada con Firebase silencioso (el teléfono queda registrado
-       para los avisos apenas se inicia sesión, sin preguntar nada).
-     · Inicio nuevo: sin menú lateral y sin banner dinámico.
-     · Datos del proceso (el contrato) y datos personales.
+     · Ingresar y corregir cuenta (vive en cuenta.js).
+     · Los rótulos de siempre: BORRADOR ACTIVIDADES, DATOS DEL
+       CONTRATO y DATOS PERSONALES. Son los términos con los que la
+       gente lleva años trabajando; los de la 4.1 me los inventé yo.
+     · El archivo de versión: la app se actualiza sola en todos los
+       teléfonos cuando se publica algo nuevo.
 
-   Lo que NO entra todavía (va en 4.2, 4.3 y 4.4)
-     Borrador de actividades, ingresar y corregir cuenta, trámites,
-     estado de cuenta, tutoriales y soporte por vista.
+   Lo que NO entra todavía (va en 4.4)
+     Trámites, estado de cuenta y tutoriales.
 
    Reglas que se respetan aquí
      · Todo dato de la hoja pasa por KIT.esc antes de entrar al HTML.
@@ -32,6 +33,11 @@
   K.listo(function () {
     registrarSW();
     if (K.piezas.instalar) K.piezas.instalar.vigilar();
+
+    /* El vigilante de la versión: cuando se publica algo nuevo, la app lo
+       nota al volver a ella, borra SUS cachés y se recarga. Sin esto, lo
+       publicado se veía a la segunda apertura. */
+    if (K.piezas.version) K.piezas.version.vigilar();
 
     /* Lo primero de todo es la puerta: instalar o seguir en el navegador.
        Solo sale la primera vez y solo si la app no está ya instalada. */
@@ -91,8 +97,8 @@
       rol: YO.rol || 'CONTRATISTA',
       foto: YO.imagen || '',
       menu: [
-        { texto: 'Mis datos', al: function () { irA('personales'); } },
-        { texto: 'Cambiar contraseña', al: function () { K.piezas.sesion.cambiarClave(); } },
+        { texto: 'Datos personales', al: function () { irA('personales'); } },
+        { texto: 'Actualizar contraseña', al: function () { K.piezas.sesion.cambiarClave(); } },
         { texto: 'Instalar la app', al: function () { K.piezas.instalar.abrir(); } },
         { texto: 'Soporte', al: function () { if (K.piezas.soporte) K.piezas.soporte.abrir(); } },
         { texto: 'Cerrar sesión', al: salir, peligro: true }
@@ -113,6 +119,7 @@
     proceso: vistaProceso,
     personales: vistaPersonales,
     borrador: vistaBorrador,
+    cuenta: vistaCuenta,
     avisos: vistaAvisos
   };
 
@@ -136,15 +143,22 @@
     /* El borrador pinta su propia pantalla y se encarga de avisar si hay
        algo sin guardar; el enrutador no le vacía el sitio por debajo. */
     if (v !== 'borrador') app.innerHTML = '';
+
+    /* El rótulo de la cuenta cambia según lo que toque hacer hoy, y eso
+       solo lo sabe el CORE: se ajusta cuando la vista lo averigua. */
     VISTAS[v](partes[1]);
   }
 
+  /* Los rótulos son los de la app de siempre, no invenciones nuevas: la
+     gente lleva años oyendo "borrador de actividades" y "corregir cuenta",
+     y en la migración lo que no se puede perder es el vocabulario. */
   var titulos = {
     inicio: 'Contratista',
-    proceso: 'Datos del proceso',
-    personales: 'Mis datos',
-    borrador: 'Mi informe',
-    avisos: 'Mis avisos'
+    proceso: 'DATOS DEL CONTRATO',
+    personales: 'DATOS PERSONALES',
+    borrador: 'BORRADOR ACTIVIDADES',
+    cuenta: 'INGRESAR CUENTA',
+    avisos: 'MIS NOTIFICACIONES'
   };
 
   /* ---------- inicio ---------- */
@@ -160,18 +174,19 @@
     ));
 
     var rejilla = K.nodo('<div class="kit-rejilla kit-rejilla--auto accesos"></div>');
-    rejilla.appendChild(acceso('Mi informe', 'Escribe tus actividades y sube las evidencias', 'img/datos_de_procesos.webp', function () { irA('borrador'); }));
+    rejilla.appendChild(acceso('BORRADOR ACTIVIDADES', 'Escribe tus actividades y sube las evidencias', 'img/datos_de_procesos.webp', function () { irA('borrador'); }));
+    rejilla.appendChild(acceso('INGRESAR CUENTA', 'Fechas, planilla y documentos para radicar', 'img/datos_de_procesos.webp', function () { irA('cuenta'); }));
 
     /* La burbuja de sin leer va aquí y no en una campana aparte: es donde
        la persona mira al entrar, y así el aviso guardado se ve aunque el
        push se haya perdido. El número lo trae la misma llamada del inicio. */
-    var tarjetaAvisos = acceso('Mis avisos', 'Todo lo que te hemos avisado', 'img/notificacion.webp', function () { irA('avisos'); });
+    var tarjetaAvisos = acceso('MIS NOTIFICACIONES', 'Todo lo que te hemos avisado', 'img/notificacion.webp', function () { irA('avisos'); });
     rejilla.appendChild(tarjetaAvisos);
     pintarBurbuja(tarjetaAvisos);
 
-    rejilla.appendChild(acceso('Datos del proceso', 'Tu contrato, su valor y quién lo supervisa', 'img/datos_de_procesos.webp', function () { irA('proceso'); }));
-    rejilla.appendChild(acceso('Mis datos', 'Teléfono, dirección y correo', 'img/user.png', function () { irA('personales'); }));
-    rejilla.appendChild(acceso('Avisos al teléfono', textoAvisos(), 'img/notificacion.webp', tocarAvisos));
+    rejilla.appendChild(acceso('DATOS DEL CONTRATO', 'Tu contrato, su valor y quién lo supervisa', 'img/datos_de_procesos.webp', function () { irA('proceso'); }));
+    rejilla.appendChild(acceso('DATOS PERSONALES', 'Teléfono, dirección y correo', 'img/user.png', function () { irA('personales'); }));
+    rejilla.appendChild(acceso('AVISOS AL TELÉFONO', textoAvisos(), 'img/notificacion.webp', tocarAvisos));
     caja.appendChild(rejilla);
 
     app.appendChild(caja);
@@ -219,10 +234,16 @@
     return b;
   }
 
-  /* ---------- mi informe (borrador) ---------- */
+  /* ---------- borrador actividades ---------- */
 
   function vistaBorrador(sub) {
     window.BORRADOR.abrir(sub);
+  }
+
+  /* ---------- ingresar y corregir cuenta ---------- */
+
+  function vistaCuenta(sub) {
+    window.CUENTA.abrir(sub);
   }
 
   /* ---------- mis avisos ---------- */
@@ -397,7 +418,7 @@
   function pintarFormulario(caja, d) {
     var f = K.nodo(
       '<form class="kit-tarjeta formulario" novalidate>' +
-      '  <h3 class="grupo__t">Mis datos</h3>' +
+      '  <h3 class="grupo__t">DATOS PERSONALES</h3>' +
       '  <p class="formulario__nota">El nombre y el documento los cambia Contratación, no la app.</p>' +
       '  <div class="dato"><span class="dato__e">Nombre</span><span class="dato__v">' + K.esc(d.nombre || '') + '</span></div>' +
       '  <div class="dato"><span class="dato__e">Documento</span><span class="dato__v">' + K.esc(d.documento || '') + '</span></div>' +

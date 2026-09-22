@@ -1,6 +1,6 @@
 /* ============================================================
    CONTRATISTA-FLANDES · SERVICE WORKER DEL CACHÉ
-   Entrega 4.1
+   Entrega 4.3
 
    Solo el armazón de la app: HTML, CSS, JS e iconos. NADA de datos.
 
@@ -15,7 +15,21 @@
    propio scope y no tiene nada que ver con este.
    ============================================================ */
 
-var VERSION = 'contratista-v4.2.0';
+/* El número de versión lo pone la app en un solo sitio, version.js, y de
+   ahí sale también el nombre del caché: cada publicación estrena caché y
+   la de antes se borra sola en 'activate'. Antes el número estaba escrito
+   a mano aquí y había que acordarse de subirlo en dos archivos.
+
+   Los navegadores revisan los scripts importados cuando comprueban si hay
+   service worker nuevo, así que cambiar version.js basta para que este
+   archivo se dé por cambiado. */
+importScripts('./version.js');
+
+var VERSION = 'contratista-v' + APP_VERSION;
+
+/* La ruta exacta del version.js de la raíz, para distinguirlo de
+   kit/version.js sin jugar con expresiones regulares. */
+var RUTA_VERSION = new URL('./version.js', self.location.href).pathname;
 
 var ARMAZON = [
   './',
@@ -34,7 +48,7 @@ var ARMAZON = [
   './kit/sesion.js', './kit/sesion.css',
   './kit/esqueletos.js', './kit/esqueletos.css',
   './kit/guardado.js', './kit/guardado.css',
-  './kit/fechas.css',
+  './kit/fechas.js', './kit/fechas.css',
   './kit/conexion.js', './kit/conexion.css',
   './kit/instalar.js', './kit/instalar.css',
   './kit/soporte.js', './kit/soporte.css',
@@ -46,7 +60,9 @@ var ARMAZON = [
   './kit/imagenes.js',
   './kit/carrusel.js', './kit/carrusel.css',
   './kit/insights.js', './kit/insights.css',
-  './kit/buzon.js', './kit/buzon.css'
+  './kit/buzon.js', './kit/buzon.css',
+  './kit/version.js',
+  './cuenta.js'
 ];
 
 self.addEventListener('install', function (e) {
@@ -81,6 +97,17 @@ self.addEventListener('fetch', function (e) {
   /* Todo lo de fuera —el CORE, los medios, el SDK de Firebase— va directo
      a la red. El service worker no se mete en medio. */
   if (url.origin !== self.location.origin) return;
+
+  /* El version.js de la RAÍZ nunca pasa por el caché: es el archivo con el
+     que la app pregunta "¿hay algo nuevo publicado?", y servírselo desde el
+     caché sería contestarle siempre que no. Ojo, es solo ese: kit/version.js
+     es la pieza del kit y se cachea como cualquier otro script. */
+  if (url.pathname === RUTA_VERSION) {
+    e.respondWith(fetch(req, { cache: 'no-store' })['catch'](function () {
+      return caches.match(req).then(function (r) { return r || Response.error(); });
+    }));
+    return;
+  }
 
   /* El HTML primero de la red: si no, un cambio de versión se queda
      escondido detrás del caché y la gente sigue viendo la app vieja. */
