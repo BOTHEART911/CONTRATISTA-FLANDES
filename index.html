@@ -79,16 +79,24 @@
 <script src="kit/insights.js"></script>
 <script src="kit/buzon.js"></script>
 <script src="kit/exportar.js"></script>
+<!-- 4.8: las pastillas de filtro (temas de los tutoriales, estados de
+     las solicitudes). El CSS ya venía en base.css; la pieza no se cargaba. -->
+<script src="kit/pastillas.js"></script>
 </head>
 
 <body>
   <main id="app" class="app"></main>
-  <!-- borrador.js, cuenta.js y seguimiento.js antes que app.js: app.js los
-       enruta y espera que existan -->
+  <!-- borrador.js, cuenta.js, seguimiento.js, tramites.js e
+       institucional.js antes que app.js: app.js los enruta y espera que
+       existan -->
   <script src="borrador.js"></script>
   <script src="cuenta.js"></script>
   <!-- 4.7: estado de cuenta, plan de pagos, Drive, egresos y certificación -->
   <script src="seguimiento.js"></script>
+  <!-- 4.8: solicitud prensa y tesorería; comunicados, directorio,
+       tutoriales y sitios web -->
+  <script src="tramites.js"></script>
+  <script src="institucional.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

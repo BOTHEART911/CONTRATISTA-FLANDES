@@ -1,6 +1,7 @@
 /* ============================================================
    CONTRATISTA-FLANDES · APP
-   Ecosistema Flandes · Fase 4, entrega 4.3
+   Ecosistema Flandes · Fase 4, entrega 4.3 (4.8: el inicio por bloques,
+   como el menú de siempre, y las vistas de trámites e institucional)
 
    Lo que entra en esta entrega
      · Ingresar y corregir cuenta (vive en cuenta.js).
@@ -92,6 +93,16 @@
 
       /* Los avisos: la burbuja ya no necesita su propia llamada. */
       if (d.avisos && K.piezas.buzon) K.piezas.buzon.recordar(d.avisos.noLeidos || 0);
+
+      /* 4.8 · los comunicados y los sitios web también vienen en el
+         arranque: el número de sin leer del inicio no cuesta un viaje. */
+      if (window.INSTITUCIONAL) {
+        window.INSTITUCIONAL.configurar({
+          documento: (d.yo && d.yo.documento) || (YO && YO.documento) || '',
+          comunicados: d.comunicados,
+          sitios: d.config && d.config.SITIOS_WEB
+        });
+      }
 
       /* Y la configuración de Firebase tampoco: se le entrega hecha a la
          pieza de avisos para que no pida 'configPush' por su cuenta. */
@@ -217,7 +228,14 @@
     borrador: vistaBorrador,
     cuenta: vistaCuenta,
     avisos: vistaAvisos,
-    seguimiento: vistaSeguimiento
+    seguimiento: vistaSeguimiento,
+    /* 4.8 · trámites (tramites.js) e institucional (institucional.js) */
+    prensa: function (sub) { window.TRAMITES.prensa(sub); },
+    tesoreria: function (sub) { window.TRAMITES.tesoreria(sub); },
+    comunicados: function (sub) { window.INSTITUCIONAL.comunicados(sub); },
+    directorio: function () { window.INSTITUCIONAL.directorio(); },
+    tutoriales: function (sub) { window.INSTITUCIONAL.tutoriales(sub); },
+    sitios: function () { window.INSTITUCIONAL.sitios(); }
   };
 
   function irA(v) { location.hash = '#/' + v; }
@@ -256,7 +274,13 @@
     borrador: 'BORRADOR ACTIVIDADES',
     cuenta: 'INGRESAR CUENTA',
     avisos: 'MIS NOTIFICACIONES',
-    seguimiento: 'ESTADO DE CUENTA'
+    seguimiento: 'ESTADO DE CUENTA',
+    prensa: 'SOLICITUD PRENSA',
+    tesoreria: 'SOLICITUD TESORERÍA',
+    comunicados: 'COMUNICADOS',
+    directorio: 'DIRECTORIO INSTITUCIONAL',
+    tutoriales: 'TUTORIALES DE USO',
+    sitios: 'SITIOS WEB'
   };
 
   /* ---------- inicio ---------- */
@@ -276,37 +300,71 @@
     if (K.piezas.cielo) K.piezas.cielo.poner(saludo, { burbujas: 3 });
     caja.appendChild(saludo);
 
-    var rejilla = K.nodo('<div class="kit-rejilla kit-rejilla--auto accesos"></div>');
-    rejilla.appendChild(acceso('BORRADOR ACTIVIDADES', 'Escribe tus actividades y sube las evidencias', 'img/datos_de_procesos.webp', function () { irA('borrador'); }));
-    rejilla.appendChild(acceso('INGRESAR CUENTA', 'Fechas, planilla y documentos para radicar', 'img/datos_de_procesos.webp', function () { irA('cuenta'); }));
-    /* 4.7 · el seguimiento: lo que en la app vieja eran seis botones
-       sueltos del menú (estado de cuenta, plan de pagos, mi cuenta Drive,
-       reportar cuenta, recibir egresos y certificación) es UNA vista. La
-       certificación lleva su propia tarjeta porque es un trámite que se
-       pide solo, sin ir a mirar la cuenta. */
-    rejilla.appendChild(acceso('ESTADO DE CUENTA', 'Dónde va tu cuenta, reportar, tus documentos, pagos y egresos', 'img/datos_de_procesos.webp', function () { irA('seguimiento'); }));
-    rejilla.appendChild(acceso('CERTIFICACIÓN CONTRATO', 'Genera el certificado de tu contrato en PDF', 'img/datos_de_procesos.webp', function () { irA('seguimiento/certificacion'); }));
+    /* 4.8 · EL INICIO POR BLOQUES, COMO EL MENÚ DE SIEMPRE
+       Con los trámites e institucional eran quince tarjetas seguidas, una
+       lista que hay que leer entera para encontrar algo. Van en los bloques
+       del menú viejo (Procesos de cuenta, Trámites y solicitudes,
+       Institucional...), que es como la gente ya los busca. Soporte no se
+       repite aquí: vive en el menú del perfil, arriba a la derecha. */
+    var primero = null;
+    function bloque(titulo, tarjetas) {
+      var s = K.nodo('<section class="bloque" aria-label="' + K.esc(titulo) + '">' +
+        '<h3 class="bloque__t">' + K.esc(titulo) + '</h3></section>');
+      var r = K.nodo('<div class="kit-rejilla kit-rejilla--auto accesos"></div>');
+      tarjetas.forEach(function (t) { r.appendChild(t); });
+      s.appendChild(r);
+      caja.appendChild(s);
+      if (!primero) primero = s;
+      return s;
+    }
+
+    bloque('PROCESOS DE CUENTA', [
+      acceso('BORRADOR ACTIVIDADES', 'Escribe tus actividades y sube las evidencias', 'img/datos_de_procesos.webp', function () { irA('borrador'); }),
+      acceso('INGRESAR CUENTA', 'Fechas, planilla y documentos para radicar', 'img/datos_de_procesos.webp', function () { irA('cuenta'); }),
+      /* 4.7 · el seguimiento: lo que en la app vieja eran seis botones
+         sueltos del menú (estado de cuenta, plan de pagos, mi cuenta Drive,
+         reportar cuenta, recibir egresos y certificación) es UNA vista. */
+      acceso('ESTADO DE CUENTA', 'Dónde va tu cuenta, reportar, tus documentos, pagos y egresos', 'img/procesos_de_cuenta.webp', function () { irA('seguimiento'); })
+    ]);
+
+    bloque('TRÁMITES Y SOLICITUDES', [
+      acceso('CERTIFICACIÓN CONTRATO', 'Genera el certificado de tu contrato en PDF', 'img/datos_de_procesos.webp', function () { irA('seguimiento/certificacion'); }),
+      acceso('SOLICITUD PRENSA', 'Fotos, video, piezas gráficas o publicaciones para tu secretaría', 'img/comunicaciones.webp', function () { irA('prensa'); }),
+      acceso('SOLICITUD TESORERÍA', 'Pregunta por el pago de una cuenta y ve la respuesta aquí', 'img/tramites_y_solicitudes.webp', function () { irA('tesoreria'); })
+    ]);
+
+    /* La burbuja de los comunicados sale del arranque: ver pintarBurbuja. */
+    var tarjetaCom = acceso('COMUNICADOS', 'Lo que te informan la Alcaldía y las oficinas', 'img/chat.webp', function () { irA('comunicados'); });
+    bloque('INSTITUCIONAL', [
+      tarjetaCom,
+      acceso('DIRECTORIO INSTITUCIONAL', 'Dónde queda cada dependencia, sus correos y teléfonos', 'img/institucional.webp', function () { irA('directorio'); })
+    ]);
+    pintarBurbujaComunicados(tarjetaCom);
+
+    bloque('AYUDA Y SITIOS WEB', [
+      acceso('TUTORIALES DE USO', 'Videos cortos de cada paso de la app', 'img/manual_de_uso.webp', function () { irA('tutoriales'); }),
+      acceso('SITIOS WEB', 'SECOP II, SIA Observa, la Alcaldía, Small PDF y la DIAN', 'img/sitios_web.webp', function () { irA('sitios'); })
+    ]);
 
     /* La burbuja de sin leer va aquí y no en una campana aparte: es donde
        la persona mira al entrar, y así el aviso guardado se ve aunque el
        push se haya perdido. El número lo trae la misma llamada del inicio. */
     var tarjetaAvisos = acceso('MIS NOTIFICACIONES', 'Todo lo que te hemos avisado', 'img/notificacion.webp', function () { irA('avisos'); });
-    rejilla.appendChild(tarjetaAvisos);
+    bloque('TU CONTRATO Y TUS AVISOS', [
+      tarjetaAvisos,
+      acceso('DATOS DEL CONTRATO', 'Tu contrato, su valor y quién lo supervisa', 'img/datos_de_procesos.webp', function () { irA('proceso'); }),
+      /* 4.5 · punto 8 · DATOS PERSONALES estaba DOS veces: aquí y en el menú
+         del banner, arriba a la derecha. Se queda el de arriba. */
+      acceso('AVISOS AL TELÉFONO', textoAvisos(), 'img/notificacion.webp', tocarAvisos)
+    ]);
     pintarBurbuja(tarjetaAvisos);
-
-    rejilla.appendChild(acceso('DATOS DEL CONTRATO', 'Tu contrato, su valor y quién lo supervisa', 'img/datos_de_procesos.webp', function () { irA('proceso'); }));
-    /* 4.5 · punto 8 · DATOS PERSONALES estaba DOS veces: aquí y en el menú
-       del banner, arriba a la derecha. Se queda el de arriba, que es el que
-       pidió Oss y el que está siempre a mano desde cualquier vista. */
-    rejilla.appendChild(acceso('AVISOS AL TELÉFONO', textoAvisos(), 'img/notificacion.webp', tocarAvisos));
-    caja.appendChild(rejilla);
 
     app.appendChild(caja);
     K.piezas.creditos.montar(caja);
 
     /* El resumen del contrato se trae en una sola llamada. */
     var destino = K.nodo('<section class="resumen"></section>');
-    caja.insertBefore(destino, rejilla);
+    caja.insertBefore(destino, primero);
 
     K.piezas.esqueletos.mientras(destino, cargarInicio(), { forma: 'ficha', cuantos: 1 })
       .then(function () {
@@ -427,6 +485,25 @@
       tarjeta.appendChild(K.nodo(
         '<span class="acceso__burbuja">' + (n > 9 ? '9+' : n) + '</span>'
       ));
+    }
+  }
+
+  /* 4.8 · la burbuja de los comunicados sin leer. Lo leído se guarda en
+     este teléfono (institucional.js); al leer, esa pieza avisa con
+     'kit:comunicados' y la burbuja baja sin volver al servidor. */
+  var quitarOidoCom = null;
+  function pintarBurbujaComunicados(tarjeta) {
+    var I = window.INSTITUCIONAL;
+    poner(I ? I.noLeidos() : 0);
+    if (quitarOidoCom) quitarOidoCom();
+    quitarOidoCom = K.cuando('kit:comunicados', function (d) {
+      if (document.body.contains(tarjeta)) poner(d.noLeidos || 0);
+    });
+    function poner(n) {
+      var vieja = tarjeta.querySelector('.acceso__burbuja');
+      if (vieja) vieja.remove();
+      if (!n) return;
+      tarjeta.appendChild(K.nodo('<span class="acceso__burbuja">' + (n > 9 ? '9+' : n) + '</span>'));
     }
   }
 
