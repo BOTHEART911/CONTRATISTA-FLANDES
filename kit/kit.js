@@ -288,6 +288,55 @@
   function numero(v) {
     return aNumero(v).toLocaleString('es-CO');
   }
+
+  /**
+   * 4.5 · EL CAMPO DE PESOS SE FORMATEA MIENTRAS SE ESCRIBE
+   *
+   * Hasta la 4.4 el campo se ordenaba al salir de él. Suena igual y no lo
+   * es: mientras la persona teclea ve "2500000" y ahí NADIE cuenta los
+   * ceros. Así es como se mete un dígito de más y se cobra diez veces lo
+   * que toca. La app vieja lo ponía bonito al vuelo, y es lo que Oss pide
+   * recuperar: "la app debe ser de fácil navegación".
+   *
+   * Lo delicado es el CURSOR. Si al reescribir el valor se manda el cursor
+   * al final, corregir una cifra por el medio es imposible. Aquí se cuenta
+   * cuántos DÍGITOS quedan a la izquierda del cursor y se vuelve a poner
+   * donde había ese mismo número de dígitos, que es lo único que no se
+   * descoloca cuando aparecen o desaparecen los puntos.
+   *
+   * Devuelve una función para leer el número pelado, que es lo que se
+   * manda al CORE: en la hoja nunca entra un punto.
+   */
+  function pesosEnVivo(inp, alCambiar) {
+    if (!inp) return function () { return 0; };
+
+    function pintar() {
+      var crudo = inp.value;
+      var digitosAntes = crudo.slice(0, inp.selectionStart || 0).replace(/\D/g, '').length;
+      var n = aNumero(crudo);
+
+      /* Un campo vacío se queda vacío: escribir un 0 de la nada hace que la
+         persona lo borre a cada rato. Y el "0" que teclea ella sí vale. */
+      var soloDigitos = crudo.replace(/\D/g, '');
+      inp.value = soloDigitos ? numero(n) : '';
+
+      /* el cursor, donde volvían a estar esos mismos dígitos */
+      var pos = 0, vistos = 0;
+      while (pos < inp.value.length && vistos < digitosAntes) {
+        if (/\d/.test(inp.value[pos])) vistos++;
+        pos++;
+      }
+      try { inp.setSelectionRange(pos, pos); } catch (e) { /* type=tel en iOS a veces se queja */ }
+
+      if (typeof alCambiar === 'function') alCambiar(soloDigitos ? String(n) : '');
+    }
+
+    inp.addEventListener('input', pintar);
+    inp.addEventListener('blur', function () {
+      if (inp.value) inp.value = numero(aNumero(inp.value));
+    });
+    return function () { return aNumero(inp.value); };
+  }
   /** '2026-09-21' o Date → '21/09/2026'. Lo que no es fecha se devuelve tal cual. */
   function fecha(v) {
     if (!v) return '';
@@ -368,7 +417,7 @@
     pedir: pedir, problema: problema,
 
     medio: medio, precargar: precargar, sonar: sonar, vibrar: vibrar,
-    pesos: pesos, numero: numero, aNumero: aNumero, fecha: fecha,
+    pesos: pesos, numero: numero, aNumero: aNumero, pesosEnVivo: pesosEnVivo, fecha: fecha,
     aviso: aviso,
 
     /* ── 4.4 · RED DE SEGURIDAD DE LOS ICONOS ──

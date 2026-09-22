@@ -1043,3 +1043,62 @@
   background: color-mix(in srgb, var(--k-aviso) 12%, transparent);
   color: var(--k-tinta);
 }
+
+/* 4.5 · punto 6 · los campos de dinero llevan el signo a la vista y se
+   formatean mientras se escriben. El signo va fuera del input para no
+   pelearse con el cursor. */
+.cta-pesos { position: relative; display: block; }
+.cta-pesos__signo {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  font-weight: 700; color: var(--k-apagado); pointer-events: none;
+}
+.cta-pesos .cta-inp--pesos {
+  padding-left: 30px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .01em;
+}
+
+/* 4.5 · punto 7 · el RP se escribe por el final, con el año a la vista */
+.rp {
+  display: flex; align-items: stretch;
+  border: 1px solid var(--k-linea); border-radius: 10px;
+  overflow: hidden; background: var(--k-fondo-campo, #fff);
+}
+.rp__anio {
+  display: flex; align-items: center;
+  padding: 0 12px;
+  font-weight: 700; font-variant-numeric: tabular-nums;
+  color: var(--k-apagado);
+  background: var(--k-suave, rgba(0, 0, 0, .05));
+  border-right: 1px solid var(--k-linea);
+  cursor: text; user-select: none;
+}
+.rp__final {
+  flex: 1 1 auto; min-width: 0;
+  border: 0; background: none; outline: none;
+  padding: 11px 12px;
+  font: inherit; font-variant-numeric: tabular-nums;
+  letter-spacing: .06em;
+}
+.rp__eco {
+  margin: 6px 0 0;
+  font-size: .82rem; font-variant-numeric: tabular-nums;
+  color: var(--k-apagado); min-height: 1.1em;
+}
+.campo--rp.campo--ok .rp { border-color: var(--k-ok, #1f9d55); }
+.campo--rp.campo--ok .rp__eco { color: var(--k-ok, #1f9d55); font-weight: 600; }
+
+/* 4.5 · punto 9 · departamento y municipio, uno encima del otro en el
+   teléfono y lado a lado cuando hay sitio. El municipio arranca apagado
+   hasta que haya departamento: así se ve que uno depende del otro. */
+.ubic { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.ubic select {
+  width: 100%;
+  font: inherit;
+}
+.ubic__mun:disabled { opacity: .55; }
+.campo--ubic.campo--ok .ubic__mun { border-color: var(--k-ok, #1f9d55); }
+.campo--ubic.campo--ojo .campo__ayuda { color: var(--k-aviso, #b26a00); }
+@media (min-width: 520px) {
+  .ubic { grid-template-columns: 1fr 1fr; }
+}

@@ -557,18 +557,27 @@
         '</div>'
       );
       listo.querySelector('.cta-doc__quitar').addEventListener('click', function () {
-        if (!confirm('¿Quitar ' + a.t + '? Se borra de tu carpeta de Drive.')) return;
-        K.piezas.guardado.abrir({ titulo: 'Quitando el archivo', sub: 'Un momento.' });
-        K.pedir('cuentaArchivoQuitar', { archivo: a.k })
-          .then(function () {
-            delete E.archivos[a.k];
-            K.piezas.guardado.listo({ sub: 'Quitado' });
-            pintarFicha(cuerpo, a);
-          })
-          ['catch'](function (e) {
-            K.piezas.guardado.fallo();
-            K.aviso(e.message || 'No se pudo quitar', 'malo', 5000);
-          });
+        /* 4.5: sin cuadros del sistema. La pregunta es de la app. */
+        K.piezas.confirmar.preguntar({
+          titulo: 'Quitar el archivo',
+          texto: 'Vas a quitar ' + a.t + '. Se borra también de tu carpeta de Drive y tendrás que volver a subirlo.',
+          si: 'Sí, quitarlo',
+          no: 'Dejarlo',
+          peligro: true
+        }).then(function (ok) {
+          if (!ok) return;
+          K.piezas.guardado.abrir({ titulo: 'Quitando el archivo', sub: 'Un momento.' });
+          K.pedir('cuentaArchivoQuitar', { archivo: a.k })
+            .then(function () {
+              delete E.archivos[a.k];
+              K.piezas.guardado.listo({ sub: 'Quitado' });
+              pintarFicha(cuerpo, a);
+            })
+            ['catch'](function (e) {
+              K.piezas.guardado.fallo();
+              K.aviso(e.message || 'No se pudo quitar', 'malo', 5000);
+            });
+        });
       });
       cuerpo.appendChild(listo);
       return;
@@ -642,32 +651,46 @@
    */
   function campoPesos(destino, clave, titulo, pista) {
     var g = grupo(destino, titulo, pista);
+    /* El signo va FUERA del campo, en su propia caja: dentro del value
+       estorba al escribir y al poner el cursor. Lo que ve la persona es
+       "$ 2.500.000" desde el primer dígito. */
+    var caja = K.nodo('<div class="cta-pesos"><span class="cta-pesos__signo" aria-hidden="true">$</span></div>');
     var inp = K.nodo('<input type="tel" inputmode="numeric" class="cta-inp cta-inp--pesos" ' +
-      'data-campo="' + clave + '" value="' + (D[clave] ? K.esc(K.numero(D[clave])) : '') + '">');
-    inp.addEventListener('input', function () {
-      var n = K.aNumero(inp.value);
-      D[clave] = n ? String(n) : '';
+      'data-campo="' + clave + '" autocomplete="off" ' +
+      'value="' + (D[clave] ? K.esc(K.numero(D[clave])) : '') + '">');
+    caja.appendChild(inp);
+    /* 4.5: se formatea MIENTRAS se escribe, sin mover el cursor de sitio.
+       Ver K.pesosEnVivo en kit/kit.js: es el punto 6 del pliego. */
+    K.pesosEnVivo(inp, function (limpio) {
+      D[clave] = limpio;
       recordar();
     });
-    inp.addEventListener('blur', function () {
-      inp.value = D[clave] ? K.numero(D[clave]) : '';
-    });
-    g.appendChild(inp);
+    g.appendChild(caja);
     return inp;
   }
 
   /* ══════════════ guardar de verdad ══════════════ */
 
   function confirmar(caja) {
-    var lineas = [
-      'Informe ' + E.informe + (E.total ? ' de ' + E.total : ''),
-      'Periodo ' + D.inicioPeriodo + ' a ' + D.finPeriodo,
-      'Radicas el ' + D.fechaRadicacion,
-      'Cobras ' + K.pesos(D.cobro) + ' y te quedan ' + K.pesos(nuevoSaldo()),
-      'Planilla ' + D.planilla + ' de ' + D.mesPlanilla
-    ];
-    if (!confirm(lineas.join('\n') + '\n\n¿Lo mando así?')) return;
-    guardar(caja);
+    /* 4.5: era un confirm del navegador con cinco lineas pegadas con saltos
+       de linea. Radicar es lo mas serio que hace esta app: ahora sale el
+       Resumen de cambios del kit, con cada dato en su fila y en pesos. */
+    K.piezas.confirmar.abrir({
+      titulo: 'Revisa antes de radicar',
+      lista: [
+        ['Informe', String(E.informe) + (E.total ? ' de ' + E.total : '')],
+        ['Periodo', D.inicioPeriodo + ' a ' + D.finPeriodo],
+        ['Radicas el', String(D.fechaRadicacion)],
+        ['Cobras', K.pesos(D.cobro)],
+        ['Te queda', K.pesos(nuevoSaldo())],
+        ['Planilla', String(D.planilla) + ' de ' + D.mesPlanilla]
+      ],
+      nota: 'Una vez radicada, Contratación la ve y ya no la puedes cambiar tú.',
+      si: 'Radicar',
+      no: 'Revisar'
+    }).then(function (ok) {
+      if (ok) guardar(caja);
+    });
   }
 
   function guardar(caja) {
@@ -721,17 +744,37 @@
           return;
         }
         if (r.quedo === 'a_medias') {
-          alert('Tus datos y tus archivos SÍ quedaron guardados, pero los documentos no terminaron de crearse.\n\n' +
-                'No vuelvas a radicar: se duplicarían los archivos.\n\n' +
-                'Entra otra vez a INGRESAR CUENTA y toca Radicar: solo se rehacen los documentos.');
-          abrir();
+          /* 4.5: los tres alert del navegador pasan a ser capas de la app.
+             Este es el aviso mas delicado de toda la aplicacion — si la
+             persona vuelve a radicar se le duplican los archivos —, y salia
+             en un cuadro gris con el dominio de GitHub arriba. */
+          K.piezas.confirmar.avisar({
+            titulo: 'Quedó a medias',
+            texto: 'Tus datos y tus archivos SÍ quedaron guardados, pero los documentos no ' +
+                   'terminaron de crearse.',
+            nota: 'NO vuelvas a radicar desde cero: se duplicarían los archivos. Entra otra vez ' +
+                  'a INGRESAR CUENTA y toca Radicar; solo se rehacen los documentos.',
+            si: 'Entendido'
+          }).then(function () { abrir(); });
           return;
         }
-        alert('La conexión se cayó antes de guardar. Lo que escribiste sigue aquí: puedes volver a intentarlo sin riesgo.');
+        K.piezas.confirmar.avisar({
+          titulo: 'No alcanzó a guardarse',
+          texto: 'La conexión se cayó antes de guardar.',
+          nota: 'Lo que escribiste sigue aquí: puedes volver a intentarlo sin ningún riesgo.',
+          si: 'Volver a intentar'
+        });
       })
       ['catch'](function () {
         K.piezas.guardado.cerrar();
-        alert('No pudimos comprobar cómo quedó tu cuenta.\n\nNO vuelvas a radicar todavía. Revisa en un rato si tus documentos ya están en tu carpeta de Drive.');
+        K.piezas.confirmar.avisar({
+          titulo: 'No pudimos comprobarlo',
+          texto: 'No logramos verificar cómo quedó tu cuenta.',
+          nota: 'NO vuelvas a radicar todavía. Revisa en un rato si tus documentos ya están en ' +
+                'tu carpeta de Drive; si están, la cuenta quedó radicada.',
+          si: 'Entendido',
+          peligro: true
+        });
       });
   }
 

@@ -115,6 +115,24 @@
   }
 
   /**
+   * 4.5 · la app puede entregarle la configuración ya traída.
+   *
+   * El arranque de CONTRATISTA-FLANDES pide una sola vez todo lo que hace
+   * falta para abrir, y ahí viene también lo de Firebase. Con esto la pieza
+   * no gasta su propio viaje a Apps Script (2 a 3 segundos de transporte
+   * medidos, aunque el servidor conteste en 50 ms). Las otras seis apps que
+   * no llamen a esto siguen pidiendo 'configPush' como siempre.
+   */
+  function configurar(d) {
+    if (!d) return;
+    cfgRemota = {
+      activo: d.activo !== false,
+      firebase: (d.firebase && d.firebase.apiKey) ? d.firebase : (M.FIREBASE || {}),
+      vapid: d.vapid || M.FIREBASE_VAPID || ''
+    };
+  }
+
+  /**
    * La configuración manda desde la hoja CONFIG, no desde el front: así se
    * apagan los avisos de todo el ecosistema sin volver a publicar 7 repos.
    * Si el CORE no contesta, se sigue con la copia de marca.js.
@@ -331,7 +349,7 @@
 
   K.piezas.avisos = {
     activar: activar, autoActivar: autoActivar, proponer: proponer, estado: estado,
-    alLlegar: alLlegar, olvidar: olvidar,
+    alLlegar: alLlegar, olvidar: olvidar, configurar: configurar,
     plataforma: plataforma, instalada: instalada, esIOS: esIOS
   };
 }());

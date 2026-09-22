@@ -34,7 +34,11 @@
        localStorage: sin este prefijo, la sesión de una pisa la de otra. */
     STORAGE_NS: 'contratista.',
 
-    APP_ICON: 'img/contratista.webp',
+    /* 4.5: el icono vive AQUI, en el repo de la app, no en ALCALDIA-MEDIOS.
+       Es el mismo archivo que el del escritorio del telefono y el de la
+       pestaña, asi que cambiarlo es cambiar un solo PNG. Al ser una ruta
+       de la propia app NO pasa por K.medio(). */
+    APP_ICON: 'img/icono-512.png',
 
     /* APP_BANNER se quitó el 21/09. Apuntaba a img/contratista_2.webp, que
        es un CÓDIGO QR: en cuanto alguna vista lo pintara habría salido un QR

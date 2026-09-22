@@ -39,6 +39,8 @@ var ARMAZON = [
   './styles.css',
   './marca.js',
   './manifest.json',
+  './img/icono-32.png',
+  './img/icono-180.png',
   './img/icono-192.png',
   './img/icono-512.png',
   './img/icono-mask-512.png',

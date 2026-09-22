@@ -28,6 +28,72 @@
   var YO = null;          /* quién entró */
   var CONTRATO = null;    /* su contrato, tal como lo da el CORE */
 
+  /* ══════════════ el arranque, en UNA sola llamada ══════════════
+   *
+   * PUNTO 5 DEL PLIEGO. Abrir la app eran CINCO viajes seguidos a Apps
+   * Script: 'yo' para validar la sesión, 'config' del kit, 'configPush'
+   * para los avisos, 'inicio' para el contrato y 'misAvisos' para la
+   * burbuja. Medido: cada viaje cuesta entre 2 y 3 segundos de red aunque
+   * el servidor conteste en 50 ms, porque Apps Script obliga a una
+   * redirección. Diez o doce segundos hasta ver la pantalla, y de ahí el
+   * aviso de "el servidor tarda demasiado".
+   *
+   * Ahora la ruta 'inicio' del CORE devuelve las cinco cosas juntas y esto
+   * las reparte. El catálogo de municipios solo viaja si el teléfono no lo
+   * tiene ya: se manda el sello que guardó y el servidor decide.
+   */
+  var ARRANQUE = null;
+  var MUNI_K = 'municipios.v2';
+
+  function selloMunicipiosGuardado() {
+    var g = K.guardar.leer(MUNI_K, null);
+    return (g && g.sello) || '';
+  }
+
+  /** El catálogo que usa el cascadeo departamento → municipio. */
+  function catalogoMunicipios() {
+    if (ARRANQUE && ARRANQUE.municipios && ARRANQUE.municipios.mapa) return ARRANQUE.municipios;
+    return K.guardar.leer(MUNI_K, null);
+  }
+
+  function arranque() {
+    return K.pedir('inicio', {
+      avisos: 1,
+      selloMunicipios: selloMunicipiosGuardado()
+    }).then(function (d) {
+      ARRANQUE = d;
+      YO = d.yo || YO;
+      CONTRATO = d.contrato;
+      LISTAS = d.listas || LISTAS;
+
+      /* Los municipios se quedan en el teléfono. Son 1.121 con su
+         departamento: viajan una vez y no vuelven a viajar nunca, salvo
+         que cambie la hoja (entonces cambia el sello). */
+      if (d.municipios && d.municipios.mapa) {
+        K.guardar.escribir(MUNI_K, d.municipios);
+      } else if (d.municipios && d.municipios.sinCambios) {
+        ARRANQUE.municipios = K.guardar.leer(MUNI_K, null) || d.municipios;
+      }
+
+      /* Los avisos: la burbuja ya no necesita su propia llamada. */
+      if (d.avisos && K.piezas.buzon) K.piezas.buzon.recordar(d.avisos.noLeidos || 0);
+
+      /* Y la configuración de Firebase tampoco: se le entrega hecha a la
+         pieza de avisos para que no pida 'configPush' por su cuenta. */
+      if (d.push && K.piezas.avisos && K.piezas.avisos.configurar) {
+        K.piezas.avisos.configurar(d.push);
+      }
+
+      /* Lo mismo con el pie de la firma, que pedía 'config' en la primera
+         vista que se pintara. Con esto, abrir la app es UNA llamada y no
+         hay ninguna más escondida detrás. */
+      if (d.config && K.piezas.creditos && K.piezas.creditos.configurar) {
+        K.piezas.creditos.configurar(d.config);
+      }
+      return d;
+    });
+  }
+
   /* ══════════════ arranque ══════════════ */
 
   K.listo(function () {
@@ -45,7 +111,7 @@
       ? K.piezas.bienvenida.abrir({
           titulo: 'Contratista',
           sub: M.MUNICIPIO || 'Alcaldía de Flandes',
-          imagen: K.medio(M.APP_ICON || 'img/contratista.webp')
+          imagen: M.APP_ICON || 'img/icono-512.png'
         })
       : Promise.resolve('saltada');
 
@@ -53,7 +119,11 @@
       K.piezas.sesion.entrar({
         titulo: 'CONTRATISTA',
         sub: 'Ingresa con tu documento y contraseña',
-        imagen: K.medio(M.APP_ICON || 'img/contratista.webp'),
+        imagen: M.APP_ICON || 'img/icono-512.png',
+        /* 4.5: la comprobación de la sesión y la carga del inicio son la
+           MISMA llamada. Ver `arranque()` aquí arriba. Se le devuelve a la
+           pieza de sesión SOLO el usuario, que es lo que ella guarda. */
+        comprobar: function () { return arranque().then(function (d) { return d.yo; }); },
         alEntrar: arrancar
       });
     });
@@ -185,7 +255,9 @@
     pintarBurbuja(tarjetaAvisos);
 
     rejilla.appendChild(acceso('DATOS DEL CONTRATO', 'Tu contrato, su valor y quién lo supervisa', 'img/datos_de_procesos.webp', function () { irA('proceso'); }));
-    rejilla.appendChild(acceso('DATOS PERSONALES', 'Teléfono, dirección y correo', 'img/user.png', function () { irA('personales'); }));
+    /* 4.5 · punto 8 · DATOS PERSONALES estaba DOS veces: aquí y en el menú
+       del banner, arriba a la derecha. Se queda el de arriba, que es el que
+       pidió Oss y el que está siempre a mano desde cualquier vista. */
     rejilla.appendChild(acceso('AVISOS AL TELÉFONO', textoAvisos(), 'img/notificacion.webp', tocarAvisos));
     caja.appendChild(rejilla);
 
@@ -203,11 +275,10 @@
 
   function cargarInicio() {
     if (CONTRATO) return Promise.resolve(CONTRATO);
-    return K.pedir('inicio').then(function (d) {
-      YO = d.yo || YO;
-      CONTRATO = d.contrato;
-      return CONTRATO;
-    });
+    /* Normalmente ya viene del arranque y esto no llega a viajar. Se queda
+       por si la sesión se recuperó por otro camino (un enlace directo a
+       una vista concreta, por ejemplo). */
+    return arranque().then(function () { return CONTRATO; });
   }
 
   function pintarResumen(destino) {
@@ -276,16 +347,11 @@
      si tarda o falla, el inicio ya está pintado y nadie se queda mirando
      una pantalla en blanco por una burbuja. */
   function pintarBurbuja(tarjeta) {
-    var ya = K.piezas.buzon ? K.piezas.buzon.noLeidos() : 0;
-    if (ya) poner(ya);
-
-    K.pedir('misAvisos', { cuantos: 1 })
-      .then(function (d) {
-        var n = (d && d.noLeidos) || 0;
-        if (K.piezas.buzon) K.piezas.buzon.recordar(n);
-        poner(n);
-      })
-      ['catch'](function () {});
+    /* 4.5: el número ya viene en el arranque, así que esto no pide nada.
+       Era la quinta llamada de las cinco que costaba abrir la app. */
+    var delArranque = (ARRANQUE && ARRANQUE.avisos) ? (ARRANQUE.avisos.noLeidos || 0) : null;
+    var ya = (delArranque === null && K.piezas.buzon) ? K.piezas.buzon.noLeidos() : delArranque;
+    poner(ya || 0);
 
     function poner(n) {
       var vieja = tarjeta.querySelector('.acceso__burbuja');
@@ -483,9 +549,10 @@
       campoTexto(fila, D, 'dias', 'Días', '', { valor: c.dias || '', numerico: 3, marcador: 'Automático' });
       f.appendChild(fila);
 
-      campoTexto(f, D, 'rp', 'Registro Presupuestal (RP)',
-        'Son 10 dígitos. Empieza por el año de la vigencia.',
-        { valor: c.rp || '', numerico: 10, marcador: 'N° de RP', rp: true });
+      campoRP(f, D, 'rp', 'Registro Presupuestal (RP)',
+        'Escribe <b>solo los últimos dígitos</b>, los que trae tu RP después de los ceros. ' +
+        'El año y los ceros los pone el sistema.',
+        { final: c.rpFinal || '', anio: c.rpAnio });
 
       campoSiNo(f, D, 'regimen', '¿Perteneces al Régimen Simple de Tributación?',
         'Revisa tu RUT. Si aparece que perteneces al “Régimen Simple de Tributación”, marca SÍ.',
@@ -507,9 +574,12 @@
         : 'Tu contrato tiene <b>adición</b>: lo único que tienes que actualizar es el RP de la adición.';
       f.appendChild(K.nodo('<h3 class="grupo__t">' + K.esc(rotulo) + '</h3>'));
       f.appendChild(K.nodo('<p class="formulario__nota">' + explica + '</p>'));
-      campoTexto(f, D, 'rp', rotulo, 'Son 10 dígitos.', {
-        valor: (c.modoEdicion === 'adicion1' ? c.rpAdicion : c.modoEdicion === 'adicion2' ? c.rpAdicion2 : c.rp) || '',
-        numerico: 10, marcador: 'N° de RP', rp: true
+      campoRP(f, D, 'rp', rotulo,
+        'Escribe <b>solo los últimos dígitos</b>. El año y los ceros los pone el sistema.', {
+        final: (c.modoEdicion === 'adicion1' ? c.rpAdicionFinal
+              : c.modoEdicion === 'adicion2' ? c.rpAdicion2Final
+              : c.rpFinal) || '',
+        anio: c.rpAnio
       });
     }
 
@@ -549,6 +619,9 @@
       var v = String(D[k] === undefined || D[k] === null ? '' : D[k]).trim();
       if (!v) return;
       if (k === 'numProceso') v = 'CPS-' + ('00' + v).slice(-3) + '-' + (new Date().getFullYear());
+      /* 4.5: en el campo se escribe el final, pero en el resumen tiene que
+         salir el número entero, que es lo que va a quedar en la hoja. */
+      if (k === 'rp') v = String(c.rpAnio || new Date().getFullYear()) + ('000000' + v).slice(-6);
       lista.push([ROTULOS[k], v]);
     });
 
@@ -625,6 +698,8 @@
   var LISTAS = null;
 
   function listas() {
+    /* 4.5: las listas (bancos, EPS, AFP, ARL, tipos de cuenta) llegan en el
+       arranque. Esto solo viaja si alguien entró sin pasar por ahí. */
     if (LISTAS) return Promise.resolve(LISTAS);
     return K.pedir('listasDatos').then(function (l) { LISTAS = l; return l; });
   }
@@ -792,6 +867,64 @@
     return inp;
   }
 
+  /**
+   * 4.5 · PUNTO 7 · EL RP SE ESCRIBE POR EL FINAL
+   *
+   * Regla de Oss, dictada el 22/09: el RP tiene SIEMPRE 10 dígitos —
+   * el año, ceros de relleno y al final lo que registra el contratista.
+   * Si teclea 87, se guarda 2026000087.
+   *
+   * Hasta la 4.4 había que escribir los diez, y eso es pedirle a la
+   * persona que teclee "2026" y siete ceros cada vez, contándolos. Ahora:
+   *
+   *     en la vista de lectura ..... 2026000087   (completo)
+   *     en este campo .............. [2026] 87    (solo el final)
+   *
+   * El año no se escribe ni se puede tocar: lo pone el servidor, que es
+   * quien sabe si el RP ya traía año (ver FC_rpCompleto_ en el CORE). Aquí
+   * solo se ENSEÑA, para que la persona vea el número que va a quedar
+   * mientras lo escribe y no tenga que fiarse.
+   */
+  function campoRP(donde, D, clave, titulo, ayuda, o) {
+    o = o || {};
+    var anio = String(o.anio || new Date().getFullYear());
+    var c = K.nodo('<label class="campo campo--rp"><span>' + K.esc(titulo) + '</span></label>');
+    var caja = K.nodo('<div class="rp"></div>');
+    var pre = K.nodo('<span class="rp__anio" aria-hidden="true">' + K.esc(anio) + '</span>');
+    var inp = K.nodo('<input type="text" inputmode="numeric" class="rp__final" ' +
+      'autocomplete="off" maxlength="6" placeholder="Ej: 87">');
+    inp.value = String(o.final || '');
+    caja.appendChild(pre);
+    caja.appendChild(inp);
+    c.appendChild(caja);
+
+    var eco = K.nodo('<p class="rp__eco" aria-live="polite"></p>');
+    c.appendChild(eco);
+    conAyuda(c, ayuda);
+
+    function completo() {
+      var d = inp.value.replace(/\D/g, '');
+      if (!d) return '';
+      return anio + ('000000' + d).slice(-6);
+    }
+
+    function repintar() {
+      inp.value = inp.value.replace(/\D/g, '').slice(0, 6);
+      var full = completo();
+      D[clave] = inp.value;            /* al CORE va SOLO el final */
+      c.classList.toggle('campo--ok', full.length === 10);
+      eco.textContent = full ? 'Va a quedar como ' + full : '';
+    }
+
+    inp.addEventListener('input', repintar);
+    /* tocar el año lleva el foco al sitio donde de verdad se escribe */
+    pre.addEventListener('click', function () { inp.focus(); });
+    repintar();
+
+    donde.appendChild(c);
+    return inp;
+  }
+
   function campoLista(donde, D, clave, titulo, ayuda, opciones, valor) {
     var c = K.nodo('<label class="campo"><span>' + K.esc(titulo) + '</span></label>');
     var sel = K.nodo('<select><option value="">Selecciona</option></select>');
@@ -850,56 +983,114 @@
 
   /* Municipio con sugerencias del CORE. La lista son 1.121 nombres: no se
      bajan al teléfono, se pregunta a medida que se escribe. */
+  /**
+   * 4.5 · PUNTO 9 · DEPARTAMENTO Y DESPUÉS MUNICIPIO
+   *
+   * Antes esto era un autocompletar que VIAJABA AL SERVIDOR por cada
+   * búsqueda: 871 ms de media solo del servidor, más dos o tres segundos
+   * de transporte, y eso por cada palabra que se teclea. Buscar "Flandes"
+   * eran cuatro viajes.
+   *
+   * Ahora es como la vista Comercial de SEP-GROUP, que fue lo que Oss
+   * mandó mirar: el catálogo entero (1.121 municipios con su departamento)
+   * llega UNA vez dentro de la llamada de arranque, se guarda en este
+   * teléfono y el cascadeo pasa aquí dentro. Cero viajes.
+   *
+   * Lo que se guarda en la hoja es SOLO el municipio, con su nombre
+   * propio tal como está escrito en la hoja MUNICIPIOS. El departamento
+   * no se guarda: solo sirve para no tener que buscar entre mil.
+   */
   function campoMunicipio(donde, D, clave, titulo, ayuda, valor) {
-    var c = K.nodo('<label class="campo campo--busca"><span>' + K.esc(titulo) + '</span></label>');
-    var inp = K.nodo('<input type="text" autocomplete="off" placeholder="Escribe y elige">');
-    inp.value = valor || '';
-    var caja = K.nodo('<div class="campo__sug kit-oculto"></div>');
-    c.appendChild(inp);
-    c.appendChild(caja);
+    var cat = catalogoMunicipios();
+    var c = K.nodo('<div class="campo campo--ubic"><span>' + K.esc(titulo) + '</span></div>');
+    var fila = K.nodo('<div class="ubic"></div>');
+
+    var selD = K.nodo('<select class="ubic__depto" aria-label="Departamento"><option value="">Departamento</option></select>');
+    var selM = K.nodo('<select class="ubic__mun" aria-label="Municipio"><option value="">Municipio</option></select>');
+    fila.appendChild(selD);
+    fila.appendChild(selM);
+    c.appendChild(fila);
     conAyuda(c, ayuda);
+    donde.appendChild(c);
 
-    var elegido = valor || '';
-
-    function pintar(nombres) {
-      caja.innerHTML = '';
-      if (!nombres.length) { caja.classList.add('kit-oculto'); return; }
-      nombres.forEach(function (n) {
-        var b = K.nodo('<button type="button" class="campo__sug-i">' + K.esc(n) + '</button>');
-        b.addEventListener('click', function () {
-          inp.value = n;
-          elegido = n;
-          D[clave] = n;
-          caja.classList.add('kit-oculto');
-          inp.classList.add('campo--ok');
-        });
-        caja.appendChild(b);
-      });
-      caja.classList.remove('kit-oculto');
+    /* Si no hay catálogo (un arranque viejo en caché, o el CORE caído) se
+       deja el campo escribible y el servidor sigue validando: vale más un
+       campo de texto que un desplegable vacío. */
+    if (!cat || !cat.departamentos || !cat.departamentos.length) {
+      fila.innerHTML = '';
+      var suelto = K.nodo('<input type="text" autocomplete="off" placeholder="Escribe el municipio">');
+      suelto.value = valor || '';
+      fila.appendChild(suelto);
+      suelto.addEventListener('input', function () { D[clave] = suelto.value.trim(); });
+      return suelto;
     }
 
-    var buscar = K.debounce(function () {
-      var q = inp.value.trim();
-      if (q.length < 2) { caja.classList.add('kit-oculto'); return; }
-      K.pedir('municipios', { texto: q })
-        .then(function (r) { pintar((r && r.municipios) || []); })
-        ['catch'](function () { caja.classList.add('kit-oculto'); });
-    }, 260);
-
-    inp.addEventListener('input', function () {
-      inp.classList.remove('campo--ok');
-      /* Solo cuenta como cambio lo que se eligió de la lista: el CORE
-         rechaza cualquier otra cosa, así que no se manda a medio escribir. */
-      if (inp.value.trim() !== elegido) delete D[clave];
-      buscar();
+    cat.departamentos.forEach(function (dp) {
+      var o = K.nodo('<option></option>');
+      o.value = dp;
+      o.textContent = nombrePropio(dp);
+      selD.appendChild(o);
     });
-    inp.addEventListener('blur', function () {
-      setTimeout(function () { caja.classList.add('kit-oculto'); }, 160);
-    });
-    if (valor) inp.classList.add('campo--ok');
 
-    donde.appendChild(c);
-    return inp;
+    function llenarMunicipios(dp, marcar) {
+      selM.innerHTML = '';
+      var vacio = K.nodo('<option value="">' + (dp ? 'Municipio' : 'Elige el departamento') + '</option>');
+      selM.appendChild(vacio);
+      selM.disabled = !dp;
+      if (!dp) return;
+      (cat.mapa[dp] || []).forEach(function (m) {
+        var o = K.nodo('<option></option>');
+        o.value = m;
+        o.textContent = m;
+        if (K.norm(m) === K.norm(marcar || '')) o.selected = true;
+        selM.appendChild(o);
+      });
+    }
+
+    /* Al abrir, el municipio que ya está guardado manda: se busca en qué
+       departamento vive y se dejan los dos desplegables puestos. El
+       departamento no está en la hoja de contratistas, así que se deduce
+       del catálogo; es exactamente para lo que sirve. */
+    var deptoDe = '';
+    if (valor) {
+      var objetivo = K.norm(valor);
+      for (var i = 0; i < cat.departamentos.length && !deptoDe; i++) {
+        var lista = cat.mapa[cat.departamentos[i]] || [];
+        for (var j = 0; j < lista.length; j++) {
+          if (K.norm(lista[j]) === objetivo) { deptoDe = cat.departamentos[i]; break; }
+        }
+      }
+    }
+    if (deptoDe) selD.value = deptoDe;
+    llenarMunicipios(deptoDe, valor);
+
+    /* Si el municipio guardado no aparece en el catálogo (un nombre viejo
+       escrito a mano), no se pierde: se enseña y se avisa. */
+    if (valor && !deptoDe) {
+      c.classList.add('campo--ojo');
+      conAyuda(c, 'Tienes guardado <b>' + K.esc(valor) + '</b>, que no está en la lista oficial. ' +
+                  'Elige el departamento y el municipio para dejarlo al día.');
+    }
+
+    selD.addEventListener('change', function () {
+      llenarMunicipios(selD.value, '');
+      delete D[clave];
+      c.classList.remove('campo--ok');
+    });
+    selM.addEventListener('change', function () {
+      D[clave] = selM.value;                 /* SOLO el municipio va al CORE */
+      c.classList.toggle('campo--ok', !!selM.value);
+    });
+
+    if (valor && deptoDe) c.classList.add('campo--ok');
+    return selM;
+  }
+
+  /** ANTIOQUIA → Antioquia. Los desplegables no se gritan. */
+  function nombrePropio(s) {
+    return String(s || '').toLowerCase().replace(/(^|[\s(.\u2010-\u2015/-])([a-záéíóúñü])/g,
+      function (todo, antes, letra) { return antes + letra.toUpperCase(); })
+      .replace(/\bD\.c\./i, 'D.C.');
   }
 
   /* La firma: una imagen que va impresa en los formatos. Se comprime en el

@@ -218,6 +218,19 @@
     K.vibrar(12);
     cerrarPuerta();
     K.disparar('kit:sesion', { entro: true, yo: yo() });
+
+    /* 4.5: recién entrado hace falta el arranque de la app (contrato,
+       avisos, listas, municipios). Si la app dio `comprobar`, se llama
+       también aquí: así la pantalla de inicio se pinta con todo puesto y
+       no con cuatro llamadas sueltas detrás. Si falla, se entra igual:
+       cada vista sabe pedir lo suyo. */
+    if (typeof cfg.comprobar === 'function') {
+      Promise.resolve(cfg.comprobar())
+        .then(function (dd) { if (dd) guardarYo(dd.usuario || dd); })
+        ['catch'](function () {})
+        .then(function () { if (typeof cfg.alEntrar === 'function') cfg.alEntrar(yo()); });
+      return;
+    }
     if (typeof cfg.alEntrar === 'function') cfg.alEntrar(yo());
   }
 
@@ -333,7 +346,22 @@
        dejar pasar: un token viejo no sirve y el usuario se enteraría
        tarde, a mitad de un guardado */
     if (K.token()) {
-      return K.pedir('yo', {}, { app: 'CORE' })
+      /*
+       * 4.5 · UNA LLAMADA, NO DOS.
+       *
+       * Aquí se pedía 'yo' solo para comprobar que el token seguía vivo, y
+       * acto seguido la app pedía 'inicio', que YA devuelve el usuario. Eran
+       * dos viajes a Apps Script, y cada viaje cuesta entre dos y tres
+       * segundos de transporte aunque el servidor conteste en cincuenta
+       * milisegundos. Si la app pasa `comprobar`, esa función hace el viaje
+       * y devuelve el usuario; si no lo pasa, se sigue pidiendo 'yo' como
+       * siempre, que es lo que hacen las otras seis apps.
+       */
+      var comprobacion = (typeof cfg.comprobar === 'function')
+        ? Promise.resolve(cfg.comprobar())
+        : K.pedir('yo', {}, { app: 'CORE' });
+
+      return comprobacion
         .then(function (d) {
           guardarYo(d && (d.usuario || d) || null);
           K.disparar('kit:sesion', { entro: true, yo: yo() });

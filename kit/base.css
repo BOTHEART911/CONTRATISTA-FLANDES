@@ -401,3 +401,11 @@ body { max-width: 100%; overflow-x: hidden; }
 .kit-conf__nota { margin: 12px 0 0; font-size: .8rem; line-height: 1.45; color: var(--k-apagado); }
 .kit-conf__pie { display: flex; gap: 10px; }
 .kit-conf__pie .kit-btn { flex: 1 1 0; }
+/* 4.5 · la variante de borrar. Rojo solo aquí: el resto de la app no
+   tiene un solo botón rojo, y por eso este se lee. */
+.kit-conf--peligro .kit-conf__si {
+  background: var(--k-mal, #c0392b);
+  border-color: var(--k-mal, #c0392b);
+  color: #fff;
+}
+.kit-conf--peligro .kit-capa__h { color: var(--k-mal, #c0392b); }

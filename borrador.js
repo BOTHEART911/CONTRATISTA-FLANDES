@@ -499,18 +499,29 @@
   }
 
   function quitar(destino, i, ranura) {
-    if (!window.confirm('¿Quitar la evidencia ' + ranura + ' de esta obligación?')) return;
-    K.piezas.guardado.abrir({ titulo: 'Quitando la evidencia' });
-    K.pedir('evidenciaQuitar', { obligacion: i + 1, ranura: ranura })
-      .then(function (r) {
-        evidencias[i] = listaEvi(r && r.urls);
-        K.piezas.guardado.listo({ sub: 'Ya la quitamos.' });
-        zonaEvidencia(destino, i);
-      })
-      ['catch'](function (e) {
-        K.piezas.guardado.fallo();
-        K.aviso(e && e.message ? e.message : 'No se pudo quitar.', 'malo', 5000);
-      });
+    /* 4.5: era un window.confirm, con el dominio de GitHub de título.
+       Ahora la pregunta es de la app, y se ve de qué obligación habla. */
+    K.piezas.confirmar.preguntar({
+      titulo: 'Quitar la evidencia',
+      texto: 'Vas a quitar la evidencia ' + ranura + ' de la obligación ' + (i + 1) +
+             '. Se borra también de tu carpeta de Drive y esto no se puede deshacer.',
+      si: 'Sí, quitarla',
+      no: 'Dejarla',
+      peligro: true
+    }).then(function (ok) {
+      if (!ok) return;
+      K.piezas.guardado.abrir({ titulo: 'Quitando la evidencia' });
+      K.pedir('evidenciaQuitar', { obligacion: i + 1, ranura: ranura })
+        .then(function (r) {
+          evidencias[i] = listaEvi(r && r.urls);
+          K.piezas.guardado.listo({ sub: 'Ya la quitamos.' });
+          zonaEvidencia(destino, i);
+        })
+        ['catch'](function (e) {
+          K.piezas.guardado.fallo();
+          K.aviso(e && e.message ? e.message : 'No se pudo quitar.', 'malo', 5000);
+        });
+    });
   }
 
   /* Drive entrega el enlace /view, que dentro de un <img> no pinta nada.
@@ -585,10 +596,16 @@
   }
 
   function salir() {
-    if (sucio) {
-      if (!window.confirm('Tienes cambios sin guardar. ¿Salir de todos modos?')) return;
-    }
-    location.hash = '#/inicio';
+    if (!sucio) { location.hash = '#/inicio'; return; }
+    K.piezas.confirmar.preguntar({
+      titulo: 'Tienes cambios sin guardar',
+      texto: 'Lo que escribiste queda guardado en este teléfono, así que no lo vas a ' +
+             'perder, pero todavía no está en el servidor y tu supervisor no lo ve.',
+      si: 'Salir de todos modos',
+      no: 'Seguir escribiendo'
+    }).then(function (ok) {
+      if (ok) location.hash = '#/inicio';
+    });
   }
 
   /* ══════════════ insights ══════════════ */
@@ -718,13 +735,25 @@
     return c;
   }
 
-  /* Si se sale de la app con algo sin guardar, el navegador pregunta. El
-     respaldo local ya protege el texto, pero avisar evita el susto. */
-  window.addEventListener('beforeunload', function (ev) {
-    if (!sucio) return;
-    ev.preventDefault();
-    ev.returnValue = '';
-  });
+  /*
+   * 4.5 · AQUÍ ESTABA EL CUADRO DEL SISTEMA
+   *
+   * Había un beforeunload para que el navegador preguntara al cerrar la
+   * pestaña con algo sin guardar. Esa es la captura que mandó Oss:
+   *
+   *     botheart911.github.io dice
+   *     Tienes cambios sin guardar. ¿Salir de todos modos?
+   *
+   * El navegador no deja vestir ese cuadro: pone el dominio, escribe en el
+   * idioma del sistema y no admite el texto que se le pase. Se quita.
+   *
+   * Y no hace falta, que es la clave: lo que la persona escribe se guarda
+   * en ESTE aparato en cuanto lo teclea (el respaldo local de más arriba),
+   * así que cerrar la pestaña no le pierde una palabra; al volver a entrar
+   * se le ofrece recuperarlo. Lo único que quedaba pendiente era avisar de
+   * que no está en el servidor, y eso ya lo dice la capa de salir() con
+   * las palabras de la app.
+   */
 
   window.BORRADOR = {
     abrir: abrir,
