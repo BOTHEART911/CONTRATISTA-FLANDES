@@ -94,3 +94,30 @@
   .kit-adj__item { animation: none; }
   .kit-adj__soltar, .kit-adj--encima .kit-adj__soltar { transition: none; transform: none; }
 }
+
+/* 4.6 · la casilla activa y el botón de pegar ───────────────────
+   Con veinte casillas a la vista hay que ver CUÁL se va a quedar
+   con el Ctrl+V. La activa se marca con el borde de la marca. */
+.kit-adj--activa .kit-adj__soltar {
+  border-color: var(--k-marca, #06402B);
+  box-shadow: 0 0 0 3px rgba(6, 64, 43, .12);
+}
+.kit-adj__soltar { position: relative; }
+.kit-adj__pegar {
+  position: absolute; top: 8px; right: 8px;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid var(--k-linea); border-radius: 999px;
+  background: var(--k-fondo, #fff);
+  font: 600 .76rem/1 var(--k-fuente);
+  color: var(--k-tinta-2); cursor: pointer;
+  opacity: .75; transition: opacity .15s ease, border-color .15s ease;
+}
+.kit-adj__pegar:hover { opacity: 1; border-color: var(--k-marca, #06402B); }
+.kit-adj--con .kit-adj__pegar { display: none; }
+.kit-adj__admite { display: block; }
+
+/* en el teléfono no hay Ctrl+V ni ratón: el botón estorba más que ayuda */
+@media (hover: none) and (pointer: coarse) {
+  .kit-adj__pegar { display: none; }
+}

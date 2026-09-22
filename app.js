@@ -57,6 +57,21 @@
   }
 
   function arranque() {
+    /*
+     * 4.6 · NI UN INSTANTE EN BLANCO AL ENTRAR
+     *
+     * Entre cerrar la portada y pintar el inicio hay UNA llamada al CORE.
+     * Antes, durante ese viaje la pantalla estaba literalmente vacía: la
+     * puerta ya se había ido y la vista todavía no existía. En el teléfono
+     * de Oss eso se veía como un blancazo de un par de segundos.
+     *
+     * Ahora el esqueleto entra en cuanto arranca la llamada, y si tarda
+     * más de la cuenta sale encima el cohete de "Cargando datos".
+     */
+    var quitar = (K.piezas.esqueletos && app)
+      ? K.piezas.esqueletos.poner(app, { forma: 'ficha', cuantos: 1, sitio: 'reemplaza', espera: 'Cargando tus datos' })
+      : function () {};
+
     return K.pedir('inicio', {
       avisos: 1,
       selloMunicipios: selloMunicipiosGuardado()
@@ -90,7 +105,11 @@
       if (d.config && K.piezas.creditos && K.piezas.creditos.configurar) {
         K.piezas.creditos.configurar(d.config);
       }
+      quitar();
       return d;
+    }, function (e) {
+      quitar();
+      throw e;
     });
   }
 

@@ -64,13 +64,28 @@
     }
   ];
 
-  /* Los PDF, en el orden en que se piden. 'obliga' son los tres sin los
-     que Contratación no recibe la cuenta. */
+  /*
+   * QUÉ ACEPTA CADA CASILLA (regla de Oss, 22/09/2026)
+   *
+   * Todos los documentos van en PDF, MENOS los dos BAUCHER: el comprobante
+   * de pago de la planilla casi siempre es una captura del banco o del
+   * datáfono, no un PDF. Esos dos aceptan imagen Y PDF; los demás siguen
+   * siendo PDF, que es como los recibe Contratación.
+   *
+   * Se listan también las EXTENSIONES y no solo los tipos MIME a propósito:
+   * varios navegadores de Android mandan el archivo con el tipo vacío, y
+   * entonces un PDF de verdad se rechazaba con "no es un tipo admitido".
+   */
+  var SOLO_PDF = 'application/pdf,.pdf';
+  var IMAGEN_O_PDF = 'application/pdf,image/png,image/jpeg,.pdf,.png,.jpg,.jpeg';
+
+  /* Los documentos, en el orden en que se piden. 'obliga' son los tres sin
+     los que Contratación no recibe la cuenta. */
   var ARCHIVOS = [
     { k: 'bancaria',   t: 'Certificación bancaria',      obliga: true,  nota: 'Sin contraseña' },
-    { k: 'baucher1',   t: 'Baucher de la planilla',      obliga: true,  nota: '' },
+    { k: 'baucher1',   t: 'Baucher de la planilla',      obliga: true,  nota: 'Foto o PDF', acepta: IMAGEN_O_PDF },
     { k: 'planilla1',  t: 'Planilla',                    obliga: true,  nota: 'Sin contraseña' },
-    { k: 'baucher2',   t: 'Baucher planilla anexa',      obliga: false, nota: 'Solo si presentas planilla adicional' },
+    { k: 'baucher2',   t: 'Baucher planilla anexa',      obliga: false, nota: 'Foto o PDF. Solo si presentas planilla adicional', acepta: IMAGEN_O_PDF },
     { k: 'planilla2',  t: 'Planilla anexa',              obliga: false, nota: 'Solo si presentas planilla adicional' },
     { k: 'anexos',     t: 'Anexos de actividades',       obliga: false, nota: 'Todo en un solo PDF', mb: 10 },
     { k: 'rutSimple',  t: 'RUT (Régimen Simple)',        obliga: false, nota: 'Solo Régimen Simple' },
@@ -586,7 +601,8 @@
     var zona = K.nodo('<div class="cta-doc__zona"></div>');
     cuerpo.appendChild(zona);
     var adj = K.piezas.adjuntos.montar(zona, {
-      acepta: 'application/pdf',
+      acepta: a.acepta || SOLO_PDF,
+      etiqueta: a.t,
       varios: false,
       maximo: 1,
       maximoMB: a.mb || 2,

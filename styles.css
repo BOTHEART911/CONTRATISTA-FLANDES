@@ -1102,3 +1102,64 @@
 @media (min-width: 520px) {
   .ubic { grid-template-columns: 1fr 1fr; }
 }
+
+/* ════════════════════════════════════════════════════════════
+   4.6 · QUE SE LEA EN EL COMPUTADOR
+
+   La app se diseñó para el teléfono y ahí está bien. En una
+   pantalla de portátil pasaba lo contrario de lo que uno espera:
+   la caja se estiraba hasta 1.280 px y la letra se quedaba en el
+   tamaño del móvil, así que los rótulos ("Número", "N° de proceso
+   SECOP II") quedaban minúsculos y perdidos en un renglón larguísimo.
+
+   Dos cosas, y ninguna toca el teléfono:
+     · La letra CRECE con la pantalla. Como casi todo está en rem,
+       subir la raíz sube la app entera de una vez, sin repasar
+       ochenta reglas.
+     · El renglón se ACORTA. Un dato con su rótulo a 1.280 px de
+       distancia no se lee, se busca. Las vistas de datos y los
+       formularios se quedan en 1.040 px; las rejillas de accesos
+       siguen aprovechando todo el ancho, que ahí sí sirve.
+   ════════════════════════════════════════════════════════════ */
+
+@media (min-width: 900px) {
+  :root { font-size: 17px; }
+}
+@media (min-width: 1280px) {
+  :root { font-size: 18px; }
+}
+
+/* el ancho de lectura de lo que son datos y formularios */
+@media (min-width: 900px) {
+  .vista > .resumen,
+  .vista > .kit-tarjeta,
+  .vista > .formulario,
+  .vista > .grupo,
+  .vista > section.kit-tarjeta {
+    width: min(1040px, 100%);
+    margin-inline: auto;
+  }
+}
+
+/* los pocos tamaños que estaban en píxeles y no crecían con lo demás */
+@media (min-width: 900px) {
+  .obl__t { font-size: 15px; }
+  .obl__estado, .obl__foto { font-size: 12.5px; }
+  .resumen-inf__p { font-size: 14.5px; }
+  .resumen-inf__n span { font-size: 16px; }
+  .campo input, .campo textarea, .campo select { font-size: 15.5px; }
+}
+
+/* En una fila ancha, el rótulo y el valor se separan demasiado. Se le
+   pone una rejilla: el rótulo a la izquierda con su ancho y el valor
+   pegado a él, no al otro extremo de la pantalla. */
+@media (min-width: 900px) {
+  .dato {
+    display: grid;
+    grid-template-columns: minmax(180px, 260px) 1fr;
+    align-items: baseline;
+    gap: 18px;
+  }
+  .dato__v { text-align: left; }
+  .dato--largo { grid-template-columns: 1fr; }
+}

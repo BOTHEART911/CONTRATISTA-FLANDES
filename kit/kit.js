@@ -304,21 +304,39 @@
    * donde había ese mismo número de dígitos, que es lo único que no se
    * descoloca cuando aparecen o desaparecen los puntos.
    *
+   * EL FALLO DE LA 4.5, PARA QUE NO SE REPITA (cazado el 22/09 por Oss)
+   *
+   * La primera versión leía el número con aNumero() sobre el texto que ESTA
+   * MISMA función acababa de formatear. Y ahí está la trampa: con el campo
+   * en "4.200", teclear otro cero deja "4.2000", y aNumero lee eso como el
+   * decimal 4,2 — un punto con cuatro cifras detrás no es separador de
+   * miles. Resultado: el campo se quedaba en "4,2" y se guardaba un 4 donde
+   * iban cuatro millones doscientos mil.
+   *
+   * REGLA: aquí NUNCA se vuelve a leer el formato propio. Solo se miran los
+   * DÍGITOS. aNumero() es para lo que escribe una persona o lo que viene de
+   * la hoja, no para lo que escribió esta función.
+   *
    * Devuelve una función para leer el número pelado, que es lo que se
    * manda al CORE: en la hoja nunca entra un punto.
    */
   function pesosEnVivo(inp, alCambiar) {
     if (!inp) return function () { return 0; };
 
+    /* Los dígitos y nada más. Un campo de pesos no lleva decimales: en la
+       hoja los valores son enteros y el formato de aquí no los admite. */
+    function digitos(t) { return String(t === null || t === undefined ? '' : t).replace(/\D/g, ''); }
+
     function pintar() {
       var crudo = inp.value;
-      var digitosAntes = crudo.slice(0, inp.selectionStart || 0).replace(/\D/g, '').length;
-      var n = aNumero(crudo);
+      var digitosAntes = digitos(crudo.slice(0, inp.selectionStart || 0)).length;
 
       /* Un campo vacío se queda vacío: escribir un 0 de la nada hace que la
          persona lo borre a cada rato. Y el "0" que teclea ella sí vale. */
-      var soloDigitos = crudo.replace(/\D/g, '');
-      inp.value = soloDigitos ? numero(n) : '';
+      var solo = digitos(crudo).replace(/^0+(?=\d)/, '');   /* 007 -> 7 */
+      var n = solo ? Number(solo) : 0;
+
+      inp.value = solo ? n.toLocaleString('es-CO') : '';
 
       /* el cursor, donde volvían a estar esos mismos dígitos */
       var pos = 0, vistos = 0;
@@ -328,14 +346,19 @@
       }
       try { inp.setSelectionRange(pos, pos); } catch (e) { /* type=tel en iOS a veces se queja */ }
 
-      if (typeof alCambiar === 'function') alCambiar(soloDigitos ? String(n) : '');
+      if (typeof alCambiar === 'function') alCambiar(solo ? String(n) : '');
     }
 
     inp.addEventListener('input', pintar);
-    inp.addEventListener('blur', function () {
-      if (inp.value) inp.value = numero(aNumero(inp.value));
-    });
-    return function () { return aNumero(inp.value); };
+    inp.addEventListener('blur', pintar);
+    /* Pegar un valor con puntos, comas o un $ delante entra igual: se
+       queda con los dígitos, que es lo que hay que guardar. */
+    inp.addEventListener('paste', function () { setTimeout(pintar, 0); });
+
+    /* el valor de arranque también pasa por el mismo filtro */
+    if (inp.value) pintar();
+
+    return function () { return Number(digitos(inp.value) || 0); };
   }
   /** '2026-09-21' o Date → '21/09/2026'. Lo que no es fecha se devuelve tal cual. */
   function fecha(v) {
