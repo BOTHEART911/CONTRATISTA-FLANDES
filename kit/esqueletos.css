@@ -100,10 +100,19 @@
    persona no sabe si aquello sigue vivo. Sale el cohete con
    "Cargando datos", pegado encima del esqueleto y sin taparlo. */
 .kit-esq { position: relative; }
+/* 4.7 · DEBAJO DEL ESQUELETO, CENTRADA Y SIEMPRE DEL MISMO TAMAÑO.
+   El contenedor del esqueleto es una rejilla: en la forma 'tarjetas'
+   la pastilla caía como una celda más, pegada a la izquierda bajo la
+   primera tarjeta. Ahora ocupa su propia fila entera (grid-column
+   1 / -1) y se centra dentro de ella (justify-self), con el ancho de
+   su contenido. Va la última en el DOM, así que queda debajo. */
 .kit-esq__espera {
-  position: sticky; top: 12px;
+  position: relative;
+  grid-column: 1 / -1;
+  justify-self: center;
+  align-self: start;
   z-index: 2;
-  margin: 0 auto 10px;
+  margin: 4px auto 0;
   width: max-content; max-width: 90%;
   display: flex; align-items: center; gap: 10px;
   padding: 9px 16px 9px 12px;

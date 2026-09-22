@@ -216,7 +216,8 @@
     personales: vistaPersonales,
     borrador: vistaBorrador,
     cuenta: vistaCuenta,
-    avisos: vistaAvisos
+    avisos: vistaAvisos,
+    seguimiento: vistaSeguimiento
   };
 
   function irA(v) { location.hash = '#/' + v; }
@@ -254,7 +255,8 @@
     personales: 'DATOS PERSONALES',
     borrador: 'BORRADOR ACTIVIDADES',
     cuenta: 'INGRESAR CUENTA',
-    avisos: 'MIS NOTIFICACIONES'
+    avisos: 'MIS NOTIFICACIONES',
+    seguimiento: 'ESTADO DE CUENTA'
   };
 
   /* ---------- inicio ---------- */
@@ -277,6 +279,13 @@
     var rejilla = K.nodo('<div class="kit-rejilla kit-rejilla--auto accesos"></div>');
     rejilla.appendChild(acceso('BORRADOR ACTIVIDADES', 'Escribe tus actividades y sube las evidencias', 'img/datos_de_procesos.webp', function () { irA('borrador'); }));
     rejilla.appendChild(acceso('INGRESAR CUENTA', 'Fechas, planilla y documentos para radicar', 'img/datos_de_procesos.webp', function () { irA('cuenta'); }));
+    /* 4.7 · el seguimiento: lo que en la app vieja eran seis botones
+       sueltos del menú (estado de cuenta, plan de pagos, mi cuenta Drive,
+       reportar cuenta, recibir egresos y certificación) es UNA vista. La
+       certificación lleva su propia tarjeta porque es un trámite que se
+       pide solo, sin ir a mirar la cuenta. */
+    rejilla.appendChild(acceso('ESTADO DE CUENTA', 'Dónde va tu cuenta, reportar, tus documentos, pagos y egresos', 'img/datos_de_procesos.webp', function () { irA('seguimiento'); }));
+    rejilla.appendChild(acceso('CERTIFICACIÓN CONTRATO', 'Genera el certificado de tu contrato en PDF', 'img/datos_de_procesos.webp', function () { irA('seguimiento/certificacion'); }));
 
     /* La burbuja de sin leer va aquí y no en una campana aparte: es donde
        la persona mira al entrar, y así el aviso guardado se ve aunque el
@@ -300,7 +309,13 @@
     caja.insertBefore(destino, rejilla);
 
     K.piezas.esqueletos.mientras(destino, cargarInicio(), { forma: 'ficha', cuantos: 1 })
-      .then(function () { pintarResumen(destino); })
+      .then(function () {
+        pintarResumen(destino);
+        /* 4.7 · el estado de cuenta cuesta de 3 a 4 s de servidor y otros
+           2 a 3 de viaje (medido). Se pide por detrás en cuanto el inicio
+           está pintado: cuando la persona toque la tarjeta, ya está. */
+        if (window.SEGUIMIENTO) setTimeout(function () { window.SEGUIMIENTO.precargar(); }, 1200);
+      })
       ['catch'](function (e) { destino.appendChild(errorCaja(e)); });
   }
 
@@ -348,6 +363,12 @@
     window.CUENTA.abrir(sub);
   }
 
+  /* ---------- estado de cuenta (4.7) ---------- */
+
+  function vistaSeguimiento(sub) {
+    window.SEGUIMIENTO.abrir(sub);
+  }
+
   /* ---------- mis avisos ---------- */
 
   function vistaAvisos() {
@@ -377,12 +398,27 @@
   /* El número rojo de avisos sin leer. Se pide aparte y en segundo plano:
      si tarda o falla, el inicio ya está pintado y nadie se queda mirando
      una pantalla en blanco por una burbuja. */
+  var quitarOidoBuzon = null;
+
   function pintarBurbuja(tarjeta) {
     /* 4.5: el número ya viene en el arranque, así que esto no pide nada.
-       Era la quinta llamada de las cinco que costaba abrir la app. */
-    var delArranque = (ARRANQUE && ARRANQUE.avisos) ? (ARRANQUE.avisos.noLeidos || 0) : null;
-    var ya = (delArranque === null && K.piezas.buzon) ? K.piezas.buzon.noLeidos() : delArranque;
+       Era la quinta llamada de las cinco que costaba abrir la app.
+
+       4.7 · Y SE VA CUANDO LEES. Antes se pintaba SIEMPRE con el número
+       del arranque, que no cambia nunca: leías el comunicado, volvías y
+       la burbuja seguía ahí. Ahora manda lo que sabe el buzón (el
+       arranque se lo entrega al empezar) y la burbuja escucha el aviso
+       'kit:buzon', así que baja a cero en cuanto el buzón marca leído,
+       aunque ya estés de vuelta en el inicio. Sin un viaje más. */
+    var ya = K.piezas.buzon ? K.piezas.buzon.noLeidos()
+      : ((ARRANQUE && ARRANQUE.avisos) ? (ARRANQUE.avisos.noLeidos || 0) : 0);
     poner(ya || 0);
+
+    if (quitarOidoBuzon) quitarOidoBuzon();
+    quitarOidoBuzon = K.cuando('kit:buzon', function (d) {
+      if (ARRANQUE && ARRANQUE.avisos) ARRANQUE.avisos.noLeidos = d.noLeidos || 0;
+      if (document.body.contains(tarjeta)) poner(d.noLeidos || 0);
+    });
 
     function poner(n) {
       var vieja = tarjeta.querySelector('.acceso__burbuja');

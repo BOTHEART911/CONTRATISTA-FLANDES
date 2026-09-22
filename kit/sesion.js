@@ -85,6 +85,10 @@
       '    <div class="kit-sesion__pie">' +
       '      <span>' + K.esc(cfg.pie || 'Alcaldía Municipal de Flandes') + '</span>' +
       '    </div>' +
+      /* 4.7 · el pie de autoría va en TODAS las vistas, también en esta.
+         Aquí todavía no hay sesión: se pinta con los textos por defecto y
+         no se le cobra un viaje al servidor por dos líneas. */
+      (K.piezas.creditos ? '    <footer class="kit-cred kit-sesion__cred">' + K.piezas.creditos.html() + '</footer>' : '') +
       '  </div>' +
       '</div>'
     );

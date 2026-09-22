@@ -357,3 +357,8 @@
   .kit-sesion::before { animation: none; }
   .kit-sesion__caja, .kit-sesion__logo { animation: none; }
 }
+
+/* 4.7 · el pie de autoría dentro de la tarjeta de entrada */
+.kit-sesion__cred { padding: 16px 0 2px; margin-top: 0; }
+.kit-sesion__cred .kit-cred__autor { font-size: 16px; }
+.kit-sesion__cred .kit-cred__frase { font-size: 12px; margin-top: 9px; padding-top: 9px; }

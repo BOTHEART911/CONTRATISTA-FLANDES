@@ -78,7 +78,10 @@ var ARMAZON = [
    */
   './kit/iconos.js',
   './kit/confirmar.js',
-  './cuenta.js'
+  './cuenta.js',
+  /* 4.7 · el estado de cuenta y el exportador de los egresos */
+  './seguimiento.js',
+  './kit/exportar.js', './kit/exportar.css'
 ];
 
 self.addEventListener('install', function (e) {
