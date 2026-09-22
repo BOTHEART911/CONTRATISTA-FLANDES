@@ -126,6 +126,14 @@
         '    </div>' +
         '    <p class="kit-bien__pista"></p>' +
         '    <p class="kit-bien__pie">Puedes instalarla más tarde desde el menú de tu perfil.</p>' +
+        /* 4.6.1 · la firma también va aquí. Es la PRIMERA pantalla que ve
+           quien abre el enlace, y era la única de la app sin el pie de
+           autoría. Se pinta con los valores por defecto y no se pide la
+           configuración: esta pantalla sale antes de que haya sesión, y no
+           se le va a cobrar un viaje al servidor a la portada. */
+        '    <footer class="kit-cred kit-bien__cred">' +
+        (K.piezas.creditos ? K.piezas.creditos.html() : '') +
+        '    </footer>' +
         '  </div>' +
         '</div>'
       );

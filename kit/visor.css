@@ -23,8 +23,11 @@
 
 .kit-visor__caja {
   position: relative;
-  width: min(940px, 100%);
-  height: min(86vh, 900px);
+  /* 4.6.1 · aprovecha el ancho de verdad. Con 940 px, en una pantalla de
+     1.440 el documento quedaba en una columna estrecha con dos franjas
+     vacías a los lados; una planilla se lee mucho mejor ancha. */
+  width: min(1280px, 100%);
+  height: min(92vh, 1000px);
   background: var(--k-papel);
   color: var(--k-tinta);
   border-radius: var(--k-r-lg);

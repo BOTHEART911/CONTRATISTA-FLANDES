@@ -98,8 +98,6 @@
       '    <b>Toca para adjuntar</b>' +
       '    <span class="kit-adj__admite"></span>' +
       '  </div>' +
-      '  <button type="button" class="kit-adj__pegar" title="Pegar lo que tengas copiado">' +
-           K.icono('clip', 15) + ' Pegar</button>' +
       '</div>' +
       '<input type="file" class="kit-adj__input kit-oculto"' +
       (acepta ? ' accept="' + K.esc(acepta) + '"' : '') +
@@ -282,12 +280,28 @@
       if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) meter(e.dataTransfer.files);
     });
 
-    /* ── esta zona pasa a ser la ACTIVA en cuanto la tocan ── */
+    /*
+     * ── ESTA ZONA PASA A SER LA ACTIVA EN CUANTO EL PUNTERO SE POSA ──
+     *
+     * 4.6.1 · basta con PONERSE ENCIMA. Se quitó el botón "Pegar": leía el
+     * portapapeles con navigator.clipboard.read(), que NO ve los archivos
+     * copiados desde el explorador (ahí el portapapeles lleva una lista de
+     * ficheros, no un blob de imagen). Por eso decía "no hay ninguna imagen
+     * ni PDF" y, acto seguido, el Ctrl+V sí funcionaba: ese otro camino lee
+     * clipboardData.items, que son los archivos de verdad. Un botón que
+     * miente sobra.
+     *
+     * Con el puntero encima ya se ve cuál casilla se va a quedar el pegado,
+     * y en el móvil el toque hace lo mismo. Sigue habiendo UNA sola zona
+     * activa en toda la página, que es lo que arregló el Ctrl+V que se
+     * repartía entre las veinte casillas.
+     */
     function activar() {
       if (zonaActiva && zonaActiva !== zona) zonaActiva.classList.remove('kit-adj--activa');
       zonaActiva = zona;
       zona.classList.add('kit-adj--activa');
     }
+    zona.addEventListener('pointerenter', activar);
     zona.addEventListener('pointerdown', activar);
     zona.addEventListener('focusin', activar);
 
@@ -333,40 +347,6 @@
       var sacados = deLosItems((e.clipboardData && e.clipboardData.items) || []);
       if (sacados.length) { e.preventDefault(); meter(sacados); }
     });
-
-    /*
-     * El botón de pegar, para el ratón. En el computador, el clic derecho
-     * sobre esta caja no ofrece "Pegar" — no es un campo de texto, y el
-     * menú del navegador no sabe meter un archivo aquí. Con esto no hace
-     * falta acordarse del atajo.
-     */
-    var bPegar = zona.querySelector('.kit-adj__pegar');
-    if (bPegar) {
-      bPegar.addEventListener('click', function (ev) {
-        ev.stopPropagation();
-        activar();
-        if (!navigator.clipboard || !navigator.clipboard.read) {
-          K.aviso('Tu navegador no deja pegar desde aquí. Usa Ctrl+V, o toca para elegir el archivo.', 'aviso', 5000);
-          return;
-        }
-        navigator.clipboard.read().then(function (trozos) {
-          var pendientes = [];
-          trozos.forEach(function (t) {
-            t.types.forEach(function (tipo) {
-              if (tipo.indexOf('image/') !== 0 && tipo !== 'application/pdf') return;
-              pendientes.push(t.getType(tipo).then(function (blob) {
-                var ext = tipo === 'application/pdf' ? '.pdf' : (tipo === 'image/jpeg' ? '.jpg' : '.png');
-                return new File([blob], 'pegado-' + Date.now() + ext, { type: tipo });
-              }));
-            });
-          });
-          if (!pendientes.length) { K.aviso('No hay ninguna imagen ni PDF en el portapapeles.', 'aviso', 4000); return; }
-          Promise.all(pendientes).then(meter);
-        })['catch'](function () {
-          K.aviso('El navegador no dio permiso para leer el portapapeles. Usa Ctrl+V.', 'aviso', 5000);
-        });
-      });
-    }
 
     function aBase64() {
       return Promise.all(lista.map(function (f) {

@@ -567,10 +567,21 @@
     if (url) {
       var listo = K.nodo(
         '<div class="cta-doc__listo">' +
-        '  <a class="cta-doc__ver" href="' + K.esc(url) + '" target="_blank" rel="noopener">Ver el archivo cargado</a>' +
+        '  <button type="button" class="cta-doc__ver">' +
+             (K.icono ? K.icono('ojo', 16) : '') + 'Ver el archivo cargado</button>' +
         '  <button type="button" class="kit-btn kit-btn--plano cta-doc__quitar">Quitar</button>' +
         '</div>'
       );
+      /* 4.6.1 · SE ABRE AQUÍ, NO EN OTRA PESTAÑA.
+         Revisar una cuenta es comparar: si cada documento se va a una
+         pestaña, se pierde el hilo y volver cuesta. El visor del kit ya
+         hacía esto para Contratación; ahora también para el contratista.
+         Convierte el enlace de Drive a /preview, que es el único que se
+         deja incrustar — un /view dentro de un marco sale en blanco. */
+      listo.querySelector('.cta-doc__ver').addEventListener('click', function () {
+        if (!K.piezas.visor) { window.open(url, '_blank', 'noopener'); return; }
+        K.piezas.visor.abrir([{ titulo: a.t, url: url }]);
+      });
       listo.querySelector('.cta-doc__quitar').addEventListener('click', function () {
         /* 4.5: sin cuadros del sistema. La pregunta es de la app. */
         K.piezas.confirmar.preguntar({
@@ -621,7 +632,17 @@
     adj.aBase64()
       .then(function (arch) {
         if (!arch.length) throw K.problema('ARCHIVO', 'No se pudo leer el archivo.');
-        return K.pedir('cuentaArchivo', { archivo: a.k, pdf: arch[0].datos }, { ms: 120000 });
+        /* 4.6.1 · VIAJA TAMBIÉN EL TIPO Y EL NOMBRE.
+           Antes solo iba el contenido y el CORE lo guardaba SIEMPRE como
+           PDF. Una foto del baucher acababa en Drive llamada
+           "Baucher Planilla.pdf" con bytes de JPG dentro, y no había
+           forma de verla. Ahora el CORE respeta el formato de origen. */
+        return K.pedir('cuentaArchivo', {
+          archivo: a.k,
+          pdf: arch[0].datos,
+          tipo: arch[0].tipo || '',
+          nombre: arch[0].nombre || ''
+        }, { ms: 120000 });
       })
       .then(function (r) {
         E.archivos = E.archivos || {};

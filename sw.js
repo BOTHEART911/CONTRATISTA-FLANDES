@@ -64,6 +64,20 @@ var ARMAZON = [
   './kit/insights.js', './kit/insights.css',
   './kit/buzon.js', './kit/buzon.css',
   './kit/version.js',
+  /* 4.6.1 · el cielo de las franjas y el visor de documentos */
+  './kit/cielo.js', './kit/cielo.css',
+  './kit/visor.js', './kit/visor.css',
+  /*
+   * 4.6.1 · ESTOS DOS FALTABAN DESDE SIEMPRE, y era un fallo de verdad.
+   *
+   * index.html los carga, pero el armazón no los guardaba. Con red no se
+   * nota, porque lo que no está en la caché se pide a internet. Sin red —o
+   * con la red mala, que es lo normal en un municipio— la app arrancaba de
+   * la caché, se quedaba sin iconos.js, y K.icono() dejaba de existir: eso
+   * revienta CUALQUIER vista que pinte un icono, que son todas.
+   */
+  './kit/iconos.js',
+  './kit/confirmar.js',
   './cuenta.js'
 ];
 

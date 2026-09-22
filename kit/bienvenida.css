@@ -153,6 +153,20 @@
   color: rgba(255, 255, 255, .7);
 }
 
+/* 4.6.1 · la firma en la portada. El pie del kit está pensado para papel
+   blanco; aquí va sobre el verde, así que se le cambia el color y se le
+   quita el peso — la portada es para instalar la app, no para firmarla. */
+.kit-bien__cred {
+  margin-top: 18px;
+  padding: 0;
+  opacity: .85;
+}
+.kit-bien__cred .kit-cred__cop    { color: rgba(255, 255, 255, .55); }
+.kit-bien__cred .kit-cred__autor  { color: #fff; font-size: 15px; }
+.kit-bien__cred .kit-cred__frase  { color: rgba(255, 255, 255, .72); font-size: 12px; margin-top: 9px; padding-top: 9px; }
+.kit-bien__cred .kit-cred__frase::before { background: rgba(255, 255, 255, .3); }
+.kit-bien__cred .kit-cred__version { color: rgba(255, 255, 255, .5); }
+
 /* Quien pide menos movimiento, recibe menos movimiento. */
 @media (prefers-reduced-motion: reduce) {
   .kit-bien__aurora { animation: none; }

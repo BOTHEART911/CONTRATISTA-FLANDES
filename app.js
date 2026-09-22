@@ -193,6 +193,13 @@
         { texto: 'Cerrar sesión', al: salir, peligro: true }
       ]
     });
+    /* la barra de arriba es el otro espacio oscuro fijo de la app. Va con
+       'franja' y luz suave: en 60 px de alto una burbuja de 200 no sube,
+       solo tapa. */
+    if (K.piezas.cielo) {
+      K.piezas.cielo.poner(document.querySelector('.kit-banner'),
+        { burbujas: 3, luz: 'suave', franja: true });
+    }
   }
 
   function salir() {
@@ -254,13 +261,18 @@
 
   function vistaInicio() {
     var caja = K.nodo('<div class="kit-ancho vista"></div>');
-    caja.appendChild(K.nodo(
+    var saludo = K.nodo(
       '<section class="saludo">' +
       '  <p class="saludo__hola">Hola,</p>' +
       '  <h2 class="saludo__nombre">' + K.esc(nombreCorto(YO.nombre)) + '</h2>' +
       '  <p class="saludo__doc">Documento ' + K.esc(YO.documento || '') + '</p>' +
       '</section>'
-    ));
+    );
+    /* 4.6.1 · la franja verde deja de ser un degradado quieto: lleva el
+       mismo cielo de la portada de bienvenida (aurora y burbujas). Es la
+       pieza del kit, no una copia: se arregla en un sitio. */
+    if (K.piezas.cielo) K.piezas.cielo.poner(saludo, { burbujas: 3 });
+    caja.appendChild(saludo);
 
     var rejilla = K.nodo('<div class="kit-rejilla kit-rejilla--auto accesos"></div>');
     rejilla.appendChild(acceso('BORRADOR ACTIVIDADES', 'Escribe tus actividades y sube las evidencias', 'img/datos_de_procesos.webp', function () { irA('borrador'); }));

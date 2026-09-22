@@ -45,15 +45,11 @@
   background:
     radial-gradient(120% 90% at 12% 0%, var(--k-marca-clara) 0%, var(--k-marca) 46%, var(--k-marca-2) 100%);
 }
-.saludo::after {
-  /* Luz que cruza la franja, muy tenue. */
-  content: '';
-  position: absolute;
-  inset: -40% -20% auto -20%;
-  height: 130%;
-  background: radial-gradient(40% 46% at 70% 24%, rgba(255, 255, 255, .20), transparent 68%);
-  pointer-events: none;
-}
+/* 4.6.1 · la luz de esta franja ya NO se pinta aquí.
+   Había una mancha fija en ::after y encima llegó el cielo del kit con su
+   aurora: dos luces sumadas dejaban el lado derecho lavado, sobre todo en
+   modo noche, donde el verde de la marca es más claro. La luz la pone una
+   sola pieza, kit/cielo.css, y se corrige en un solo sitio. */
 .saludo__hola {
   margin: 0;
   font-size: .92rem;
@@ -869,7 +865,21 @@
   border-radius: var(--k-r-sm);
   background: var(--k-ok-fondo);
 }
-.cta-doc__ver { font-size: .88rem; color: var(--k-marca-2); }
+/* 4.6.1 · "Ver el archivo cargado" — ahora es un botón que abre el visor.
+   Iba en --k-marca-2, que es el verde MÁS OSCURO de la marca: sobre la
+   tarjeta oscura del modo noche quedaba verde sobre negro y no se leía. */
+.cta-doc__ver {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 10px; margin: -6px -10px;
+  border: 0; background: none; cursor: pointer;
+  font: 600 .88rem/1.2 var(--k-fuente);
+  color: var(--k-marca);
+  border-radius: var(--k-r-sm);
+  text-align: left;
+}
+.cta-doc__ver:hover { background: rgba(var(--k-marca-rgb), .10); }
+.cta-doc__ver svg { flex: 0 0 auto; }
+:root[data-tema="oscuro"] .cta-doc__ver { color: var(--k-marca-clara); }
 .cta-doc__quitar { color: var(--k-malo); padding: 6px 10px; }
 
 /* ---------- puerta cerrada y éxito ---------- */
