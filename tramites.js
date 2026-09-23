@@ -334,7 +334,7 @@
           '    <span class="tr-sol__cab"><b>' + K.esc(x.codigo) + '</b><span class="tr-est tr-est--' + tono + '">' + K.esc(estadoTexto(x.estado)) + '</span></span>' +
           '    <span class="tr-sol__t">' + K.esc(x.evento || resumen(x.detalles, 90)) + '</span>' +
           '    <span class="tr-sol__meta">' + K.esc(['Pedida el ' + x.fecha, x.publicacion ? 'para el ' + x.publicacion : ''].filter(Boolean).join(' · ')) + '</span>' +
-          (x.asignado ? '<span class="tr-sol__quien">' + K.icono('check', 13) + ' La atiende ' + K.esc(nombrePropio(x.asignado)) + '</span>' : '') +
+          (x.asignado ? '<span class="tr-sol__quien">' + K.icono('check', 13) + ' <span class="tr-sol__cara"></span>La atiende ' + K.esc(nombrePropio(x.asignado)) + '</span>' : '') +
           '  </summary>' +
           '  <div class="tr-sol__cuerpo">' + pasos(x.estado) +
           '    <div class="tr-chips tr-chips--quietas">' + x.requerimientos.map(function (r) { return '<span class="kit-pastilla">' + K.esc(r) + '</span>'; }).join('') + '</div>' +
@@ -346,6 +346,10 @@
           '  </div>' +
           '</details>'
         );
+        /* 4.9 · la cara de quien atiende en Prensa (o sus iniciales) */
+        var hueco = d.querySelector('.tr-sol__cara');
+        if (hueco && K.piezas.personas) hueco.appendChild(K.piezas.personas.avatar(x.asignado, { tam: 22, sinZoom: true }));
+        else if (hueco) hueco.remove();
         lista.appendChild(d);
       });
     }

@@ -49,7 +49,7 @@
   var M = window.MARCA || {};
   var SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
   var TOKEN_K = 'avisos.token';       /* el token ya registrado en este aparato */
-  var AHORA_NO_K = 'avisos.ahoraNo';  /* dijo que ahora no: no se le insiste en cada arranque */
+  var AHORA_NO_K = 'avisos.ahoraNo';  /* 4.9: ya no se usa; se borra al cerrar sesión por si quedó */
   var SW_SCOPE = './firebase-cloud-messaging-push-scope';
 
   var alLlegarFns = [];
@@ -260,28 +260,73 @@
   }
 
   /**
-   * Al entrar.
+   * 4.9 · AVISOS AUTOMÁTICOS Y ESCONDIDOS (pliego de Oss, 22/09)
    *
-   * OJO CON EL CUADRO DE ANDROID. Antes esto llamaba derecho a
-   * Notification.requestPermission() y al usuario le caía el cuadro seco
-   * del sistema nada más entrar, sin saber qué le estaban pidiendo ni para
-   * qué. Quien dice "Bloquear" ahí no vuelve a ver la pregunta NUNCA: el
-   * navegador no la repite, y ese teléfono se queda sin avisos para
-   * siempre. Además, en iPhone el permiso solo se concede si sale de un
-   * toque directo, así que pedirlo al arrancar fallaba siempre.
+   * Antes, al entrar, salía NUESTRA hoja preguntando si quería activar los
+   * avisos ("Que no se te pase ninguna cuenta" · Activar · Ahora no). Oss
+   * pidió que fuera como en JHONNY-PERDOMO: nada de preguntar, se activan
+   * solos. Allá se pide el permiso justo al iniciar sesión.
    *
-   * Ahora: si el permiso ya está dado, se renueva el token en silencio.
-   * Si no, se enseña una hoja nuestra que explica de qué va, y el cuadro
-   * del sistema sale DESPUÉS, cuando la persona toca "Activar".
+   * Aquí va un paso más fino, porque el navegador SOLO muestra su cuadro
+   * si sale de un toque real (en iPhone es obligatorio; en Android, sin
+   * toque, Chrome lo esconde en la barra de direcciones):
+   *
+   *   1. pedirAlTocar() se llama DENTRO del toque de "Entrar". El cuadro
+   *      del sistema sale ahí mismo, mientras el login viaja.
+   *   2. Ya con la sesión, autoActivar() registra el teléfono en silencio
+   *      si el permiso quedó dado.
+   *   3. Quien ya tenía la sesión abierta no vuelve a tocar "Entrar": para
+   *      él, el cuadro sale con su PRIMER toque dentro de la app, una sola
+   *      vez por apertura.
+   *
+   * iPhone sin instalar: no hay nada que pedir (Safari no da avisos a una
+   * pestaña), así que no se hace nada ni se le molesta.
+   * Si la persona dice que no, no se le vuelve a insistir: el navegador
+   * lo recuerda, y la tarjeta "Avisos al teléfono" del inicio sigue ahí.
    */
-  function autoActivar(opciones) {
-    var o = opciones || {};
+  var pidiendo = null;
+
+  function puedePreguntar() {
+    if (esIOS() && !instalada()) return false;
+    if (!soporta()) return false;
+    return permiso() === 'default';
+  }
+
+  function pedirAlTocar() {
+    try {
+      if (!puedePreguntar()) return pidiendo || Promise.resolve(permiso());
+      if (!pidiendo) {
+        var r = Notification.requestPermission();
+        pidiendo = (r && r.then) ? r : Promise.resolve(Notification.permission);
+        pidiendo.then(function (p) {
+          pidiendo = null;
+          /* si ya hay sesión (el primer toque dentro de la app), se registra de una */
+          if (p === 'granted' && K.token && K.token()) activar({ silencioso: true });
+        }, function () { pidiendo = null; });
+      }
+      return pidiendo;
+    } catch (e) { return Promise.resolve('default'); }
+  }
+
+  var esperandoToque = false;
+
+  function autoActivar() {
     try {
       if (permiso() === 'granted') { activar({ silencioso: true }); return; }
-      if (estado() === 'no-soportado' || estado() === 'bloqueado') return;
-      if (esIOS() && !instalada()) return;          /* sin instalar no hay nada que pedir */
-      if (K.guardar.leer(AHORA_NO_K, false) === true) return;
-      setTimeout(function () { proponer(o); }, o.espera || 1200);
+      if (pidiendo) {
+        pidiendo.then(function (p) { if (p === 'granted') activar({ silencioso: true }); });
+        return;
+      }
+      if (!puedePreguntar() || esperandoToque) return;
+      esperandoToque = true;
+      var alToque = function () {
+        document.removeEventListener('pointerup', alToque, true);
+        document.removeEventListener('keydown', alToque, true);
+        esperandoToque = false;
+        pedirAlTocar();
+      };
+      document.addEventListener('pointerup', alToque, true);
+      document.addEventListener('keydown', alToque, true);
     } catch (e) {}
   }
 
@@ -348,7 +393,7 @@
   function olvidar() { K.guardar.borrar(TOKEN_K); K.guardar.borrar(AHORA_NO_K); }
 
   K.piezas.avisos = {
-    activar: activar, autoActivar: autoActivar, proponer: proponer, estado: estado,
+    activar: activar, autoActivar: autoActivar, pedirAlTocar: pedirAlTocar, proponer: proponer, estado: estado,
     alLlegar: alLlegar, olvidar: olvidar, configurar: configurar,
     plataforma: plataforma, instalada: instalada, esIOS: esIOS
   };

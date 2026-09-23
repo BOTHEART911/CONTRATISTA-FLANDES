@@ -45,6 +45,8 @@
 <link rel="stylesheet" href="kit/buzon.css">
 <!-- 4.7: los egresos registrados se descargan en PDF o Excel -->
 <link rel="stylesheet" href="kit/exportar.css">
+<!-- 4.9: caras (fotos o iniciales) y la foto de perfil con su recorte -->
+<link rel="stylesheet" href="kit/personas.css">
 <link rel="stylesheet" href="styles.css">
 
 <!-- version.js antes que el kit: la pieza de versión lee APP_VERSION al
@@ -82,6 +84,10 @@
 <!-- 4.8: las pastillas de filtro (temas de los tutoriales, estados de
      las solicitudes). El CSS ya venía en base.css; la pieza no se cargaba. -->
 <script src="kit/pastillas.js"></script>
+<!-- 4.9: las caras de quien atiende y la foto de perfil (subir, recortar,
+     cambiar). personas.js antes que perfil.js: perfil pinta con avatar(). -->
+<script src="kit/personas.js"></script>
+<script src="kit/perfil.js"></script>
 </head>
 
 <body>
@@ -97,6 +103,8 @@
        tutoriales y sitios web -->
   <script src="tramites.js"></script>
   <script src="institucional.js"></script>
+  <!-- 4.9: la ayuda (Insights) de cada vista -->
+  <script src="ayuda.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

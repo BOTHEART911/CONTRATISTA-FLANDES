@@ -47,6 +47,7 @@
   var FRESCO_MS = 60000;   /* lo precargado vale un minuto */
   var DOCS = {};           /* informe -> lista de documentos de su carpeta */
   var CERT = null;         /* la última certificación generada */
+  var ULTIMO = null;       /* 4.9: lo último que llegó, aunque la vista no se haya abierto */
 
   /* ══════════════ las dos llamadas ══════════════ */
 
@@ -56,6 +57,12 @@
     var c = { en: ahora };
     c.seg = K.pedir('seguimiento', { historia: false }, { ms: 90000 });
     c.hist = K.pedir('seguimientoHistoria', {}, { ms: 90000 })['catch'](function () { return null; });
+    /* 4.9 · lo precargado también le sirve a la ayuda del inicio (quién
+       aprobó, qué toca ahora) sin haber entrado a esta vista */
+    c.seg.then(function (d) {
+      ULTIMO = d;
+      c.hist.then(function (h) { if (ULTIMO === d) mezclar(h, d); });
+    }, function () {});
     /* si la principal falla, no se guarda: la próxima vez se vuelve a pedir */
     c.seg['catch'](function () { if (CACHE === c) CACHE = null; });
     CACHE = c;
@@ -116,21 +123,23 @@
 
   /* ══════════════ mezcla de la historia (bitácoras) ══════════════ */
 
-  function mezclar(h) {
-    if (!h || !h.porInforme || !S) return;
-    S.cuentas.forEach(function (c) {
+  function mezclar(h, X) {
+    /* 4.9: mezcla sobre lo que se le pase (la precarga) o sobre la vista */
+    var T = X || S;
+    if (!h || !h.porInforme || !T) return;
+    T.cuentas.forEach(function (c) {
       var x = h.porInforme[c.informe];
       if (!x) return;
-      ['aprobada', 'aprobo', 'orden', 'fechaOrden', 'egreso', 'egreso2', 'fechaEgreso', 'fechaPago', 'fuente', 'banco']
+      ['aprobada', 'aprobo', 'orden', 'fechaOrden', 'ordenQuien', 'egreso', 'egreso2', 'fechaEgreso', 'egresoQuien', 'fechaPago', 'fuente', 'banco']
         .forEach(function (k) { if (!c[k] && x[k]) c[k] = x[k]; });
       if (!c.neto && x.neto) c.neto = x.neto;
       if ((x.devoluciones || []).length > (c.devoluciones || []).length) c.devoluciones = x.devoluciones;
       var fechas = [c.radicada, c.aprobada, c.fechaOrden, c.fechaEgreso, c.fechaPago];
       (c.hitos || []).forEach(function (p) { if (!p.fecha && c.hito >= p.n) p.fecha = fechas[p.n - 1] || ''; });
     });
-    S.netoPagado = h.netoPagado || S.netoPagado;
-    S.egresos = egresosDe(S.cuentas);
-    S._historia = true;
+    T.netoPagado = h.netoPagado || T.netoPagado;
+    T.egresos = egresosDe(T.cuentas);
+    T._historia = true;
   }
 
   function egresosDe(cuentas) {
@@ -370,27 +379,48 @@
       ' en esta cuenta</summary><ul></ul></details>');
     var ul = d.querySelector('ul');
     lista.forEach(function (x) {
-      ul.appendChild(K.nodo('<li><span class="seg-dev__f">' + K.esc(x.fecha || '') + (x.quien ? ' · ' + K.esc(x.quien) : '') +
-        '</span><span class="seg-dev__m">' + K.esc(x.motivo || 'Sin motivo escrito') + '</span></li>'));
+      var li = K.nodo('<li><span class="seg-dev__f">' + K.esc(x.fecha || '') + (x.quien && !K.piezas.personas ? ' · ' + K.esc(x.quien) : '') +
+        '</span><span class="seg-dev__m">' + K.esc(x.motivo || 'Sin motivo escrito') + '</span></li>');
+      /* 4.9 · quien la devolvió, con su cara (o sus iniciales) */
+      if (x.quien && K.piezas.personas) {
+        var q = K.nodo('<span class="seg-dev__quien"></span>');
+        q.appendChild(K.piezas.personas.chip(x.quien, 'La devolvió', { tam: 26 }));
+        li.insertBefore(q, li.firstChild.nextSibling);
+      }
+      ul.appendChild(li);
     });
     return d;
   }
 
+  /* 4.9 · cada paso lleva la cara de quien lo hizo: el supervisor que
+     revisó, quien aprobó en Contratación, quien hizo la orden en
+     Contabilidad y el egreso en Tesorería. Sin foto, sus iniciales. */
   function datosCuenta(c) {
+    var P = K.piezas.personas;
+    var revisada = c.hito >= 1 && c.estado !== 'INGRESADA' && c.estado !== 'REPORTADA' ? c.revisada : '';
     var filas = [
       ['Valor de la cuenta', c.valor ? pesos(c.valor) : ''],
       ['Radicada', c.radicada],
-      ['Revisada por tu supervisor(a)', c.hito >= 1 && c.estado !== 'INGRESADA' && c.estado !== 'REPORTADA' ? c.revisada : ''],
-      ['Aprobada por Contratación', c.aprobada ? c.aprobada + (c.aprobo ? ' · ' + c.aprobo : '') : ''],
-      ['Orden de pago', c.orden ? 'N° ' + c.orden + (c.fechaOrden ? ' · ' + c.fechaOrden : '') : ''],
-      ['Egreso', c.egreso ? 'N° ' + c.egreso + (c.egreso2 ? ' y ' + c.egreso2 : '') + (c.fechaEgreso ? ' · ' + c.fechaEgreso : '') : ''],
+      ['Revisada por tu supervisor(a)', revisada, revisada && S ? S.supervisor : '', 'Tu supervisor(a)'],
+      ['Aprobada por Contratación', c.aprobada ? c.aprobada + (c.aprobo && !P ? ' · ' + c.aprobo : '') : '', c.aprobada ? c.aprobo : ''],
+      ['Orden de pago', c.orden ? 'N° ' + c.orden + (c.fechaOrden ? ' · ' + c.fechaOrden : '') : '', c.orden ? c.ordenQuien : ''],
+      ['Egreso', c.egreso ? 'N° ' + c.egreso + (c.egreso2 ? ' y ' + c.egreso2 : '') + (c.fechaEgreso ? ' · ' + c.fechaEgreso : '') : '', c.egreso ? c.egresoQuien : ''],
       ['Pagada', c.fechaPago],
       ['Neto girado', c.neto ? pesos(c.neto) : ''],
       ['Fuente', c.fuente ? c.fuente + (c.banco ? ' · Banco ' + c.banco : '') : '']
     ].filter(function (f) { return String(f[1] || '').trim(); });
     var dl = K.nodo('<dl class="seg-datos"></dl>');
     filas.forEach(function (f) {
-      dl.appendChild(K.nodo('<div class="seg-dato"><dt>' + K.esc(f[0]) + '</dt><dd>' + K.esc(f[1]) + '</dd></div>'));
+      var fila = K.nodo('<div class="seg-dato"><dt>' + K.esc(f[0]) + '</dt><dd>' + K.esc(f[1]) + '</dd></div>');
+      if (f[2] && P) {
+        /* el dato queda en su sitio y la persona va debajo, a lo ancho:
+           así ni el nombre ni el N° de orden se cortan en un teléfono */
+        fila.classList.add('seg-dato--quien');
+        var q = K.nodo('<div class="seg-quien"></div>');
+        q.appendChild(P.chip(f[2], f[3] || '', { tam: 26 }));
+        fila.appendChild(q);
+      }
+      dl.appendChild(fila);
     });
     return dl;
   }
@@ -741,8 +771,11 @@
   window.SEGUIMIENTO = {
     abrir: function (sub) { abrir(sub); },
     precargar: precargar,
+    /* 4.9: la ayuda (ayuda.js) habla con las mismas frases de esta vista */
+    _detalle: detalle,
+    _accion: textoAccion,
     /* para el banco de pruebas */
-    _estado: function () { return S; },
-    _olvidar: function () { CACHE = null; DOCS = {}; PEDIDOS = {}; CERT = null; S = null; }
+    _estado: function () { return S || ULTIMO; },
+    _olvidar: function () { CACHE = null; DOCS = {}; PEDIDOS = {}; CERT = null; S = null; ULTIMO = null; }
   };
 }());

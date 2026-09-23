@@ -63,8 +63,15 @@
     return (p[0][0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
   }
 
-  /** Foto redonda con respaldo a las iniciales si no hay o no carga. */
+  /** Foto redonda con respaldo a las iniciales si no hay o no carga.
+      4.9: la pinta la pieza de personas del kit (la misma cara en toda la
+      app, tocable para verla en grande). Si faltara, la de la 4.8. */
   function avatar(foto, nombre, clase) {
+    if (K.piezas.personas) {
+      var tam = /grande/.test(clase || '') ? 56 : (/chico/.test(clase || '') ? 34 : 44);
+      /* en la lista la tarjeta entera es un enlace: la cara no se roba el toque */
+      return K.piezas.personas.avatar(nombre, { tam: tam, foto: foto || K.piezas.personas.foto(nombre), sinZoom: !/grande/.test(clase || '') });
+    }
     var a = K.nodo('<span class="ins-avatar ' + (clase || '') + '" aria-hidden="true"><b>' + K.esc(iniciales(nombre)) + '</b></span>');
     if (foto) {
       var img = K.nodo('<img alt="" loading="lazy" referrerpolicy="no-referrer">');
@@ -217,6 +224,8 @@
         (nuevo ? '<span class="ins-com__nuevo">Nuevo</span>' : '') + '</span>' +
         '    <span class="ins-com__area">' + K.esc(x.area || '') + '</span>' +
         '    <span class="ins-com__txt">' + K.esc(resumen(x.texto, 150)) + '</span>' +
+        ((x.documentos || []).length ? '    <span class="ins-com__docs">' + K.icono('clip', 13) + ' ' + x.documentos.length +
+          (x.documentos.length === 1 ? ' documento' : ' documentos') + '</span>' : '') +
         '  </span>' +
         '</a>'
       );
@@ -284,6 +293,11 @@
       });
       t.appendChild(zona);
     }
+    /* 4.9 · LOS DOCUMENTOS DEL COMUNICADO. Cualquier tipo: PDF e imagen
+       se ven directo; Word, Excel y PowerPoint llegan convertidos a PDF
+       desde el CORE; Descargar baja SIEMPRE el archivo original. */
+    if ((x.documentos || []).length) t.appendChild(documentos(x));
+
     c.appendChild(t);
 
     /* pasar al siguiente sin volver a la lista */
@@ -293,6 +307,85 @@
     if (k > 0) nav.appendChild(K.nodo('<a class="kit-btn kit-btn--plano" href="#/comunicados/' + encodeURIComponent(COM[k - 1].id) + '">Más reciente ' + K.icono('adelante', 16) + '</a>'));
     c.appendChild(nav);
     K.piezas.creditos.montar(c);
+  }
+
+  /* ══════════════ 4.9 · DOCUMENTOS DE UN COMUNICADO ══════════════ */
+
+  var DOC_TIPO = {
+    imagen: ['imagen', 'Imagen'], pdf: ['pdf', 'PDF'], office: ['documento', 'Se ve como PDF'], otro: ['archivo', 'Solo descarga']
+  };
+
+  function tamano(b) {
+    if (!b) return '';
+    return b >= 1048576 ? (b / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
+  }
+
+  /* un documento se pide al CORE solo cuando se va a ver, y una vez */
+  var DOC_CACHE = {};
+  function traerDoc(id, n, original) {
+    var k = id + ':' + n + (original ? ':o' : '');
+    if (!DOC_CACHE[k]) {
+      DOC_CACHE[k] = K.pedir('comunicadoDocumento', { id: id, n: n, original: !!original }, { ms: 120000 });
+      DOC_CACHE[k]['catch'](function () { delete DOC_CACHE[k]; });
+    }
+    return DOC_CACHE[k];
+  }
+
+  function documentos(x) {
+    var z = K.nodo('<div class="ins-docs"><p class="ins-docs__t">Documentos del comunicado</p></div>');
+    var visibles = x.documentos.filter(function (d) { return d.tipo !== 'otro'; });
+    var paraVisor = visibles.map(function (d) {
+      return {
+        titulo: d.nombre,
+        tipo: d.tipo === 'imagen' ? 'imagen' : 'pdf',
+        cargar: function () { return traerDoc(x.id, d.n, false); }
+      };
+    });
+    x.documentos.forEach(function (d) {
+      var tipo = DOC_TIPO[d.tipo] || DOC_TIPO.otro;
+      var fila = K.nodo(
+        '<div class="ins-doc">' +
+        '  <span class="ins-doc__ico">' + K.icono(tipo[0], 20) + '</span>' +
+        '  <span class="ins-doc__txt"><b></b><small></small></span>' +
+        '</div>'
+      );
+      fila.querySelector('b').textContent = d.nombre;
+      fila.querySelector('small').textContent = [tipo[1], tamano(d.bytes)].filter(Boolean).join(' · ');
+      if (d.tipo !== 'otro') {
+        var ver = K.nodo('<button type="button" class="kit-btn kit-btn--marca">' + K.icono('ojo', 16) + ' Ver documento</button>');
+        ver.addEventListener('click', function () {
+          var k = visibles.indexOf(d);
+          K.piezas.visor.abrir(paraVisor, { indice: k < 0 ? 0 : k });
+        });
+        fila.appendChild(ver);
+      }
+      var bajar = K.nodo('<button type="button" class="kit-btn kit-btn--plano" aria-label="Descargar ' + K.esc(d.nombre) + '" title="Descargar el original">' +
+        K.icono('descargar', 16) + (d.tipo === 'otro' ? ' Descargar' : '') + '</button>');
+      bajar.addEventListener('click', function () { descargarDoc(x.id, d, bajar); });
+      fila.appendChild(bajar);
+      z.appendChild(fila);
+    });
+    return z;
+  }
+
+  function descargarDoc(id, d, boton) {
+    boton.disabled = true;
+    boton.classList.add('kit-ocupado');
+    traerDoc(id, d.n, true).then(function (r) {
+      var bin = atob(r.base64), u8 = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+      var url = URL.createObjectURL(new Blob([u8], { type: r.mime || 'application/octet-stream' }));
+      var a = document.createElement('a');
+      a.href = url; a.download = r.nombre || d.nombre || 'documento';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+      K.aviso('Descargando ' + (r.nombre || 'el documento'), 'ok', 2600);
+    })['catch'](function (e) {
+      K.aviso((e && e.message) || 'No se pudo descargar.', 'malo', 5000);
+    }).then(function () {
+      boton.disabled = false;
+      boton.classList.remove('kit-ocupado');
+    });
   }
 
   /* ══════════════ DIRECTORIO ══════════════ */

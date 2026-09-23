@@ -107,6 +107,13 @@
 
     form.addEventListener('submit', function (e) {
       e.preventDefault();
+      /* 4.9 · el permiso de avisos se pide AQUÍ, dentro del toque de
+         "Entrar" (como JHONNY-PERDOMO): es el único momento en que el
+         navegador lo muestra seguro, y así no hace falta ninguna hoja. */
+      if (K.piezas.avisos && K.piezas.avisos.pedirAlTocar &&
+          String(form.documento.value || '').trim() && String(form.clave.value || '')) {
+        K.piezas.avisos.pedirAlTocar();
+      }
       intentar(form.documento.value, form.clave.value);
     });
 

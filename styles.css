@@ -1791,3 +1791,48 @@
 @media (prefers-reduced-motion: reduce) {
   .ins-like[aria-pressed="true"] svg { animation: none; }
 }
+
+/* ══════════════ 4.9 · FOTO DE PERFIL, CARAS Y DOCUMENTOS ══════════════ */
+
+/* el saludo lleva la cara a la derecha; el texto no se monta encima */
+.saludo { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.saludo__txt { position: relative; z-index: 1; min-width: 0; }
+.saludo .kit-perfil-cara { position: relative; z-index: 1; flex: 0 0 auto; margin-top: 2px; }
+
+/* Te supervisa: la cara grande y el nombre */
+.grupo--persona .kit-av-chip { padding-top: 2px; }
+.grupo--persona .kit-av-chip__txt b { font-size: 15px; }
+
+/* quién atendió cada paso, en el estado de cuenta */
+.seg-dato dd .kit-av-chip { vertical-align: middle; }
+/* la fila con persona: el dato arriba como siempre y la persona debajo */
+.seg-dato.seg-dato--quien { flex-wrap: wrap; }
+.seg-quien { flex: 1 1 100%; grid-column: 1 / -1; display: flex; min-width: 0; margin-top: 2px; }
+.seg-quien .kit-av-chip { min-width: 0; }
+.seg-dev__quien { display: inline-flex; align-items: center; gap: 6px; }
+
+/* documentos de un comunicado */
+.ins-docs { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.ins-docs__t { margin: 0; font: 700 12px/1.3 var(--k-fuente); color: var(--k-apagado); text-transform: uppercase; letter-spacing: .04em; }
+.ins-doc {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--k-linea);
+  border-radius: var(--k-r-md);
+  background: var(--k-papel-2);
+}
+.ins-doc__ico { color: var(--k-marca); flex: 0 0 auto; }
+:root[data-tema="oscuro"] .ins-doc__ico { color: var(--k-marca-clara); }
+.ins-doc__txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.ins-doc__txt b { font: 600 13.5px/1.3 var(--k-fuente); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ins-doc__txt small { font: 400 12px/1.3 var(--k-fuente); color: var(--k-apagado); }
+.ins-doc .kit-btn { flex: 0 0 auto; padding-inline: 12px; white-space: nowrap; }
+.ins-com__docs { display: inline-flex; align-items: center; gap: 4px; font: 600 11.5px/1 var(--k-fuente); color: var(--k-apagado); margin-top: 4px; }
+@media (max-width: 420px) {
+  .ins-doc { flex-wrap: wrap; justify-content: flex-end; }
+  .ins-doc__txt { flex-basis: calc(100% - 34px); }
+}
+.tr-sol__cara { display: inline-flex; margin-right: 2px; }
+.tr-sol__cara .kit-av { box-shadow: none; }

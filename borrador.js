@@ -262,7 +262,10 @@
        teléfono se planta encima del botón Siguiente y hay que pelearse con
        él para pasar de obligación. Además, dentro de una obligación no hay
        nada que analizar. */
-    if (K.piezas.insights) K.piezas.insights.quitar();
+    /* 4.9 · Oss pidió Insights en TODAS las vistas, también aquí. Se
+       queda, pero con su guía de redacción y SUBIDO (alto): así no tapa
+       el Siguiente. Y con el clic sostenido se mueve adonde estorbe menos. */
+    if (window.AYUDA) window.AYUDA.montar('borradorObligacion', { vista: 'Obligación ' + n });
 
     var v = K.nodo(
       '<section class="edi">' +
@@ -624,7 +627,8 @@
 
   function montarInsights() {
     if (!K.piezas.insights) return;
-    K.piezas.insights.montar({
+    /* 4.9 · la guía de la vista (ayuda.js) + las cifras de aquí */
+    (window.AYUDA ? function (c) { window.AYUDA.montar('borrador', c); } : K.piezas.insights.montar)({
       vista: 'Mi informe ' + E.informe,
       filas: function () {
         return E.obligaciones.map(function (o, i) {

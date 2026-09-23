@@ -91,6 +91,10 @@
         ARRANQUE.municipios = K.guardar.leer(MUNI_K, null) || d.municipios;
       }
 
+      /* 4.9 · nombre y foto de la gente de las otras apps: el teléfono
+         resuelve cada cara (quien aprobó, quien hizo la orden) sin viajar. */
+      if (d.personas && K.piezas.personas) K.piezas.personas.cargar(d.personas);
+
       /* Los avisos: la burbuja ya no necesita su propia llamada. */
       if (d.avisos && K.piezas.buzon) K.piezas.buzon.recordar(d.avisos.noLeidos || 0);
 
@@ -173,21 +177,53 @@
     YO = yo || {};
     montarBanner();
 
-    /* Los avisos: si el permiso ya está dado, el token se renueva en
-       silencio. Si no, sale NUESTRA hoja explicando de qué va, y el cuadro
-       del sistema aparece después, colgando del toque de la persona. */
+    /* 4.9 · LOS AVISOS SE ACTIVAN SOLOS Y ESCONDIDOS (pliego de Oss).
+       Ya no sale ninguna hoja preguntando. El permiso se pidió en el toque
+       de "Entrar" (kit/sesion.js); aquí solo se registra el teléfono si
+       quedó dado. Quien venía con la sesión abierta recibe el cuadro del
+       sistema en su primer toque dentro de la app, una vez. */
     if (K.piezas.avisos) {
-      /* Solo desde el inicio. Quien entra con un enlace directo a una
-         obligación (por ejemplo desde un aviso) estaría escribiendo cuando
-         la hoja de permisos le tapa la pantalla a los 1,6 s. */
-      if (enInicio()) K.piezas.avisos.autoActivar({ espera: 1600 });
+      K.piezas.avisos.autoActivar();
       K.piezas.avisos.alLlegar(function (a) {
         K.aviso(a.titulo ? (a.titulo + ': ' + a.cuerpo) : a.cuerpo, 'info', 6000);
       });
     }
 
+    /* 4.9 · la ayuda de cada vista lee de aquí lo que ya se sabe */
+    if (window.AYUDA) {
+      window.AYUDA.configurar(function () {
+        return { yo: YO, contrato: CONTRATO, arranque: ARRANQUE };
+      });
+    }
+
+    /* 4.9 · la foto cambió (aquí o en el perfil): banner, saludo y datos */
+    K.cuando('kit:foto', function (r) {
+      YO.imagen = r.url || '';
+      K.piezas.banner.perfil({ foto: r.foto || '' });
+      var cara = document.querySelector('.saludo .kit-perfil-cara');
+      if (cara && K.piezas.perfil) {
+        cara.parentNode.replaceChild(caraPerfil(), cara);
+      }
+    });
+
     window.addEventListener('hashchange', enrutar);
     enrutar();
+  }
+
+  /** Mi foto, lista para <img> (Drive guarda /view, que no es una imagen). */
+  function miFoto(ancho) {
+    return K.miniDrive ? K.miniDrive(YO.imagen || '', ancho || 200) : (YO.imagen || '');
+  }
+
+  function abrirFoto() {
+    if (!K.piezas.perfil) return;
+    K.piezas.perfil.abrir({ nombre: YO.nombre || '', foto: miFoto(512) });
+  }
+
+  function caraPerfil() {
+    return K.piezas.perfil.cara(YO.nombre || '', miFoto(200), {
+      tam: 66, fotoActual: function () { return miFoto(512); }
+    });
   }
 
   function montarBanner() {
@@ -195,8 +231,10 @@
       titulo: 'Contratista',
       nombre: YO.nombre || '',
       rol: YO.rol || 'CONTRATISTA',
-      foto: YO.imagen || '',
+      foto: miFoto(200),
       menu: [
+        /* 4.9 · la foto de perfil: subir, recortar, cambiar o quitar */
+        { texto: 'Foto de perfil', al: abrirFoto },
         { texto: 'Datos personales', al: function () { irA('personales'); } },
         { texto: 'Actualizar contraseña', al: function () { K.piezas.sesion.cambiarClave(); } },
         { texto: 'Instalar la app', al: function () { K.piezas.instalar.abrir(); } },
@@ -215,6 +253,7 @@
 
   function salir() {
     if (K.piezas.avisos) K.piezas.avisos.olvidar();
+    if (K.piezas.insights) K.piezas.insights.quitar();
     K.piezas.sesion.salir();
     location.hash = '';
   }
@@ -259,6 +298,10 @@
        algo sin guardar; el enrutador no le vacía el sitio por debajo. */
     if (v !== 'borrador') app.innerHTML = '';
 
+    /* 4.9 · INSIGHTS EN TODAS LAS VISTAS. La guía de la vista se monta
+       aquí; las vistas con cifras propias (el borrador) la completan. */
+    if (window.AYUDA) window.AYUDA.montar(v);
+
     /* El rótulo de la cuenta cambia según lo que toque hacer hoy, y eso
        solo lo sabe el CORE: se ajusta cuando la vista lo averigua. */
     VISTAS[v](partes[1]);
@@ -289,11 +332,15 @@
     var caja = K.nodo('<div class="kit-ancho vista"></div>');
     var saludo = K.nodo(
       '<section class="saludo">' +
-      '  <p class="saludo__hola">Hola,</p>' +
-      '  <h2 class="saludo__nombre">' + K.esc(nombreCorto(YO.nombre)) + '</h2>' +
-      '  <p class="saludo__doc">Documento ' + K.esc(YO.documento || '') + '</p>' +
+      '  <div class="saludo__txt">' +
+      '    <p class="saludo__hola">Hola,</p>' +
+      '    <h2 class="saludo__nombre">' + K.esc(nombreCorto(YO.nombre)) + '</h2>' +
+      '    <p class="saludo__doc">Documento ' + K.esc(YO.documento || '') + '</p>' +
+      '  </div>' +
       '</section>'
     );
+    /* 4.9 · la cara, tocable: abre la foto de perfil para subirla o cambiarla */
+    if (K.piezas.perfil && K.piezas.personas) saludo.appendChild(caraPerfil());
     /* 4.6.1 · la franja verde deja de ser un degradado quieto: lleva el
        mismo cielo de la portada de bienvenida (aurora y burbujas). Es la
        pieza del kit, no una copia: se arregla en un sitio. */
@@ -523,9 +570,9 @@
     /* Si nunca se le preguntó, se le explica antes; si ya dijo que sí o el
        caso no tiene arreglo desde aquí (iPhone sin instalar, bloqueado),
        activar() ya enseña la hoja que corresponde. */
-    var paso = (e === 'sin-permiso')
-      ? K.piezas.avisos.proponer()
-      : K.piezas.avisos.activar({ forzar: true });
+    /* 4.9: sin hoja intermedia. El toque en la tarjeta ya es el gesto que
+       el navegador necesita para mostrar su cuadro. */
+    var paso = K.piezas.avisos.activar({ forzar: true });
     paso.then(function () { enrutar(); });
   }
 
@@ -557,6 +604,13 @@
   function pintarContrato(caja) {
     caja.innerHTML = '';
     var c = CONTRATO || {};
+
+    /* 4.9 · quien te supervisa, con su cara */
+    if (c.supervisor && K.piezas.personas) {
+      var sup = K.nodo('<section class="kit-tarjeta grupo grupo--persona"><h3 class="grupo__t">Te supervisa</h3></section>');
+      sup.appendChild(K.piezas.personas.chip(c.supervisor, c.secretaria ? K.piezas.personas.nombrePropio(c.secretaria) : 'Supervisor(a)', { tam: 44 }));
+      caja.appendChild(sup);
+    }
 
     caja.appendChild(grupo('El contrato', [
       dato('Número', c.contrato),
