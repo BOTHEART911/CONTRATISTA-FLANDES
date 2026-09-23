@@ -13,7 +13,7 @@
    importScripts, en su versión compat.
    ============================================================ */
 
-try { importScripts('./marca.js'); } catch (e) {}
+try { importScripts('./js/marca.js'); } catch (e) {}
 
 var NS_FB = (self.STORAGE_NS || 'contratista.');
 var MARCA_FB = (self.MARCA || {});

@@ -34,10 +34,10 @@ var RUTA_VERSION = new URL('./version.js', self.location.href).pathname;
 var ARMAZON = [
   './',
   './index.html',
-  './app.js',
-  './borrador.js',
+  './js/app.js',
+  './js/borrador.js',
   './styles.css',
-  './marca.js',
+  './js/marca.js',
   './manifest.json',
   './img/icono-32.png',
   './img/icono-180.png',
@@ -78,18 +78,18 @@ var ARMAZON = [
    */
   './kit/iconos.js',
   './kit/confirmar.js',
-  './cuenta.js',
+  './js/cuenta.js',
   /* 4.7 · el estado de cuenta y el exportador de los egresos */
-  './seguimiento.js',
+  './js/seguimiento.js',
   './kit/exportar.js', './kit/exportar.css',
   /* 4.8 · trámites (prensa y tesorería) e institucional */
   './kit/pastillas.js',
-  './tramites.js',
-  './institucional.js',
+  './js/tramites.js',
+  './js/institucional.js',
   /* 4.9 · caras, foto de perfil y la ayuda de cada vista */
   './kit/personas.js', './kit/personas.css',
   './kit/perfil.js',
-  './ayuda.js'
+  './js/ayuda.js'
 ];
 
 self.addEventListener('install', function (e) {
