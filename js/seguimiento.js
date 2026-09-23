@@ -16,7 +16,7 @@
 
    Aquí es UNA vista, de arriba abajo:
      1. el contrato: cuánto vale, cuánto te han pagado y cuánto falta;
-     2. tu cuenta: la línea de tiempo INGRESADA → APROBADA → PRE-ORDEN →
+     2. tu cuenta: la línea de tiempo INGRESADA → APROBADA → ORDEN DE PAGO →
         EGRESO → PAGADA con la fecha de cada paso, lo que te toca hacer
         (reportar la cuenta, reportar el plan de pagos, corregir) y los
         documentos de su carpeta, vistos y descargados DENTRO de la app;
@@ -75,7 +75,10 @@
 
   /* ══════════════ textos (con sus tildes: los del CORE van sin ellas) ══════════════ */
 
-  var HITOS = ['Ingresada', 'Aprobada', 'Pre-orden', 'Egreso', 'Pagada'];
+  /* 4.9.2: el estado PRE-ORDEN no existe (se suprimió hace tiempo). El paso
+     3 es la ORDEN DE PAGO. Va aquí de nuevo porque la 4.9.2 no llegó a
+     subirse al repo: esta entrega la reemplaza. */
+  var HITOS = ['Ingresada', 'Aprobada', 'Orden de pago', 'Egreso', 'Pagada'];
 
   function pesos(v) { return '$ ' + K.pesos(v || 0).replace(/^\$\s*/, ''); }
 
@@ -93,7 +96,6 @@
       case 'APROBADA': return ['Aprobada', cta + ' fue aprobada por la oficina de Contratación. Descarga tus documentos, unifícalos, súbelos al Plan de pagos del SECOP II y después reporta el plan de pagos.'];
       case 'PLAN DE PAGOS': return ['Plan de pagos reportado', 'Reportaste el plan de pagos de la cuenta ' + n + '. Falta que tu supervisor(a) lo acepte en el SECOP II.'];
       case 'CERRADA': return ['Plan de pagos aceptado', 'Tu supervisor(a) aceptó el plan de pagos de la cuenta ' + n + '. Falta la orden de pago de la oficina de Contabilidad.'];
-      case 'PRE-ORDEN': return ['Orden en proceso', 'Contabilidad está elaborando la orden de pago de la cuenta ' + n + '. En breve pasa a Tesorería.'];
       case 'ORDEN DE PAGO': return ['Orden de pago emitida', 'La orden de pago' + (c.orden ? ' N° ' + c.orden : '') + ' está emitida. Falta el egreso de la oficina de Tesorería.'];
       case 'EGRESO': return ['Egreso registrado', 'Tesorería registró el egreso' + (c.egreso ? ' N° ' + c.egreso : '') + '. Tu pago está en proceso.'];
       case 'PAGADA': return ['Pagada', cta + ' fue pagada' + (c.fechaPago ? ' el ' + c.fechaPago : '') + '.'];
@@ -182,6 +184,11 @@
       });
   }
 
+  function horaCorta(d) {
+    var h = d.getHours(), m = ('0' + d.getMinutes()).slice(-2);
+    return (h % 12 || 12) + ':' + m + (h < 12 ? ' a. m.' : ' p. m.');
+  }
+
   function recargar() {
     CACHE = null;
     DOCS = {};
@@ -193,6 +200,14 @@
 
   function pintar() {
     CAJA.innerHTML = '';
+    /* 5.2 · REFRESCAR en toda vista que liste cuentas: si Contratación o
+       el supervisor movieron la cuenta hace un minuto, se ve sin salir. */
+    var barra = K.nodo('<div class="seg-barra"><span class="seg-barra__t">Al día a las ' + K.esc(horaCorta(new Date())) + '</span></div>');
+    var ref = K.nodo('<button type="button" class="kit-btn kit-btn--plano seg-refrescar" aria-label="Refrescar el estado de cuenta">' +
+      K.icono('recargar', 16) + ' <span>Refrescar</span></button>');
+    ref.addEventListener('click', function () { K.vibrar(8); recargar(); });
+    barra.appendChild(ref);
+    CAJA.appendChild(barra);
     CAJA.appendChild(K.nodo('<section class="kit-tarjeta seg-contrato" id="seg-contrato"></section>'));
     CAJA.appendChild(K.nodo('<div class="seg-cuenta" id="seg-cuenta"></div>'));
     CAJA.appendChild(K.nodo('<section class="kit-tarjeta seg-plan" id="seg-plan"></section>'));

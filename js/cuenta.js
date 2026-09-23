@@ -136,6 +136,15 @@
         if (String(E.campos[k] || '').trim()) D[k] = E.campos[k];
       });
       if (!D.saldo && E.saldoSugerido) D.saldo = E.saldoSugerido;
+      /* 5.2 · contrato cedido: el RP de la cesión es obligatorio en la
+         cuenta mientras Contabilidad no lo haya usado. Se propone el que
+         ya escribió en una cuenta anterior. */
+      var pago = porId('pago');
+      var pide = !!(E.rpCesion && E.rpCesion.pedir);
+      var i = pago.campos.indexOf('rpCesion');
+      if (pide && i < 0) pago.campos.push('rpCesion');
+      if (!pide && i >= 0) pago.campos.splice(i, 1);
+      if (pide && !D.rpCesion && E.rpCesion.final) D.rpCesion = E.rpCesion.final;
       return E;
     });
   }
@@ -265,7 +274,8 @@
 
   function resumenBloque(b) {
     if (b.id === 'fechas') return D.inicioPeriodo + ' a ' + D.finPeriodo + ' · radica el ' + D.fechaRadicacion;
-    if (b.id === 'pago') return 'Cobras ' + K.pesos(D.cobro) + ' · queda ' + K.pesos(nuevoSaldo());
+    if (b.id === 'pago') return 'Cobras ' + K.pesos(D.cobro) + ' · queda ' + K.pesos(nuevoSaldo()) +
+      (E.rpCesion && E.rpCesion.pedir ? ' · RP cesión ' + rpCesionCompleto() : '');
     if (b.id === 'planilla') return 'Planilla ' + D.planilla + ' de ' + D.mesPlanilla;
     return '';
   }
@@ -449,6 +459,44 @@
 
     campoTexto(s, 'facturaNum', 'N° de factura electrónica',
       'Solo si facturas electrónicamente. Si no, déjalo vacío: no escribas "no".');
+
+    if (E.rpCesion && E.rpCesion.pedir) campoRpCesion(s);
+  }
+
+  /**
+   * 5.2 · RP DE LA CESIÓN. Tu contrato lo recibiste por cesión: el pago sale
+   * con el RP nuevo, no con el del contrato. Se escribe el final (el año lo
+   * pone la app) y va a su propia columna: el RP original no se toca. Deja
+   * de pedirse cuando Contabilidad lo usa en una orden de pago.
+   */
+  function campoRpCesion(s) {
+    var anio = String(E.rpCesion.anio || new Date().getFullYear());
+    var g = grupo(s, 'RP de la cesión (obligatorio)',
+      'El Registro Presupuestal que se expidió para ti al ceder el contrato' +
+      (E.rpCesion.cedente ? ' de ' + E.rpCesion.cedente : '') + '. Escribe solo los últimos dígitos.');
+    var caja = K.nodo('<div class="rp cta-rp"><span class="rp__anio" aria-hidden="true">' + K.esc(anio) + '</span></div>');
+    var inp = K.nodo('<input type="text" inputmode="numeric" class="rp__final cta-inp" data-campo="rpCesion" ' +
+      'autocomplete="off" maxlength="6" placeholder="Ej: 87">');
+    inp.value = D.rpCesion || '';
+    caja.appendChild(inp);
+    g.appendChild(caja);
+    var eco = K.nodo('<p class="rp__eco" aria-live="polite"></p>');
+    g.appendChild(eco);
+    function repintar() {
+      inp.value = inp.value.replace(/\D/g, '').slice(0, 6);
+      D.rpCesion = inp.value;
+      eco.textContent = inp.value ? 'Va a quedar como ' + rpCesionCompleto() : '';
+      g.classList.toggle('campo--ok', !!inp.value);
+      recordar();
+    }
+    inp.addEventListener('input', repintar);
+    caja.querySelector('.rp__anio').addEventListener('click', function () { inp.focus(); });
+    repintar();
+  }
+
+  function rpCesionCompleto() {
+    var anio = String((E.rpCesion && E.rpCesion.anio) || new Date().getFullYear());
+    return D.rpCesion ? anio + ('000000' + D.rpCesion).slice(-6) : '';
   }
 
   /* ---------- bloque 3: planilla ---------- */
@@ -719,9 +767,10 @@
         ['Periodo', D.inicioPeriodo + ' a ' + D.finPeriodo],
         ['Radicas el', String(D.fechaRadicacion)],
         ['Cobras', K.pesos(D.cobro)],
+        E.rpCesion && E.rpCesion.pedir ? ['RP de la cesión', rpCesionCompleto()] : null,
         ['Te queda', K.pesos(nuevoSaldo())],
         ['Planilla', String(D.planilla) + ' de ' + D.mesPlanilla]
-      ],
+      ].filter(Boolean),
       nota: 'Una vez radicada, Contratación la ve y ya no la puedes cambiar tú.',
       si: 'Radicar',
       no: 'Revisar'

@@ -636,10 +636,8 @@
       dato('Valor inicial', plata(c.valorInicial)),
       dato('1ª adición', plata(c.adicion1)),
       dato('2ª adición', plata(c.adicion2)),
-      dato('Valor final', plata(c.valorFinal)),
-      dato('Informes del primario', c.totalInformesPrimario),
-      dato('Informes de la 1ª adición', c.totalInformesAdicion1)
-    ]));
+      dato('Valor final', plata(c.valorFinal))
+    ].concat(informesPorTramo(c))));
 
     caja.appendChild(grupo('Respaldos presupuestales', [
       dato('CDP', c.cdp),
@@ -679,12 +677,30 @@
     K.piezas.creditos.montar(caja);
   }
 
+  /**
+   * 5.2 · LOS INFORMES POR TRAMO (la misma cuenta que ve Contratación).
+   * La hoja guarda en TOTAL INFORMES 1RA ADICION el ACUMULADO (8 del
+   * primario + 3 de la adición = 11): decir "informes de la 1ª adición: 11"
+   * era falso. El CORE manda cada tramo y el total; lo que sale del valor
+   * y no de la hoja se dice.
+   */
+  function informesPorTramo(c) {
+    var inf = c.informes;
+    if (!inf) return [dato('Informes del primario', c.totalInformesPrimario)];
+    var calc = function (k) { return (inf.calculado || []).indexOf(k) >= 0 ? ' (según el valor)' : ''; };
+    var r = [dato('Informes del primario', inf.primario || '')];
+    if (inf.adicion1) r.push(dato('Informes de la 1ª adición', inf.adicion1 + calc('adicion1')));
+    if (inf.adicion2) r.push(dato('Informes de la 2ª adición', inf.adicion2 + calc('adicion2')));
+    if (inf.adicion1 || inf.adicion2) r.push(dato('Total de informes', inf.total));
+    return r;
+  }
+
   /* Lo que se puede tocar, dicho en el idioma de cada caso. */
   var ROTULO_MODO = {
     primario: 'Actualizar los datos de mi contrato',
     adicion1: 'Actualizar el RP de la 1ª adición',
     adicion2: 'Actualizar el RP de la 2ª adición',
-    cedido: 'Actualizar el RP de mi contrato'
+    cedido: 'Completar mis datos del contrato cedido'
   };
 
   function zonaEditarContrato(caja, c) {
@@ -763,6 +779,29 @@
         'transporte, software o personal de apoyo.',
         c.costos);
 
+    } else if (c.modoEdicion === 'cedido') {
+      /* 5.2 · CONTRATO RECIBIDO POR CESIÓN. Antes este modo estaba muerto y,
+         cuando funcionaba, el cesionario escribía el RP de la cesión ENCIMA
+         del RP original del contrato. Ahora: las tres preguntas del RUT
+         (son suyas, no del cedente) y, si el contrato va en una adición, su
+         RP. El RP de la cesión se pide en cada cuenta, no aquí. */
+      f.appendChild(K.nodo('<h3 class="grupo__t">Tu contrato cedido</h3>'));
+      f.appendChild(K.nodo('<p class="formulario__nota">Recibiste este contrato por <b>cesión</b>' +
+        (c.nombreCedente ? ' de ' + K.esc(c.nombreCedente) : '') + '. Las fechas, el valor y el RP del contrato no cambian. ' +
+        'Responde las preguntas de <b>tu</b> RUT. El <b>RP de la cesión</b> te lo pedimos al ingresar tu cuenta.</p>'));
+      campoSiNo(f, D, 'regimen', '¿Perteneces al Régimen Simple de Tributación?',
+        'Revisa tu RUT. Si aparece que perteneces al “Régimen Simple de Tributación”, marca SÍ.', c.regimen);
+      campoSiNo(f, D, 'factura', '¿Estás obligado a facturar electrónicamente?',
+        'Revisa tu RUT. Si dice que estás obligado, o ya facturas electrónicamente ante la DIAN, marca SÍ.', c.factura);
+      campoSiNo(f, D, 'costos', '¿Tomarás costos y deducciones en tu declaración de renta?',
+        'Es si vas a descontar gastos de este contrato: arriendo de oficina, internet, equipos, transporte, software o personal de apoyo.', c.costos);
+      var tramo = K.norm(c.tramo || '');
+      if (/ADICION/.test(tramo)) {
+        var dos = /2DA/.test(tramo);
+        campoRP(f, D, 'rpAdicion', 'RP de la ' + (dos ? '2ª' : '1ª') + ' adición',
+          'Solo si ya lo tienes. Escribe <b>solo los últimos dígitos</b>.',
+          { final: (dos ? c.rpAdicion2Final : c.rpAdicionFinal) || '', anio: c.rpAnio });
+      }
     } else {
       var rotulo = c.modoEdicion === 'adicion1' ? 'RP de la 1ª adición'
                  : c.modoEdicion === 'adicion2' ? 'RP de la 2ª adición'
@@ -809,7 +848,7 @@
     var ROTULOS = {
       numProceso: 'N° de proceso', fechaInicio: 'Fecha de inicio',
       fechaTermino: 'Fecha de terminación', meses: 'Meses', dias: 'Días',
-      rp: 'RP', regimen: 'Régimen simple', factura: 'Factura electrónica',
+      rp: 'RP', rpAdicion: 'RP de la adición', regimen: 'Régimen simple', factura: 'Factura electrónica',
       costos: 'Costos o deducciones'
     };
     var lista = [];
@@ -819,7 +858,9 @@
       if (k === 'numProceso') v = 'CPS-' + ('00' + v).slice(-3) + '-' + (new Date().getFullYear());
       /* 4.5: en el campo se escribe el final, pero en el resumen tiene que
          salir el número entero, que es lo que va a quedar en la hoja. */
-      if (k === 'rp') v = String(c.rpAnio || new Date().getFullYear()) + ('000000' + v).slice(-6);
+      if (k === 'rp' || k === 'rpAdicion') v = String(c.rpAnio || new Date().getFullYear()) + ('000000' + v).slice(-6);
+      /* las del RUT se guardan como frase completa: en el resumen, SÍ/NO */
+      if (k === 'regimen' || k === 'factura' || k === 'costos') v = /^SI/i.test(v) ? 'SÍ' : 'NO';
       lista.push([ROTULOS[k], v]);
     });
 

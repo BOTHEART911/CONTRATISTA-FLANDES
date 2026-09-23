@@ -1072,7 +1072,7 @@
 .rp {
   display: flex; align-items: stretch;
   border: 1px solid var(--k-linea); border-radius: 10px;
-  overflow: hidden; background: var(--k-fondo-campo, #fff);
+  overflow: hidden; background: var(--k-papel-2);   /* 5.2: --k-fondo-campo no existe: en modo oscuro salía blanco */
 }
 .rp__anio {
   display: flex; align-items: center;
@@ -1836,3 +1836,11 @@
 }
 .tr-sol__cara { display: inline-flex; margin-right: 2px; }
 .tr-sol__cara .kit-av { box-shadow: none; }
+
+/* ══════════════ 5.2 · refrescar el estado de cuenta y RP de la cesión ══════════════ */
+.seg-barra { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 2px -4px; }
+.seg-barra__t { font: 500 .76rem/1.2 var(--k-fuente); color: var(--k-apagado); }
+.seg-refrescar { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: var(--k-r-pill); }
+.seg-refrescar span { font: 600 .82rem/1 var(--k-fuente); }
+.cta-rp { margin-top: 4px; }
+.cta-campo.campo--ok .rp { border-color: var(--k-ok, #1f9d55); }
