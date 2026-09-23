@@ -104,6 +104,14 @@
       try { sessionStorage.setItem(K.ns + MARCA_RECARGA, enLaRed); } catch (e) {}
 
       return limpiarCaches().then(function () {
+        /* 5.5 (igual que CONTRATACION 5.4.1) · La versión nueva arranca SIEMPRE desde el inicio (o desde
+           la entrada si no hay sesión), no desde la vista donde estaba la
+           persona: recargar una vista pesada (una cuenta con sus documentos
+           subiendo o bajando) a medio camino dejaba la app pensando. */
+        try {
+          var destino = (K.token && K.token()) ? '#/inicio' : '';
+          raiz.history.replaceState(null, '', raiz.location.pathname + raiz.location.search + destino);
+        } catch (e) {}
         try { raiz.location.reload(); } catch (e) {}
         return true;
       });
@@ -141,6 +149,9 @@
   /* Recargar en mitad de un guardado le borraría a la persona lo escrito.
      Cualquier pieza puede levantar la mano poniendo KIT.ocupado = true. */
   function ocupado() {
+    /* 5.5 · tampoco con una ventana abierta (alguien a mitad de algo):
+       se comprueba la próxima vez */
+    if (document.querySelector('[aria-modal="true"]')) return true;
     return raiz.KIT && raiz.KIT.ocupado === true;
   }
 
