@@ -11,6 +11,20 @@
 }
 .kit-esq--fuera { opacity: 0; }
 
+/* 6.1 · "CARGANDO DATOS" SIEMPRE CENTRADO, EN TODAS LAS VISTAS.
+   El esqueleto se mete en el contenedor que le toque, y ese contenedor
+   puede ser una rejilla de 2 o 3 columnas (listas, accesos) o una fila
+   flex. Ahí el esqueleto era UNA celda más y la pastilla del cohete se
+   centraba en esa celda, pegada a la izquierda (lo que vio Oss en la
+   5.4.1). Ahora el esqueleto ocupa siempre la fila entera, sea rejilla
+   o bloque, y la pastilla queda en el centro de verdad. */
+.kit-esq {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
 .kit-esq--tarjetas { grid-template-columns: 1fr; }
 @media (min-width: 680px)  { .kit-esq--tarjetas { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 1080px) { .kit-esq--tarjetas { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
