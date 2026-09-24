@@ -26,6 +26,11 @@
 importScripts('./version.js');
 
 var VERSION = 'contratista-v' + APP_VERSION;
+/* 10.1: las siete apps comparten origen (botheart911.github.io) y por tanto el
+   almacén de cachés. Antes 'activate' borraba TODA caché que no fuera la suya:
+   publicar una app le vaciaba la caché a las otras seis (y a las viejas de
+   producción). Ahora solo se borran las de esta app. */
+var PREFIJO_CACHE = 'contratista-v20';   /* '-v20': la vieja de producción usa 'contratista-v3' y no es de esta */
 
 /* La ruta exacta del version.js de la raíz, para distinguirlo de
    kit/version.js sin jugar con expresiones regulares. */
@@ -108,7 +113,7 @@ self.addEventListener('activate', function (e) {
   e.waitUntil(
     caches.keys().then(function (ks) {
       return Promise.all(ks.map(function (k) {
-        return k === VERSION ? null : caches.delete(k);
+        return (k === VERSION || String(k).indexOf(PREFIJO_CACHE) !== 0) ? null : caches.delete(k);
       }));
     }).then(function () { return self.clients.claim(); })
   );

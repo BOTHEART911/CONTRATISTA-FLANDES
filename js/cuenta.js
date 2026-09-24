@@ -410,6 +410,14 @@
       fila.appendChild(b);
     });
     g.appendChild(fila);
+    /* 10.1: el CORE explica por qué salen esas fechas (pasó el día de corte del
+       mes: se ofrecen los primeros hábiles del siguiente) o por qué no sale
+       ninguna (cerró la radicación de la vigencia). Lo dice ADMIN. */
+    if (E.avisoRadicacion) {
+      var av = K.nodo('<p class="formulario__nota formulario__nota--fuerte cta-fechas__aviso"></p>');
+      av.textContent = E.avisoRadicacion;
+      g.appendChild(av);
+    }
 
     campoFecha(s, 'inicioPeriodo', 'Inicio del periodo', 'El primer día que estás cobrando');
     campoFecha(s, 'finPeriodo', 'Fin del periodo', 'El último día que estás cobrando');
