@@ -269,7 +269,7 @@
     avisos: vistaAvisos,
     seguimiento: vistaSeguimiento,
     /* 4.8 · trámites (tramites.js) e institucional (institucional.js) */
-    prensa: function (sub) { window.TRAMITES.prensa(sub); },
+    comunicaciones: function (sub) { window.TRAMITES.comunicaciones(sub); },
     tesoreria: function (sub) { window.TRAMITES.tesoreria(sub); },
     comunicados: function (sub) { window.INSTITUCIONAL.comunicados(sub); },
     directorio: function () { window.INSTITUCIONAL.directorio(); },
@@ -318,7 +318,7 @@
     cuenta: 'INGRESAR CUENTA',
     avisos: 'MIS NOTIFICACIONES',
     seguimiento: 'ESTADO DE CUENTA',
-    prensa: 'SOLICITUD PRENSA',
+    comunicaciones: 'SOLICITUD A COMUNICACIONES',
     tesoreria: 'SOLICITUD TESORERÍA',
     comunicados: 'COMUNICADOS',
     directorio: 'DIRECTORIO INSTITUCIONAL',
@@ -376,7 +376,7 @@
 
     bloque('TRÁMITES Y SOLICITUDES', [
       acceso('CERTIFICACIÓN CONTRATO', 'Genera el certificado de tu contrato en PDF', 'img/datos_de_procesos.webp', function () { irA('seguimiento/certificacion'); }),
-      acceso('SOLICITUD PRENSA', 'Fotos, video, piezas gráficas o publicaciones para tu secretaría', 'img/comunicaciones.webp', function () { irA('prensa'); }),
+      acceso('SOLICITUD A COMUNICACIONES', 'Fotos, video, piezas gráficas o publicaciones para tu secretaría', 'img/comunicaciones.webp', function () { irA('comunicaciones'); }),
       acceso('SOLICITUD TESORERÍA', 'Pregunta por el pago de una cuenta y ve la respuesta aquí', 'img/tramites_y_solicitudes.webp', function () { irA('tesoreria'); })
     ]);
 

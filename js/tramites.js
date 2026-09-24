@@ -2,17 +2,17 @@
    CONTRATISTA-FLANDES · TRÁMITES Y SOLICITUDES
    Ecosistema Flandes · Fase 4, entrega 4.8
 
-     #/prensa[/nueva]      SOLICITUD PRENSA
+     #/comunicaciones[/nueva] SOLICITUD A COMUNICACIONES (antes PRENSA)
      #/tesoreria[/nueva]   SOLICITUD TESORERÍA
 
    Lo que hacía la app vieja (leído en BOTHEART911/CONTRATISTA y en su
    backend, y medido en la copia el 22/09)
 
-     PRENSA. Un formulario de once campos con dos ruedas de fecha que solo
+     COMUNICACIONES (antes PRENSA). Un formulario de once campos con dos ruedas de fecha que solo
        conocían el año 2026 y febrero con 31 días; la antelación de 3 días
        solo la miraba la rueda, no el servidor. Al enviar: un cuadro de
        SweetAlert con el resumen, la fila en BRIEF, un WhatsApp de "hemos
-       recibido" al contratista y otro al celular de UNA persona de prensa,
+       recibido" al contratista y otro al celular de UNA persona del equipo,
        escrito a mano en el código. Y nunca más: el contratista no podía
        ver su solicitud, ni si ya la tomaron, ni quién.
 
@@ -26,7 +26,7 @@
        respuesta) y el formulario al lado, sin cuadros emergentes.
      · Las reglas las hace cumplir el SERVIDOR; aquí solo se ayudan: las
        ruedas no dejan elegir una fecha que el servidor va a rechazar.
-     · El aviso va a los grupos de Prensa y de Tesorería de CONFIG.
+     · El aviso va a los grupos de Comunicaciones y de Tesorería de CONFIG.
      · En Tesorería se elige la cuenta, y la que todavía no se puede
        preguntar dice por qué y desde qué día sí.
 
@@ -38,9 +38,9 @@
   var K = window.KIT;
   var app = K.id('app');
 
-  var PRENSA = null;       /* lo último que respondió prensaEstado */
+  var COMU = null;       /* lo último que respondió comunicacionesEstado */
   var TESO = null;         /* lo último que respondió tesoreriaEstado */
-  var FILTRO_PRENSA = '';
+  var FILTRO_COMU = '';
 
   /* ══════════════ utilidades ══════════════ */
 
@@ -99,26 +99,26 @@
 
   function pesos(v) { return '$ ' + K.pesos(v || 0).replace(/^\$\s*/, ''); }
 
-  /* ══════════════ SOLICITUD PRENSA ══════════════ */
+  /* ══════════════ SOLICITUD A COMUNICACIONES ══════════════ */
 
-  function vistaPrensa(sub) {
+  function vistaComunicaciones(sub) {
     var c = caja();
-    var p = K.pedir('prensaEstado', {}, { ms: 60000 }).then(function (r) { PRENSA = r; return r; });
-    K.piezas.esqueletos.mientras(c, p, { forma: 'ficha', cuantos: 2, espera: 'Trayendo tus solicitudes a Prensa' })
-      .then(function () { pintarPrensa(c, sub === 'nueva'); })
+    var p = K.pedir('comunicacionesEstado', {}, { ms: 60000 }).then(function (r) { COMU = r; return r; });
+    K.piezas.esqueletos.mientras(c, p, { forma: 'ficha', cuantos: 2, espera: 'Trayendo tus solicitudes a Comunicaciones' })
+      .then(function () { pintarComunicaciones(c, sub === 'nueva'); })
       ['catch'](function (e) {
-        c.appendChild(errorCaja(e, function () { app.innerHTML = ''; vistaPrensa(sub); }));
+        c.appendChild(errorCaja(e, function () { app.innerHTML = ''; vistaComunicaciones(sub); }));
         K.piezas.creditos.montar(c);
       });
   }
 
-  function pintarPrensa(c, abrirForm) {
+  function pintarComunicaciones(c, abrirForm) {
     c.innerHTML = '';
-    var P = PRENSA;
+    var P = COMU;
     var cab = K.nodo(
       '<section class="kit-tarjeta tr-cab">' +
       '  <span class="tr-cab__ico">' + K.icono('megafono', 24) + '</span>' +
-      '  <div class="tr-cab__txt"><h2 class="tr-cab__t">SOLICITUD PRENSA</h2>' +
+      '  <div class="tr-cab__txt"><h2 class="tr-cab__t">SOLICITUD A COMUNICACIONES</h2>' +
       '  <p class="tr-cab__p">Pide apoyo al equipo de Comunicaciones: fotos, video, piezas gráficas, perifoneo o publicación en la web. ' +
       'Necesitas el aval de tu supervisor(a) y pedirlo con <b>' + P.antelacion + ' días de antelación</b>.</p></div>' +
       '</section>'
@@ -130,18 +130,18 @@
         '<p>' + K.esc(textoTildes(P.motivo)) + '</p></section>'));
     } else {
       var zona = K.nodo('<section class="kit-tarjeta tr-nueva"></section>');
-      var boton = K.nodo('<button type="button" class="kit-btn kit-btn--marca tr-nueva__b">' + K.icono('mas', 18) + ' Nueva solicitud a Prensa</button>');
+      var boton = K.nodo('<button type="button" class="kit-btn kit-btn--marca tr-nueva__b">' + K.icono('mas', 18) + ' Nueva solicitud a Comunicaciones</button>');
       zona.appendChild(boton);
       boton.addEventListener('click', function () {
         boton.hidden = true;
-        zona.appendChild(formPrensa(c, function () { boton.hidden = false; }));
+        zona.appendChild(formComunicaciones(c, function () { boton.hidden = false; }));
         zona.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
       c.appendChild(zona);
       if (abrirForm) boton.click();
     }
 
-    c.appendChild(misPrensa());
+    c.appendChild(misComunicaciones());
     K.piezas.creditos.montar(c);
   }
 
@@ -156,8 +156,8 @@
       .replace(/\bde que\b/g, 'de qué');
   }
 
-  function formPrensa(c, alCerrar) {
-    var P = PRENSA;
+  function formComunicaciones(c, alCerrar) {
+    var P = COMU;
     var D = { requerimientos: [] };
     var f = K.nodo('<form class="formulario tr-form" novalidate><h3 class="grupo__t">Nueva solicitud</h3></form>');
 
@@ -180,7 +180,7 @@
 
     var det = K.nodo('<textarea rows="5" maxlength="5000" placeholder="Objetivo, participantes, el texto que debe llevar la pieza, logos, logística…"></textarea>');
     var cuenta = K.nodo('<small class="tr-cuenta">0 caracteres</small>');
-    var cDet = campo('Detalles del evento o requerimiento', 'Cuenta todo lo que prensa necesita saber. Mínimo una frase completa.', det, true);
+    var cDet = campo('Detalles del evento o requerimiento', 'Cuenta todo lo que Comunicaciones necesita saber. Mínimo una frase completa.', det, true);
     cDet.appendChild(cuenta);
     det.addEventListener('input', function () {
       D.detalles = det.value;
@@ -236,7 +236,7 @@
 
     f.addEventListener('submit', function (evn) {
       evn.preventDefault();
-      var falta = faltaPrensa(D, P);
+      var falta = faltaComunicaciones(D, P);
       if (falta) { K.aviso(falta, 'aviso', 5000); return; }
       K.piezas.confirmar.abrir({
         titulo: 'Resumen de tu solicitud',
@@ -249,9 +249,9 @@
           ['Detalles', D.detalles.trim().length > 140 ? D.detalles.trim().slice(0, 139) + '…' : D.detalles.trim()],
           ['Tu cargo', String(D.cargo || '').toUpperCase()]
         ].filter(Boolean),
-        nota: 'Le avisamos al grupo de Prensa. Aquí mismo vas a ver cuándo la toman y quién la atiende.',
+        nota: 'Le avisamos al grupo de Comunicaciones. Aquí mismo vas a ver cuándo la toman y quién la atiende.',
         si: 'Enviar', no: 'Editar'
-      }).then(function (ok) { if (ok) enviarPrensa(c, D); });
+      }).then(function (ok) { if (ok) enviarComunicaciones(c, D); });
     });
 
     if (K.piezas.fechas) setTimeout(function () { K.piezas.fechas.montar(f); }, 0);
@@ -259,7 +259,7 @@
   }
 
   /** Lo mismo que va a exigir el servidor, dicho antes de viajar. */
-  function faltaPrensa(D, P) {
+  function faltaComunicaciones(D, P) {
     if (!D.requerimientos.length) return 'Elige al menos una cosa que necesitas.';
     if (String(D.detalles || '').trim().length < 15) return 'Cuenta con más detalle lo que necesitas.';
     if (!D.publicacion) return 'Elige la fecha de entrega o publicación.';
@@ -270,14 +270,14 @@
     return '';
   }
 
-  function enviarPrensa(c, D) {
+  function enviarComunicaciones(c, D) {
     K.ocupado = true;
     K.piezas.guardado.abrir({
-      titulo: 'Enviando tu solicitud a Prensa',
+      titulo: 'Enviando tu solicitud a Comunicaciones',
       sub: 'No cierres la app hasta que termine.',
       pasos: ['Guardando la solicitud', 'Avisando al equipo de Comunicaciones', 'Terminando']
     });
-    K.pedir('prensaSolicitar', {
+    K.pedir('comunicacionesSolicitar', {
       requerimientos: D.requerimientos, detalles: D.detalles, publicacion: D.publicacion,
       evento: D.evento || '', fechaEvento: D.fechaEvento || '', horaInicio: D.horaInicio || '', horaFin: D.horaFin || '',
       lugar: D.lugar || '', otros: D.otros || '', cargo: D.cargo || ''
@@ -289,13 +289,13 @@
         setTimeout(function () {
           if (aviso && aviso.ok === false) {
             K.piezas.confirmar.avisar({
-              titulo: 'El aviso a Prensa no salió',
-              texto: 'Tu solicitud ' + r.codigo + ' SÍ quedó registrada, pero el WhatsApp al grupo de Prensa no se pudo enviar.',
+              titulo: 'El aviso a Comunicaciones no salió',
+              texto: 'Tu solicitud ' + r.codigo + ' SÍ quedó registrada, pero el WhatsApp al grupo de Comunicaciones no se pudo enviar.',
               nota: 'Coméntaselo al equipo de Comunicaciones para que la busquen en su app.',
               si: 'Entendido'
             });
           }
-          app.innerHTML = ''; vistaPrensa();
+          app.innerHTML = ''; vistaComunicaciones();
         }, 1500);
       })
       ['catch'](function (e) {
@@ -305,11 +305,11 @@
       });
   }
 
-  function misPrensa() {
-    var P = PRENSA;
+  function misComunicaciones() {
+    var P = COMU;
     var s = K.nodo('<section class="kit-tarjeta tr-mias"><h3 class="seg-sec__t">MIS SOLICITUDES</h3></section>');
     if (!P.solicitudes.length) {
-      s.appendChild(K.nodo('<p class="seg-nada">Todavía no le has pedido nada a Prensa desde la app.</p>'));
+      s.appendChild(K.nodo('<p class="seg-nada">Todavía no le has pedido nada a Comunicaciones desde la app.</p>'));
       return s;
     }
     var conteos = { '': P.solicitudes.length };
@@ -320,13 +320,13 @@
     s.appendChild(fil);
     var lista = K.nodo('<div class="tr-lista"></div>');
     s.appendChild(lista);
-    if (FILTRO_PRENSA && !conteos[FILTRO_PRENSA]) FILTRO_PRENSA = '';
-    var pp = K.piezas.pastillas.montar(fil, { opciones: ops, valor: FILTRO_PRENSA, alCambiar: function (v) { FILTRO_PRENSA = v || ''; pintar(); } });
+    if (FILTRO_COMU && !conteos[FILTRO_COMU]) FILTRO_COMU = '';
+    var pp = K.piezas.pastillas.montar(fil, { opciones: ops, valor: FILTRO_COMU, alCambiar: function (v) { FILTRO_COMU = v || ''; pintar(); } });
     if (pp && pp.conteos) pp.conteos(conteos);
 
     function pintar() {
       lista.innerHTML = '';
-      P.solicitudes.filter(function (x) { return !FILTRO_PRENSA || x.estado === FILTRO_PRENSA; }).forEach(function (x) {
+      P.solicitudes.filter(function (x) { return !FILTRO_COMU || x.estado === FILTRO_COMU; }).forEach(function (x) {
         var tono = estadoTono(x.estado);
         var d = K.nodo(
           '<details class="tr-sol tr-sol--' + tono + '">' +
@@ -346,7 +346,7 @@
           '  </div>' +
           '</details>'
         );
-        /* 4.9 · la cara de quien atiende en Prensa (o sus iniciales) */
+        /* 4.9 · la cara de quien atiende en Comunicaciones (o sus iniciales) */
         var hueco = d.querySelector('.tr-sol__cara');
         if (hueco && K.piezas.personas) hueco.appendChild(K.piezas.personas.avatar(x.asignado, { tam: 22, sinZoom: true }));
         else if (hueco) hueco.remove();
@@ -555,10 +555,10 @@
   }
 
   window.TRAMITES = {
-    prensa: vistaPrensa,
+    comunicaciones: vistaComunicaciones,
     tesoreria: vistaTesoreria,
     /* para el banco de pruebas */
     _textoTildes: textoTildes,
-    _faltaPrensa: faltaPrensa
+    _faltaComunicaciones: faltaComunicaciones
   };
 }());

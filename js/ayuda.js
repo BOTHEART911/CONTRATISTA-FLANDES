@@ -233,9 +233,9 @@
       };
     },
 
-    prensa: function () {
+    comunicaciones: function () {
       return {
-        guia: 'Aquí pides a Prensa fotos, video, piezas gráficas o publicaciones para tu secretaría. Se pide con **3 días de antelación** y tu contrato tiene que estar **activo**. Abajo ves tus solicitudes y quién las atiende.',
+        guia: 'Aquí pides a Comunicaciones fotos, video, piezas gráficas o publicaciones para tu secretaría. Se pide con **3 días de antelación** y tu contrato tiene que estar **activo**. Abajo ves tus solicitudes y quién las atiende.',
         botones: [
           { texto: '¿Qué datos piden?', responde: function () {
               return 'Nombre del evento, fecha y hora de inicio y fin, lugar, qué necesitas (foto, video, pieza, publicación) y los detalles. Mientras más claro, mejor sale.'; } }
@@ -300,7 +300,7 @@
   var TITULOS = {
     inicio: 'Tu inicio', borrador: 'BORRADOR ACTIVIDADES', borradorObligacion: 'Tu obligación',
     cuenta: 'INGRESAR CUENTA', seguimiento: 'ESTADO DE CUENTA', avisos: 'MIS NOTIFICACIONES',
-    proceso: 'DATOS DEL CONTRATO', personales: 'DATOS PERSONALES', prensa: 'SOLICITUD PRENSA',
+    proceso: 'DATOS DEL CONTRATO', personales: 'DATOS PERSONALES', comunicaciones: 'SOLICITUD A COMUNICACIONES',
     tesoreria: 'SOLICITUD TESORERÍA', comunicados: 'COMUNICADOS', directorio: 'DIRECTORIO INSTITUCIONAL',
     tutoriales: 'TUTORIALES DE USO', sitios: 'SITIOS WEB'
   };
