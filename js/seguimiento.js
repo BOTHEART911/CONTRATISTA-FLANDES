@@ -21,7 +21,8 @@
         (reportar la cuenta, reportar el plan de pagos, corregir) y los
         documentos de su carpeta, vistos y descargados DENTRO de la app;
      3. el plan de pagos del contrato como tabla;
-     4. los egresos registrados, que se descargan en PDF o Excel;
+     4. los egresos registrados (8.1: sin descarga aparte; el comprobante
+        de cada egreso ya queda en MI CUENTA DRIVE de su cuenta);
      5. la certificación del contrato, que se abre en el visor.
 
    Por qué dos llamadas y no una (medido el 22/09, no supuesto)
@@ -594,24 +595,6 @@
 
   /* ---------- 4. egresos registrados ---------- */
 
-  var COLS_EGRESOS = [
-    { campo: 'egresoTxt', titulo: 'Egreso N°', fijo: true },
-    { campo: 'fecha', titulo: 'Fecha del egreso' },
-    { campo: 'cuenta', titulo: 'Cuenta' },
-    { campo: 'valor', titulo: 'Valor de la cuenta', tipo: 'pesos' },
-    { campo: 'neto', titulo: 'Neto girado', tipo: 'pesos' },
-    { campo: 'estado', titulo: 'Estado' }
-  ];
-
-  function filasEgresos() {
-    return (S.egresos || []).map(function (e) {
-      return {
-        egresoTxt: e.egreso + (e.egreso2 ? ' y ' + e.egreso2 : ''), fecha: e.fecha || '',
-        cuenta: e.informe + ' de ' + (S.totalInformes || ''), valor: e.valor || 0, neto: e.neto || '', estado: e.estado
-      };
-    });
-  }
-
   function pintarEgresos() {
     var el = K.id('seg-egresos');
     if (!el) return;
@@ -621,32 +604,22 @@
       el.innerHTML = html + '<p class="seg-nada">Todavía no tienes egresos registrados. Aparecen cuando Tesorería registra el pago de una cuenta.</p>';
       return;
     }
-    html += '<p class="seg-sec__p">Los comprobantes de egreso de tus pagos. Descárgalos cuando los necesites.</p><ul class="seg-eg">';
+    /* 8.1 · Tesorería guarda el PDF del egreso en la carpeta de la cuenta,
+       así que ya sale en MI CUENTA DRIVE. Se quitó "Descargar PDF / Excel". */
+    html += '<p class="seg-sec__p">Los egresos de tus pagos. El comprobante de cada uno está en <b>MI CUENTA DRIVE</b> de esa cuenta.</p><ul class="seg-eg">';
     lista.forEach(function (e) {
       html += '<li class="seg-eg__i"><span class="seg-eg__n">' + K.icono('documento', 18) + '</span>' +
         '<span class="seg-eg__txt"><b>Egreso N° ' + K.esc(e.egreso) + (e.egreso2 ? ' y ' + K.esc(e.egreso2) : '') + '</b>' +
         '<small>Cuenta ' + e.informe + (e.fecha ? ' · ' + K.esc(e.fecha) : '') + (e.valor ? ' · ' + K.esc(pesos(e.valor)) : '') + '</small></span>' +
         '<button type="button" class="seg-copiar" data-v="' + K.esc(e.egreso) + '" title="Copiar el número">' + K.icono('copiar', 16) + '</button></li>';
     });
-    html += '</ul><div class="seg-eg__bajar">' +
-      '<button type="button" class="kit-btn kit-btn--marca" data-f="pdf">' + K.icono('pdf', 17) + ' Descargar PDF</button>' +
-      '<button type="button" class="kit-btn" data-f="excel">' + K.icono('hoja', 17) + ' Excel</button></div>';
+    html += '</ul>';
     el.innerHTML = html;
     [].forEach.call(el.querySelectorAll('.seg-copiar'), function (b) {
       b.addEventListener('click', function () {
         var v = b.getAttribute('data-v');
         (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject())
           .then(function () { K.aviso('Egreso ' + v + ' copiado', 'ok', 2000); }, function () { K.aviso(v, 'info', 4000); });
-      });
-    });
-    [].forEach.call(el.querySelectorAll('[data-f]'), function (b) {
-      b.addEventListener('click', function () {
-        if (!K.piezas.exportar) { K.aviso('La descarga no está disponible en esta versión.', 'aviso'); return; }
-        var titulo = 'Egresos registrados · Contrato ' + (S.contrato || '');
-        var p = b.getAttribute('data-f') === 'pdf'
-          ? K.piezas.exportar.aPDF(titulo, COLS_EGRESOS, filasEgresos(), { modo: 'tabla', orientacion: 'portrait' })
-          : K.piezas.exportar.aExcel(titulo, COLS_EGRESOS, filasEgresos());
-        Promise.resolve(p)['catch'](function (e) { K.aviso((e && e.message) || 'No se pudo descargar.', 'malo'); });
       });
     });
   }
