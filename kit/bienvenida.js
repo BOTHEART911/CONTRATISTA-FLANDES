@@ -174,7 +174,7 @@
           t.textContent = 'Ya la tienes instalada';
           sub.textContent = 'Busca la app en el escritorio de tu dispositivo';
           lin.textContent = 'Desde el icono abre más rápido y te llegan los avisos.';
-          pie.textContent = '¿No la encuentras? Búscala con el nombre Contratista.';
+          pie.textContent = '¿No la encuentras? Búscala con el nombre ' + ((window.MARCA && window.MARCA.TITULO) || 'de la app') + '.';
           return;
         }
 

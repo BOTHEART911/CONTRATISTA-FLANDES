@@ -151,7 +151,11 @@
     error('');
     ocupado(true);
 
-    K.pedir('login', { documento: doc, clave: clave, appDestino: K.app }, { sinToken: true, app: 'CORE' })
+    /* 7.0 · con arranqueEnLogin el CORE devuelve también el 'inicio' de la app en
+       este mismo viaje (un viaje a Apps Script cuesta ~2 s de transporte). */
+    var pide = { documento: doc, clave: clave, appDestino: K.app };
+    if (cfg.arranqueEnLogin) pide.conArranque = true;
+    K.pedir('login', pide, { sinToken: true, app: 'CORE' })
       .then(function (d) {
         K.guardar.escribir('sesion.ultimoDocumento', doc);
 
@@ -236,7 +240,8 @@
        no con cuatro llamadas sueltas detrás. Si falla, se entra igual:
        cada vista sabe pedir lo suyo. */
     if (typeof cfg.comprobar === 'function') {
-      Promise.resolve(cfg.comprobar())
+      /* 7.0: se le pasa la respuesta del login: si trae el arranque, no hay otro viaje */
+      Promise.resolve(cfg.comprobar(d))
         .then(function (dd) { if (dd) guardarYo(dd.usuario || dd); })
         ['catch'](function () {})
         .then(function () { if (typeof cfg.alEntrar === 'function') cfg.alEntrar(yo()); });

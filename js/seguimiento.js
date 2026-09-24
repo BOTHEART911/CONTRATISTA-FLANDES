@@ -644,7 +644,7 @@
         if (!K.piezas.exportar) { K.aviso('La descarga no está disponible en esta versión.', 'aviso'); return; }
         var titulo = 'Egresos registrados · Contrato ' + (S.contrato || '');
         var p = b.getAttribute('data-f') === 'pdf'
-          ? K.piezas.exportar.aPDF(titulo, COLS_EGRESOS, filasEgresos(), { orientacion: 'portrait' })
+          ? K.piezas.exportar.aPDF(titulo, COLS_EGRESOS, filasEgresos(), { modo: 'tabla', orientacion: 'portrait' })
           : K.piezas.exportar.aExcel(titulo, COLS_EGRESOS, filasEgresos());
         Promise.resolve(p)['catch'](function (e) { K.aviso((e && e.message) || 'No se pudo descargar.', 'malo'); });
       });

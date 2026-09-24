@@ -23,7 +23,8 @@
        { titulo: 'Planilla.pdf', tipo: 'pdf',
          cargar: function () { return KIT.pedir('...', {...}); } }
 
-     `cargar` devuelve {nombre, mime, base64}. El visor lo pide SOLO cuando
+     `cargar` devuelve {nombre, mime, base64} o {nombre, mime, bytes} (5.4:
+     Uint8Array ya listo, sin base64). El visor lo pide SOLO cuando
      se va a ver (no todos de golpe) y lo guarda mientras esté abierto.
 
      Por qué hace falta: el /preview de Drive solo se ve si el teléfono
@@ -92,6 +93,13 @@
       s.onload = function () {
         if (!window.pdfjsLib) { rej(new Error('pdf.js no quedó cargado')); return; }
         window.pdfjsLib.GlobalWorkerOptions.workerSrc = CDN_PDFJS + 'pdf.worker.min.js';
+        /* 5.4 · UN solo trabajador para todos los PDF de la sesión: arrancarlo
+           cuesta y antes se arrancaba con cada documento. Si el navegador no
+           deja crearlo así, pdf.js lo crea a su manera. */
+        try {
+          var arranque = new Blob(['importScripts("' + CDN_PDFJS + 'pdf.worker.min.js");'], { type: 'application/javascript' });
+          window.pdfjsLib.GlobalWorkerOptions.workerPort = new Worker(URL.createObjectURL(arranque));
+        } catch (e) { /* pdf.js se arregla solo */ }
         res(window.pdfjsLib);
       };
       s.onerror = function () { pdfjsCargando = null; rej(new Error('No se pudo bajar pdf.js')); };
@@ -112,7 +120,8 @@
     if (d._url) return Promise.resolve(d);
     if (d._pidiendo) return d._pidiendo;
     d._pidiendo = Promise.resolve(d.cargar()).then(function (r) {
-      var bytes = aBytes(r.base64);
+      /* 5.4 · `cargar` puede devolver los bytes ya listos (Uint8Array) */
+      var bytes = (r && r.bytes && typeof r.bytes.length === 'number' && !r.base64) ? r.bytes : aBytes(r.base64);
       var mime = r.mime || 'application/octet-stream';
       d._bytes = bytes;
       d._blob = new Blob([bytes], { type: mime });
@@ -453,6 +462,8 @@
   K.piezas.visor = {
     abrir: abrir, cerrar: cerrar, ir: ir,
     abierto: function () { return !!(capa && capa.classList.contains('kit-visor--on')); },
-    idDrive: idDrive, paraVer: paraVer, paraAbrir: paraAbrir, paraBajar: paraBajar
+    idDrive: idDrive, paraVer: paraVer, paraAbrir: paraAbrir, paraBajar: paraBajar,
+    /* 5.4 · bajar pdf.js y su trabajador ANTES del primer documento */
+    precalentar: function () { return pdfjs()['catch'](function () { return null; }); }
   };
 }());

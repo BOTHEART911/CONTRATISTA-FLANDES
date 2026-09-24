@@ -256,7 +256,7 @@
             'con su icono, junto a las demás aplicaciones; desde ahí abre más rápido y recibe los avisos.</p>') +
         '      <ol class="kit-inst__pasos">' +
         '        <li>Sal de este navegador y mira la pantalla de inicio de tu teléfono.</li>' +
-        '        <li>Busca el icono verde de <b>Contratista</b>.</li>' +
+        '        <li>Busca el icono verde de <b>' + K.esc((window.MARCA && window.MARCA.TITULO) || 'la app') + '</b>.</li>' +
         '        <li>Ábrela desde ahí de ahora en adelante.</li>' +
         '      </ol>' +
         (dentro ? '' :
