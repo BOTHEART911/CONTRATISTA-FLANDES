@@ -117,6 +117,7 @@
       /* Lo mismo con el pie de la firma, que pedía 'config' en la primera
          vista que se pintara. Con esto, abrir la app es UNA llamada y no
          hay ninguna más escondida detrás. */
+      if (d.config && K.piezas.guia) K.piezas.guia.configurar(d.config);   /* guías rápidas: el id del PDF de cada app llega en la configuración pública */
       if (d.config && K.piezas.creditos && K.piezas.creditos.configurar) {
         K.piezas.creditos.configurar(d.config);
       }
@@ -238,6 +239,8 @@
         { texto: 'Datos personales', al: function () { irA('personales'); } },
         { texto: 'Actualizar contraseña', al: function () { K.piezas.sesion.cambiarClave(); } },
         { texto: 'Instalar la app', al: function () { K.piezas.instalar.abrir(); } },
+        /* guías rápidas: el PDF de esta app (carpeta GUÍAS RÁPIDAS de Drive) */
+        { texto: 'Descargar guía rápida', al: function () { if (K.piezas.guia) K.piezas.guia.descargar('CONTRATISTA'); } },
         { texto: 'Soporte', al: function () { if (K.piezas.soporte) K.piezas.soporte.abrir(); } },
         { texto: 'Cerrar sesión', al: salir, peligro: true }
       ]
@@ -777,7 +780,7 @@
 
       campoTexto(f, D, 'numProceso', 'N° de proceso SECOP II',
         'En el clausulado, el número que va en CPS-(aquí)-' + (new Date().getFullYear()) + '. Ejemplo: 021',
-        { valor: (c.numProceso || '').replace(/\D/g, '').slice(-3), numerico: 3, marcador: 'Ej: 021' });
+        { valor: numProcesoCorto(c.numProceso), numerico: 3, marcador: 'Ej: 021' });
 
       campoFecha(f, D, 'fechaInicio', 'Fecha de inicio',
         'La que dice tu ACTA DE INICIO.', c.fechaInicio);
@@ -929,6 +932,17 @@
           K.aviso(e && e.message ? e.message : 'No se pudo guardar.', 'malo', 7000);
         });
     });
+  }
+
+  /* El N° de proceso llega guardado como CPS-021-2026. Quitarle todo lo que
+     no es dígito y quedarse con los tres últimos daba "026" (el AÑO): quien
+     volvía a abrir el formulario para cambiar el RP y guardaba, dejaba el
+     proceso mal escrito en todos sus formatos. Se toma el número del medio. */
+  function numProcesoCorto(v) {
+    var t = String(v || '').trim();
+    var m = /(\d{1,3})\D+\d{4}\s*$/.exec(t);
+    var n = m ? m[1] : t.replace(/\D/g, '').slice(-3);
+    return n ? ('00' + n).slice(-3) : '';
   }
 
   function plata(v) {

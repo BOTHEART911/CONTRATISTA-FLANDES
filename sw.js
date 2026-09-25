@@ -61,6 +61,7 @@ var ARMAZON = [
   './kit/soporte.js', './kit/soporte.css',
   './kit/antidoble.js', './kit/antidoble.css',
   './kit/creditos.js', './kit/creditos.css',
+  './kit/guia.js',
   './kit/avisos.js',
   './kit/bienvenida.js', './kit/bienvenida.css',
   './kit/adjuntos.js', './kit/adjuntos.css',
