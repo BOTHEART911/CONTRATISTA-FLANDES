@@ -279,6 +279,8 @@
 
   function irA(v) { location.hash = '#/' + v; }
 
+  function esNotificado() { return !!(CONTRATO && K.norm(CONTRATO.estado || '') === 'NOTIFICADO'); }
+
   function enInicio() {
     var v = String(location.hash || '').replace(/^#\/?/, '').split('/')[0];
     return !v || v === 'inicio';
@@ -290,6 +292,15 @@
     var partes = String(location.hash || '').replace(/^#\/?/, '').split('/');
     var v = partes[0] || 'inicio';
     if (!VISTAS[v]) v = 'inicio';
+
+    /* 10.3 · CONTRATO NOTIFICADO: su última cuenta ya se pagó y solo le
+       queda descargar la certificación (el CORE también lo corta). Lo demás
+       lo devuelve a la certificación en vez de abrir una vista que no sirve. */
+    if (esNotificado() && ['inicio', 'seguimiento', 'avisos'].indexOf(v) < 0) {
+      K.aviso('Tu contrato terminó: aquí solo queda descargar la certificación.', 'info', 5000);
+      irA('seguimiento/certificacion');
+      return;
+    }
 
     K.piezas.banner.vista(v === 'inicio' ? 'Contratista' : titulos[v]);
     K.piezas.banner.atras(v === 'inicio' ? null : function () { irA('inicio'); });
@@ -346,6 +357,9 @@
        pieza del kit, no una copia: se arregla en un sitio. */
     if (K.piezas.cielo) K.piezas.cielo.poner(saludo, { burbujas: 3 });
     caja.appendChild(saludo);
+
+    /* 10.3 · NOTIFICADO: un solo aviso y la certificación, nada más */
+    if (esNotificado()) { inicioNotificado(caja); return; }
 
     /* 4.8 · EL INICIO POR BLOQUES, COMO EL MENÚ DE SIEMPRE
        Con los trámites e institucional eran quince tarjetas seguidas, una
@@ -415,6 +429,8 @@
 
     K.piezas.esqueletos.mientras(destino, cargarInicio(), { forma: 'ficha', cuantos: 1 })
       .then(function () {
+        /* 10.3 · si el contrato llegó NOTIFICADO después de pintar, se repinta con su aviso */
+        if (esNotificado()) { enrutar(); return; }
         pintarResumen(destino);
         /* 4.7 · el estado de cuenta cuesta de 3 a 4 s de servidor y otros
            2 a 3 de viaje (medido). Se pide por detrás en cuanto el inicio
@@ -422,6 +438,28 @@
         if (window.SEGUIMIENTO) setTimeout(function () { window.SEGUIMIENTO.precargar(); }, 1200);
       })
       ['catch'](function (e) { destino.appendChild(errorCaja(e)); });
+  }
+
+  /* 10.3 · el inicio del contrato NOTIFICADO (la notificación final de ADMIN) */
+  function inicioNotificado(caja) {
+    var hasta = (CONTRATO && CONTRATO.accesoHasta) || '';
+    var aviso = K.nodo(
+      '<section class="kit-tarjeta notif-fin" role="status">' +
+      '  <span class="notif-fin__ico" aria-hidden="true">' + K.icono('documento', 26) + '</span>' +
+      '  <div><h3 class="notif-fin__t">Tu contrato terminó</h3>' +
+      '  <p class="notif-fin__p"></p></div>' +
+      '</section>');
+    aviso.querySelector('.notif-fin__p').innerHTML = 'Tu última cuenta ya fue pagada. Descarga la <b>certificación de tu contrato ' + K.esc((CONTRATO && CONTRATO.contrato) || '') +
+      '</b> para actualizar tu hoja de vida del SIGEP' + (hasta ? '. Tienes hasta el <b>' + K.esc(hasta) + '</b>; después se cierra tu acceso a la app.' : ' antes de que se cierre tu acceso a la app.');
+    caja.appendChild(aviso);
+    var s = K.nodo('<section class="bloque" aria-label="Tu certificación"><h3 class="bloque__t">TU CERTIFICACIÓN</h3></section>');
+    var r = K.nodo('<div class="kit-rejilla kit-rejilla--auto accesos"></div>');
+    r.appendChild(acceso('CERTIFICACIÓN CONTRATO', 'Genera el certificado de tu contrato en PDF', 'img/datos_de_procesos.webp', function () { irA('seguimiento/certificacion'); }));
+    r.appendChild(acceso('MIS NOTIFICACIONES', 'Todo lo que te hemos avisado', 'img/notificacion.webp', function () { irA('avisos'); }));
+    s.appendChild(r);
+    caja.appendChild(s);
+    app.appendChild(caja);
+    K.piezas.creditos.montar(caja);
   }
 
   function cargarInicio() {

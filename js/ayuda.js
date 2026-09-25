@@ -67,6 +67,16 @@
     inicio: function () {
       var S = seg(), a = cuentaActual(S), c = contrato(), ar = ctx().arranque || {};
       var t = hola() + 'este es tu inicio. ';
+      /* 10.3 · NOTIFICADO: lo único que le queda es la certificación */
+      if (String(c.estado || '').toUpperCase() === 'NOTIFICADO') {
+        return {
+          guia: t + 'Tu contrato ' + (c.contrato || '') + ' terminó: su última cuenta ya se pagó. Descarga tu **certificación** del contrato' +
+            (c.accesoHasta ? ' antes del **' + c.accesoHasta + '**' : '') + ', que es cuando se cierra tu acceso a la app.',
+          botones: [{ texto: '¿Para qué me sirve la certificación?', responde: function () {
+            return 'Es el documento que certifica tu contrato (objeto, valor y fechas) con un **código QR** de validación. Sirve para actualizar tu hoja de vida en el **SIGEP** y para presentarla en otros procesos.';
+          } }]
+        };
+      }
       if (a && window.SEGUIMIENTO && window.SEGUIMIENTO._detalle) {
         t += window.SEGUIMIENTO._detalle(a)[1] + ' ';
         if ((S.acciones || []).length && window.SEGUIMIENTO._accion) t += '**Lo que te toca ahora:** ' + window.SEGUIMIENTO._accion(S.acciones[0])[0] + '. ';

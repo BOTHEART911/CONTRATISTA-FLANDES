@@ -1844,3 +1844,9 @@
 .seg-refrescar span { font: 600 .82rem/1 var(--k-fuente); }
 .cta-rp { margin-top: 4px; }
 .cta-campo.campo--ok .rp { border-color: var(--k-ok, #1f9d55); }
+
+/* 10.3 · el inicio del contrato NOTIFICADO (solo le queda la certificación) */
+.notif-fin { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; margin: 12px 0 4px; border-left: 4px solid var(--k-aviso); background: var(--k-aviso-fondo); }
+.notif-fin__ico { flex: 0 0 auto; color: var(--k-aviso); }
+.notif-fin__t { margin: 0 0 4px; font: 800 1rem/1.25 var(--k-fuente-titulo, var(--k-fuente)); color: var(--k-tinta); }
+.notif-fin__p { margin: 0; font: 500 .9rem/1.45 var(--k-fuente); color: var(--k-tinta); }
