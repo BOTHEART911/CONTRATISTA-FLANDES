@@ -104,7 +104,10 @@ self.addEventListener('install', function (e) {
       /* addAll aborta entero si un solo archivo falla; se guarda uno a uno
          para que un recurso perdido no deje la app sin caché. */
       return Promise.all(ARMAZON.map(function (u) {
-        return c.add(u)['catch'](function () {});
+        /* 25/09 · 'reload': se baja de GitHub, no de la caché del navegador.
+           Pages deja cada archivo 10 minutos en esa caché y el armazón NUEVO
+           se llenaba con copias VIEJAS (comprobado). */
+        return c.add(new Request(u, { cache: 'reload' }))['catch'](function () {});
       }));
     }).then(function () { return self.skipWaiting(); })
   );
@@ -146,7 +149,9 @@ self.addEventListener('fetch', function (e) {
      escondido detrás del caché y la gente sigue viendo la app vieja. */
   if (req.mode === 'navigate') {
     e.respondWith(
-      fetch(req).then(function (r) {
+      /* 25/09 · 'no-cache': se le pregunta a GitHub si cambió (responde 304
+         si no) en vez de fiarse de la copia de 10 minutos del navegador. */
+      fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then(function (r) {
         var copia = r.clone();
         caches.open(VERSION).then(function (c) { c.put('./index.html', copia); });
         return r;
@@ -160,7 +165,9 @@ self.addEventListener('fetch', function (e) {
   e.respondWith(
     caches.match(req).then(function (hit) {
       if (hit) return hit;
-      return fetch(req).then(function (r) {
+      /* 25/09 · Lo que no está en el armazón también se confirma con GitHub:
+         tras publicar, la caché del navegador todavía guarda lo viejo. */
+      return fetch(req, { cache: 'no-cache' }).then(function (r) {
         if (r && r.status === 200 && r.type === 'basic') {
           var copia = r.clone();
           caches.open(VERSION).then(function (c) { c.put(req, copia); });

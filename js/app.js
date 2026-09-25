@@ -171,7 +171,11 @@
    */
   function registrarSW() {
     if (!('serviceWorker' in navigator)) return;
-    navigator.serviceWorker.register('sw.js')['catch'](function () {});
+    /* 25/09 · updateViaCache 'none': sw.js toma su número de version.js y,
+       sin esto, el navegador revisaba version.js en su caché de 10 minutos
+       y no se enteraba de la publicación: el service worker nuevo no se
+       instalaba y la app seguía con el armazón viejo. */
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })['catch'](function () {});
   }
 
   function arrancar(yo) {
