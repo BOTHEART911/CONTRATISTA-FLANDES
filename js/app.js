@@ -276,11 +276,27 @@
     tesoreria: function (sub) { window.TRAMITES.tesoreria(sub); },
     comunicados: function (sub) { window.INSTITUCIONAL.comunicados(sub); },
     directorio: function () { window.INSTITUCIONAL.directorio(); },
-    tutoriales: function (sub) { window.INSTITUCIONAL.tutoriales(sub); },
+    /* ajuste 4 · ADMIN enciende o apaga los tutoriales: apagados, el enlace
+       guardado lleva al inicio (el CORE tampoco entrega nada) */
+    tutoriales: function (sub) {
+      if (tutorialesActivos()) { window.INSTITUCIONAL.tutoriales(sub); return; }
+      if (ARRANQUE) { location.hash = '#/inicio'; return; }
+      cargarInicio().then(function () {
+        if (tutorialesActivos()) window.INSTITUCIONAL.tutoriales(sub); else location.hash = '#/inicio';
+      }, function () { location.hash = '#/inicio'; });
+    },
     sitios: function () { window.INSTITUCIONAL.sitios(); }
   };
 
   function irA(v) { location.hash = '#/' + v; }
+
+  /** Ajuste 4 · TUTORIALES_ACTIVO llega con la configuración pública del
+      arranque (sin viaje extra). Sin arranque todavía, se esconde. */
+  function tutorialesActivos() {
+    var c = (ARRANQUE && ARRANQUE.config) || {};
+    var v = c.TUTORIALES_ACTIVO;
+    return v === true || K.norm(String(v === undefined || v === null ? '' : v)) === 'SI';
+  }
 
   function esNotificado() { return !!(CONTRATO && K.norm(CONTRATO.estado || '') === 'NOTIFICADO'); }
 
@@ -405,8 +421,12 @@
     ]);
     pintarBurbujaComunicados(tarjetaCom);
 
+    /* ajuste 4 · la tarjeta de tutoriales solo se ve si ADMIN los encendió
+       (se vuelve a mirar cuando llega el arranque, abajo) */
+    var tarjetaTut = acceso('TUTORIALES DE USO', 'Videos cortos de cada paso de la app', 'img/manual_de_uso.webp', function () { irA('tutoriales'); });
+    tarjetaTut.hidden = !tutorialesActivos();
     bloque('AYUDA Y SITIOS WEB', [
-      acceso('TUTORIALES DE USO', 'Videos cortos de cada paso de la app', 'img/manual_de_uso.webp', function () { irA('tutoriales'); }),
+      tarjetaTut,
       acceso('SITIOS WEB', 'SECOP II, SIA Observa, la Alcaldía, Small PDF y la DIAN', 'img/sitios_web.webp', function () { irA('sitios'); })
     ]);
 
@@ -434,6 +454,7 @@
       .then(function () {
         /* 10.3 · si el contrato llegó NOTIFICADO después de pintar, se repinta con su aviso */
         if (esNotificado()) { enrutar(); return; }
+        tarjetaTut.hidden = !tutorialesActivos();
         pintarResumen(destino);
         /* 4.7 · el estado de cuenta cuesta de 3 a 4 s de servidor y otros
            2 a 3 de viaje (medido). Se pide por detrás en cuanto el inicio
