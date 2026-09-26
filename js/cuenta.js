@@ -186,7 +186,7 @@
     var titulos = {
       sinBorrador: 'Primero empieza tu borrador',
       espera: 'Esta cuenta ya está radicada',
-      turno: 'Todavía no puedes ingresar esta cuenta'   /* 25/09 · la anterior aún no llega a ORDEN DE PAGO */
+      turno: 'Todavía no puedes ingresar esta cuenta'   /* F11 · la anterior aún no llega al umbral de ADMIN (CERRADA u ORDEN DE PAGO) */
     };
     s.appendChild(K.nodo('<h3 class="grupo__t">' + K.esc(titulos[E.puerta] || 'Todavía no') + '</h3>'));
     s.appendChild(K.nodo('<p class="cta-cerrada__p">' + K.esc(E.motivo || '') + '</p>'));
@@ -215,6 +215,12 @@
         '  <p>' + K.esc(E.observaciones) + '</p>' +
         '</div>'
       ));
+    }
+    /* F11 · cuenta siguiente ingresada directo (la anterior ya llegó al
+       umbral): todavía no tiene fila; nace al subir el primer archivo o al
+       radicar. Las actividades se escriben en el borrador cuando quiera. */
+    if (E.nueva) {
+      s.appendChild(K.nodo('<p class="cta-cab__nota">' + K.esc(E.motivo || '') + '</p>'));
     }
     if (corrige) {
       s.appendChild(K.nodo('<p class="cta-cab__nota">Cambia solo lo que haga falta. <b>Vuelve a elegir la fecha de radicación</b> y reemplaza los archivos que te indicaron.</p>'));
