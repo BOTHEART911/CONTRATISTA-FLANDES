@@ -139,6 +139,18 @@ self.addEventListener('fetch', function (e) {
      caché sería contestarle siempre que no. Ojo, es solo ese: kit/version.js
      es la pieza del kit y se cachea como cualquier otro script. */
   if (url.pathname === RUTA_VERSION) {
+    /* 25/09 · La página lo carga con <script src="version.js"> para saber QUÉ
+       versión está corriendo. Ese número tiene que ser el del armazón que
+       este service worker sirve, no el de GitHub: si no, tras publicar, la
+       primera apertura mostraba el número nuevo con el código viejo del
+       caché y la app creía estar al día (hacía falta abrirla dos veces).
+       La pregunta "¿hay algo nuevo?" de kit/version.js lleva ?t= y sí va a
+       la red. */
+    if (url.search.indexOf('t=') < 0) {
+      e.respondWith(new Response('var APP_VERSION = "' + APP_VERSION + '";',
+        { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-store' } }));
+      return;
+    }
     e.respondWith(fetch(req, { cache: 'no-store' })['catch'](function () {
       return caches.match(req).then(function (r) { return r || Response.error(); });
     }));
