@@ -192,6 +192,10 @@
            MISMA llamada. Ver `arranque()` aquí arriba. Se le devuelve a la
            pieza de sesión SOLO el usuario, que es lo que ella guarda. */
         comprobar: function () { return arranque({ abrir: true }).then(function (d) { return d.yo; }); },
+        /* 26/09 · sin contrato activo o sin registro: la solicitud a
+           Contratación (solicitudes.js). El caso llega en la MISMA respuesta
+           del login fallido; no hay viaje extra. */
+        sinAcceso: function (datos, doc) { if (window.SOLCON) window.SOLCON.sinAcceso(datos, doc); },
         alEntrar: arrancar
       });
     });
@@ -311,6 +315,8 @@
     /* 4.8 · trámites (tramites.js) e institucional (institucional.js) */
     comunicaciones: function (sub) { window.TRAMITES.comunicaciones(sub); },
     tesoreria: function (sub) { window.TRAMITES.tesoreria(sub); },
+    /* 26/09 · SOLICITUD CONTRATACIÓN (solicitudes.js) */
+    contratacion: function (sub) { window.SOLCON.vista(sub); },
     comunicados: function (sub) { window.INSTITUCIONAL.comunicados(sub); },
     directorio: function () { window.INSTITUCIONAL.directorio(); },
     /* ajuste 4 · ADMIN enciende o apaga los tutoriales: apagados, el enlace
@@ -352,7 +358,7 @@
     /* 10.3 · CONTRATO NOTIFICADO: su última cuenta ya se pagó y solo le
        queda descargar la certificación (el CORE también lo corta). Lo demás
        lo devuelve a la certificación en vez de abrir una vista que no sirve. */
-    if (esNotificado() && ['inicio', 'seguimiento', 'avisos'].indexOf(v) < 0) {
+    if (esNotificado() && ['inicio', 'seguimiento', 'avisos', 'contratacion'].indexOf(v) < 0) {
       K.aviso('Tu contrato terminó: aquí solo queda descargar la certificación.', 'info', 5000);
       irA('seguimiento/certificacion');
       return;
@@ -387,6 +393,7 @@
     seguimiento: 'ESTADO DE CUENTA',
     comunicaciones: 'SOLICITUD A COMUNICACIONES',
     tesoreria: 'SOLICITUD TESORERÍA',
+    contratacion: 'SOLICITUD CONTRATACIÓN',
     comunicados: 'COMUNICADOS',
     directorio: 'DIRECTORIO INSTITUCIONAL',
     tutoriales: 'TUTORIALES DE USO',
@@ -447,7 +454,9 @@
     bloque('TRÁMITES Y SOLICITUDES', [
       acceso('CERTIFICACIÓN CONTRATO', 'Genera el certificado de tu contrato en PDF', 'img/datos_de_procesos.webp', function () { irA('seguimiento/certificacion'); }),
       acceso('SOLICITUD A COMUNICACIONES', 'Fotos, video, piezas gráficas o publicaciones para tu secretaría', 'img/comunicaciones.webp', function () { irA('comunicaciones'); }),
-      acceso('SOLICITUD TESORERÍA', 'Pregunta por el pago de una cuenta y ve la respuesta aquí', 'img/tramites_y_solicitudes.webp', function () { irA('tesoreria'); })
+      acceso('SOLICITUD TESORERÍA', 'Pregunta por el pago de una cuenta y ve la respuesta aquí', 'img/tramites_y_solicitudes.webp', function () { irA('tesoreria'); }),
+      /* 26/09 · adición, cesión, modificación o corrección y suspensión, con la respuesta y las gestiones */
+      acceso('SOLICITUD CONTRATACIÓN', 'Adición, cesión, modificación o suspensión: pide o recuerda el trámite y ve la respuesta', 'img/tramites_y_solicitudes.webp', function () { irA('contratacion'); })
     ]);
 
     /* La burbuja de los comunicados sale del arranque: ver pintarBurbuja. */
@@ -517,6 +526,8 @@
     var r = K.nodo('<div class="kit-rejilla kit-rejilla--auto accesos"></div>');
     r.appendChild(acceso('CERTIFICACIÓN CONTRATO', 'Genera el certificado de tu contrato en PDF', 'img/datos_de_procesos.webp', function () { irA('seguimiento/certificacion'); }));
     r.appendChild(acceso('MIS NOTIFICACIONES', 'Todo lo que te hemos avisado', 'img/notificacion.webp', function () { irA('avisos'); }));
+    /* 26/09 · lo que pidió a Contratación y sus respuestas (ya no puede pedir nada nuevo) */
+    r.appendChild(acceso('SOLICITUD CONTRATACIÓN', 'Tus solicitudes a Contratación y sus respuestas', 'img/tramites_y_solicitudes.webp', function () { irA('contratacion'); }));
     s.appendChild(r);
     caja.appendChild(s);
     app.appendChild(caja);

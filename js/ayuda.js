@@ -263,6 +263,28 @@
       };
     },
 
+    /* 26/09 · SOLICITUD CONTRATACIÓN */
+    contratacion: function () {
+      var D = window.SOLCON && window.SOLCON.datos ? window.SOLCON.datos() : null;
+      var L = (D && D.lista) || [];
+      var sin = L.filter(function (x) { return x.tipo !== 'GESTION' && x.estado !== 'RESPONDIDA'; }).length;
+      var resp = L.filter(function (x) { return x.estado === 'RESPONDIDA'; }).length;
+      var gest = L.reduce(function (n, x) { return n + ((x.gestiones && x.gestiones.length) || 0); }, 0);
+      return {
+        guia: 'Aquí le recuerdas o le pides a Contratación un trámite de tu contrato: **adición, cesión, modificación o corrección** y **suspensión**. ' +
+              (L.length ? 'Tienes **' + L.length + '** en total: ' + sin + ' sin responder, ' + resp + ' respondidas y ' + gest + (gest === 1 ? ' gestión registrada' : ' gestiones registradas') + '. ' : '') +
+              'La respuesta y las gestiones te llegan como notificación y quedan aquí.',
+        botones: [
+          { texto: '¿Qué es una gestión?', responde: function () {
+              return 'Algo que Contratación **hizo** por tu contrato (te atendió, envió un documento, tramitó tu adición). La registran para que tengas el rastro aquí, aunque no hayas pedido nada.'; } },
+          { texto: '¿Puedo pedir dos veces lo mismo?', responde: function () {
+              return 'No mientras la primera siga sin respuesta: se tramita una solicitud por trámite. Cuando Contratación responda, puedes hacer otra.'; } },
+          { texto: '¿Y si no tengo acceso a la app?', responde: function () {
+              return 'Desde la entrada, cuando tu contrato está inactivo o todavía no estás registrado, la app te pregunta si ya aceptaste el contrato en el SECOP II y te deja pedir el acceso. Esa solicitud también la ves aquí.'; } }
+        ]
+      };
+    },
+
     comunicados: function () {
       var I = window.INSTITUCIONAL;
       var n = I && I.noLeidos ? I.noLeidos() : 0;
@@ -311,7 +333,7 @@
     inicio: 'Tu inicio', borrador: 'BORRADOR ACTIVIDADES', borradorObligacion: 'Tu obligación',
     cuenta: 'INGRESAR CUENTA', seguimiento: 'ESTADO DE CUENTA', avisos: 'MIS NOTIFICACIONES',
     proceso: 'DATOS DEL CONTRATO', personales: 'DATOS PERSONALES', comunicaciones: 'SOLICITUD A COMUNICACIONES',
-    tesoreria: 'SOLICITUD TESORERÍA', comunicados: 'COMUNICADOS', directorio: 'DIRECTORIO INSTITUCIONAL',
+    tesoreria: 'SOLICITUD TESORERÍA', contratacion: 'SOLICITUD CONTRATACIÓN', comunicados: 'COMUNICADOS', directorio: 'DIRECTORIO INSTITUCIONAL',
     tutoriales: 'TUTORIALES DE USO', sitios: 'SITIOS WEB'
   };
 

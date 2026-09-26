@@ -91,6 +91,7 @@ var ARMAZON = [
   /* 4.8 · trámites (comunicaciones y tesorería) e institucional */
   './kit/pastillas.js',
   './js/tramites.js',
+  './js/solicitudes.js',
   './js/institucional.js',
   /* 4.9 · caras, foto de perfil y la ayuda de cada vista */
   './kit/personas.js', './kit/personas.css',

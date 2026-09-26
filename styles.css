@@ -1850,3 +1850,25 @@
 .notif-fin__ico { flex: 0 0 auto; color: var(--k-aviso); }
 .notif-fin__t { margin: 0 0 4px; font: 800 1rem/1.25 var(--k-fuente-titulo, var(--k-fuente)); color: var(--k-tinta); }
 .notif-fin__p { margin: 0; font: 500 .9rem/1.45 var(--k-fuente); color: var(--k-tinta); }
+
+/* ══════════════ 26/09 · SOLICITUDES A CONTRATACIÓN (solicitudes.js) ══════════════ */
+.sol-capa .kit-capa__hoja { width: min(600px, 100%); }
+.sol-form { display: flex; flex-direction: column; gap: 12px; }
+.sol-aclara { margin: 0; font: 400 .88rem/1.5 var(--k-fuente); color: var(--k-tinta-2); }
+.sol-aclara b { color: var(--k-tinta); }
+.sol-form .campo input[readonly] { background: var(--k-papel-2); color: var(--k-apagado); }
+@media (max-width: 520px) { .sol-form .campo-fila { flex-direction: column; } }
+.sol-docs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.sol-doc { font-size: .8rem; padding: 6px 10px; }
+.sol-txt { white-space: pre-line; overflow-wrap: anywhere; }
+.tr-sol .tr-sol__det { white-space: pre-line; }
+.sol-gest__caja { margin-top: 8px; padding: 10px 12px; border-radius: var(--k-r-md); background: rgba(var(--k-marca-rgb), .07); }
+:root[data-tema="oscuro"] .sol-gest__caja { background: rgba(var(--k-marca-rgb), .16); }
+.sol-gest__t { display: flex; gap: 6px; align-items: center; margin: 0 0 6px; font: 700 .82rem/1.3 var(--k-fuente); color: var(--k-marca); }
+:root[data-tema="oscuro"] .sol-gest__t { color: var(--k-marca-clara); }
+.sol-gest { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 2px solid rgba(var(--k-marca-rgb), .35); display: flex; flex-direction: column; gap: 8px; }
+.sol-gest li { position: relative; }
+.sol-gest li::before { content: ''; position: absolute; left: -20px; top: 5px; width: 10px; height: 10px; border-radius: 50%; background: var(--k-marca); box-shadow: 0 0 0 3px var(--k-papel); }
+.sol-gest__f { display: block; font: 600 .72rem/1.3 var(--k-fuente); color: var(--k-apagado); font-variant-numeric: tabular-nums; }
+.sol-gest p { margin: 2px 0 0; font: 400 .86rem/1.5 var(--k-fuente); color: var(--k-tinta); white-space: pre-line; overflow-wrap: anywhere; }
+.sol-adj:empty { display: none; }
