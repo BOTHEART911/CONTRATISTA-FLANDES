@@ -57,7 +57,11 @@
     return K.guardar.leer(MUNI_K, null);
   }
 
-  function arranque() {
+  function arranque(opc) {
+    opc = opc || {};
+    /* 25/09 · al abrir con la sesión ya iniciada: se pinta YA con el último
+       arranque guardado y el viaje al CORE se hace por detrás */
+    var recordado = (opc.abrir && K.recuerdo) ? K.recuerdo.leer() : null;
     /*
      * 4.6 · NI UN INSTANTE EN BLANCO AL ENTRAR
      *
@@ -69,14 +73,11 @@
      * Ahora el esqueleto entra en cuanto arranca la llamada, y si tarda
      * más de la cuenta sale encima el cohete de "Cargando datos".
      */
-    var quitar = (K.piezas.esqueletos && app)
+    var quitar = (!recordado && !opc.datos && K.piezas.esqueletos && app)
       ? K.piezas.esqueletos.poner(app, { forma: 'ficha', cuantos: 1, sitio: 'reemplaza', espera: 'Cargando tus datos' })
       : function () {};
 
-    return K.pedir('inicio', {
-      avisos: 1,
-      selloMunicipios: selloMunicipiosGuardado()
-    }).then(function (d) {
+    return (recordado ? Promise.resolve(recordado) : opc.datos ? Promise.resolve(opc.datos) : pedirInicio()).then(function (d) {
       ARRANQUE = d;
       YO = d.yo || YO;
       CONTRATO = d.contrato;
@@ -121,6 +122,7 @@
       if (d.config && K.piezas.creditos && K.piezas.creditos.configurar) {
         K.piezas.creditos.configurar(d.config);
       }
+      if (K.recuerdo) { if (recordado) setTimeout(refrescarArranque, 30); else K.recuerdo.guardar(ligero(d)); }
       quitar();
       return d;
     }, function (e) {
@@ -128,6 +130,37 @@
       throw e;
     });
   }
+  /* lo que se recuerda va sin el catálogo de municipios (ya vive aparte) */
+  function ligero(d) {
+    var c = {}, k;
+    for (k in d) if (Object.prototype.hasOwnProperty.call(d, k)) c[k] = d[k];
+    if (c.municipios && c.municipios.mapa) c.municipios = { sinCambios: true };
+    return c;
+  }
+
+  function pedirInicio() {
+    return K.pedir('inicio', {
+      avisos: 1,
+      selloMunicipios: selloMunicipiosGuardado()
+    });
+  }
+
+  /* 25/09 · el 'inicio' de verdad, por detrás: se aplica, se guarda y, si la
+     persona sigue en el inicio, se vuelve a pintar con lo nuevo. */
+  function refrescarArranque() {
+    pedirInicio().then(function (d) {
+      return arranque({ datos: d });
+    }).then(function () {
+      var v = String(location.hash || '').replace(/^#\/?/, '').split('/')[0] || 'inicio';
+      if (v === 'inicio') enrutar();
+    }, function (e) {
+      var m = String((e && e.message) || '');
+      if (/SESION|SIN_SESION/.test((e && e.codigo) || '') || (/sesi[oó]n/i.test(m) && /(venci|no valida|no válida|inicia)/i.test(m))) {
+        try { K.piezas.sesion.salir(true); } catch (x) {}
+      }
+    });
+  }
+
 
   /* ══════════════ arranque ══════════════ */
 
@@ -158,7 +191,7 @@
         /* 4.5: la comprobación de la sesión y la carga del inicio son la
            MISMA llamada. Ver `arranque()` aquí arriba. Se le devuelve a la
            pieza de sesión SOLO el usuario, que es lo que ella guarda. */
-        comprobar: function () { return arranque().then(function (d) { return d.yo; }); },
+        comprobar: function () { return arranque({ abrir: true }).then(function (d) { return d.yo; }); },
         alEntrar: arrancar
       });
     });

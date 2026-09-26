@@ -185,7 +185,8 @@
        quedan los casos en los que de verdad no hay nada que hacer. */
     var titulos = {
       sinBorrador: 'Primero empieza tu borrador',
-      espera: 'Esta cuenta ya está radicada'
+      espera: 'Esta cuenta ya está radicada',
+      turno: 'Todavía no puedes ingresar esta cuenta'   /* 25/09 · la anterior aún no llega a ORDEN DE PAGO */
     };
     s.appendChild(K.nodo('<h3 class="grupo__t">' + K.esc(titulos[E.puerta] || 'Todavía no') + '</h3>'));
     s.appendChild(K.nodo('<p class="cta-cerrada__p">' + K.esc(E.motivo || '') + '</p>'));
