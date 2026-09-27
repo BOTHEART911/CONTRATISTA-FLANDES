@@ -203,7 +203,7 @@
     CAJA.innerHTML = '';
     /* 5.2 · REFRESCAR en toda vista que liste cuentas: si Contratación o
        el supervisor movieron la cuenta hace un minuto, se ve sin salir. */
-    var barra = K.nodo('<div class="seg-barra"><span class="seg-barra__t">Al día a las ' + K.esc(horaCorta(new Date())) + '</span></div>');
+    var barra = K.nodo('<div class="seg-aldia"><span class="seg-aldia__t">Al día a las ' + K.esc(horaCorta(new Date())) + '</span></div>');
     var ref = K.nodo('<button type="button" class="kit-btn kit-btn--plano seg-refrescar" aria-label="Refrescar el estado de cuenta">' +
       K.icono('recargar', 16) + ' <span>Refrescar</span></button>');
     ref.addEventListener('click', function () { K.vibrar(8); recargar(); });
