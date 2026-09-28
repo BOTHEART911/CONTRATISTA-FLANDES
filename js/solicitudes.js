@@ -71,6 +71,17 @@
       return;
     }
 
+    /* 28/09 · fuera del horario de solicitudes (lunes a viernes, 6:00 a.m. a
+       7:59 p.m., sin festivos) no se empiezan las preguntas: se avisa antes */
+    if (datos.horario && datos.horario.ok === false) {
+      P.avisar({
+        titulo: 'Fuera del horario de solicitudes',
+        texto: tildes(datos.horario.motivo).replace(/envian/g, 'envían').replace(/\bEstas\b/g, 'Estás') + ' Vuelve a intentarlo en ese horario para pedirle el acceso a Contratación.',
+        si: 'Entendido'
+      });
+      return;
+    }
+
     var p1 = caso === 'INACTIVO' ? '¿Ya aceptaste un nuevo contrato en el SECOP II?' : '¿Ya aceptaste tu contrato en el SECOP II?';
     var t1 = caso === 'INACTIVO'
       ? 'No tienes un contrato activo en la app' + (datos.contrato ? ' (el último que tenemos es el ' + datos.contrato + ')' : '') + '. Si ya aceptaste uno nuevo, puedes pedirle el acceso a Contratación.'
@@ -275,6 +286,11 @@
       var cer = K.nodo('<section class="kit-tarjeta tr-cerrada">' + K.icono('candado', 20) + '<p></p></section>');
       cer.querySelector('p').textContent = tildes(DATA.motivo || 'Ahora no puedes hacer solicitudes nuevas.');
       c.appendChild(cer);
+    } else if (DATA.horario && DATA.horario.ok === false) {
+      /* 28/09 · horario de solicitudes: se avisa en vez de ofrecer el formulario */
+      var hor = K.nodo('<section class="kit-tarjeta tr-cerrada tr-horario">' + K.icono('reloj', 20) + '<p></p></section>');
+      hor.querySelector('p').textContent = tildes(DATA.horario.motivo).replace(/envian/g, 'envían').replace(/\bEstas\b/g, 'Estás');
+      c.appendChild(hor);
     } else {
       var zona = K.nodo('<section class="kit-tarjeta tr-nueva"></section>');
       var boton = K.nodo('<button type="button" class="kit-btn kit-btn--marca tr-nueva__b">' + K.icono('mas', 18) + ' Nueva solicitud a Contratación</button>');

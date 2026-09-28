@@ -128,6 +128,8 @@
     if (!P.puede) {
       c.appendChild(K.nodo('<section class="kit-tarjeta tr-cerrada">' + K.icono('candado', 20) +
         '<p>' + K.esc(textoTildes(P.motivo)) + '</p></section>'));
+    } else if (P.horario && P.horario.ok === false) {
+      c.appendChild(fueraDeHorario(P.horario));   /* 28/09 · horario de solicitudes */
     } else {
       var zona = K.nodo('<section class="kit-tarjeta tr-nueva"></section>');
       var boton = K.nodo('<button type="button" class="kit-btn kit-btn--marca tr-nueva__b">' + K.icono('mas', 18) + ' Nueva solicitud a Comunicaciones</button>');
@@ -143,6 +145,15 @@
 
     c.appendChild(misComunicaciones());
     K.piezas.creditos.montar(c);
+  }
+
+  /* 28/09 · FUERA DEL HORARIO DE SOLICITUDES (lunes a viernes, 6:00 a.m. a
+     7:59 p.m., sin festivos). Lo decide el CORE; aquí solo se avisa en vez
+     de ofrecer el formulario. Sus solicitudes anteriores se siguen viendo. */
+  function fueraDeHorario(h) {
+    var t = String((h && h.motivo) || '').replace(/envian/g, 'envían').replace(/\bEstas\b/g, 'Estás');
+    return K.nodo('<section class="kit-tarjeta tr-cerrada tr-horario">' + K.icono('reloj', 20) +
+      '<p>' + K.esc(t) + '</p></section>');
   }
 
   /* Los textos del CORE van sin tildes a propósito; los que se enseñan
@@ -397,16 +408,20 @@
       '</section>'
     ));
 
-    var zona = K.nodo('<section class="kit-tarjeta tr-nueva"></section>');
-    var boton = K.nodo('<button type="button" class="kit-btn kit-btn--marca tr-nueva__b">' + K.icono('mas', 18) + ' Nueva solicitud a Tesorería</button>');
-    zona.appendChild(boton);
-    boton.addEventListener('click', function () {
-      boton.hidden = true;
-      zona.appendChild(formTesoreria(c, function () { boton.hidden = false; }));
-      zona.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-    c.appendChild(zona);
-    if (abrirForm) boton.click();
+    if (TESO.horario && TESO.horario.ok === false) {
+      c.appendChild(fueraDeHorario(TESO.horario));   /* 28/09 · horario de solicitudes */
+    } else {
+      var zona = K.nodo('<section class="kit-tarjeta tr-nueva"></section>');
+      var boton = K.nodo('<button type="button" class="kit-btn kit-btn--marca tr-nueva__b">' + K.icono('mas', 18) + ' Nueva solicitud a Tesorería</button>');
+      zona.appendChild(boton);
+      boton.addEventListener('click', function () {
+        boton.hidden = true;
+        zona.appendChild(formTesoreria(c, function () { boton.hidden = false; }));
+        zona.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      c.appendChild(zona);
+      if (abrirForm) boton.click();
+    }
 
     c.appendChild(misTesoreria());
     K.piezas.creditos.montar(c);
