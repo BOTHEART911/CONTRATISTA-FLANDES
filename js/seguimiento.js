@@ -114,6 +114,8 @@
       case 'corregirCuenta': return [a.titulo && /Completa/.test(a.titulo) ? 'Completa tu cuenta ' + n : 'Corrige tu cuenta ' + n, a.texto || ''];
       case 'reportarPlan': return ['Reporta el plan de pagos de la cuenta ' + n, 'Antes de reportar, confirma en el SECOP II: 1) subiste la cuenta unificada al Plan de pagos, 2) la planilla quedó validada y 3) el estado dice «Enviado a la entidad». Al reportar pierdes el acceso a la carpeta de Drive; aquí en la app vas a seguir viendo y descargando tus documentos.'];
       case 'corregirPlan': return ['Tu supervisor(a) debe aceptar el plan de pagos de la cuenta ' + n, 'Si te pidieron corregir el plan de pagos y ya lo corregiste en el SECOP II siguiendo las indicaciones, avísale.'];
+      /* 28/09 · ya avisó la corrección: una por cada pedido del supervisor */
+      case 'esperarPlan': return ['Tu supervisor(a) está revisando el plan de pagos de la cuenta ' + n, 'Ya le avisaste. Si te pide otra corrección, aquí aparecerá de nuevo el botón REPORTAR CORRECCIÓN DEL PLAN.'];
       default: return [a.titulo || '', a.texto || ''];
     }
   }
@@ -286,7 +288,7 @@
   function selector() {
     var fila = K.nodo('<div class="kit-pastillas seg-sel" role="tablist" aria-label="Tus cuentas"></div>');
     S.cuentas.forEach(function (c) {
-      var pend = c.accion ? ' seg-sel__b--pend' : '';
+      var pend = (c.accion && c.accion.botones && c.accion.botones.length) ? ' seg-sel__b--pend' : '';   /* 28/09: esperar no es pendiente */
       var b = K.nodo('<button type="button" role="tab" class="kit-pastilla seg-sel__b' + pend + '" aria-pressed="' + (c.informe === SEL) +
         '"><i class="seg-punto seg-punto--' + tono(c) + '"></i>Cuenta ' + c.informe + '</button>');
       b.addEventListener('click', function () {
@@ -328,7 +330,7 @@
     if (c.observaciones && !c.accion) {
       t.appendChild(K.nodo('<div class="seg-obs"><b>Lo que te indicaron</b><p>' + K.esc(c.observaciones) + '</p></div>'));
     }
-    var otras = (S.acciones || []).filter(function (a) { return a.informe !== c.informe; });
+    var otras = (S.acciones || []).filter(function (a) { return a.informe !== c.informe && a.botones && a.botones.length; });
     otras.forEach(function (a) {
       var b = K.nodo('<button type="button" class="seg-otra">' + K.icono('aviso', 16) +
         '<span>Tu cuenta ' + a.informe + ' también tiene algo pendiente</span></button>');
@@ -735,6 +737,16 @@
               texto: 'No sabemos si el reporte alcanzó a guardarse.',
               nota: 'Vamos a volver a leer el estado de tu cuenta. Si ya dice REPORTADA, no lo repitas.',
               si: 'Ver el estado'
+            }).then(recargar);
+            return;
+          }
+          /* 28/09 · la corrección del plan ya estaba avisada: se explica y se refresca (el botón desaparece) */
+          if (e && e.codigo === 'PLAN_YA_REPORTADO') {
+            K.piezas.confirmar.avisar({
+              titulo: 'Ya le avisaste a tu supervisor(a)',
+              texto: 'La corrección del plan de pagos de la cuenta ' + informe + ' ya quedó reportada.',
+              nota: 'Espera su respuesta: si te pide otra corrección, podrás reportarla de nuevo.',
+              si: 'Entendido'
             }).then(recargar);
             return;
           }
