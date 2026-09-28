@@ -70,7 +70,7 @@
     if (K.piezas.personas) {
       var tam = /grande/.test(clase || '') ? 56 : (/chico/.test(clase || '') ? 34 : 44);
       /* en la lista la tarjeta entera es un enlace: la cara no se roba el toque */
-      return K.piezas.personas.avatar(nombre, { tam: tam, foto: foto || K.piezas.personas.foto(nombre), sinZoom: !/grande/.test(clase || '') });
+      return K.piezas.personas.avatar(nombre, { tam: tam, foto: foto || K.piezas.personas.foto(nombre) });   /* 28/09: en todas, con foto se abre en grande */
     }
     var a = K.nodo('<span class="ins-avatar ' + (clase || '') + '" aria-hidden="true"><b>' + K.esc(iniciales(nombre)) + '</b></span>');
     if (foto) {
