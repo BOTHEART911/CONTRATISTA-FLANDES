@@ -87,13 +87,25 @@
     var n = c.informe;
     var cta = 'Tu cuenta ' + n + (c.valor ? ' por ' + pesos(c.valor) : '');
     switch (c.estado) {
-      case 'BORRADOR': return ['Borrador', 'Tu cuenta ' + n + ' está en borrador. Termínala en Ingresar cuenta y después repórtala a tu supervisor(a).'];
-      case 'EN PROCESO': return ['A medio ingresar', 'Tu cuenta ' + n + ' quedó a medias. Vuelve a Ingresar cuenta para terminarla.'];
-      case 'INGRESADA': return ['Ingresada', cta + ' está ingresada. Revisa tus documentos y repórtala para que la vea tu supervisor(a).'];
-      case 'INCOMPLETA': return ['Incompleta', cta + ' quedó incompleta. Adjunta solo los documentos que te pidieron en Corregir cuenta y vuelve a reportarla.'];
+      /* 28/09 · con una cuenta por corregir, el borrador espera: una sola cosa que hacer */
+      case 'BORRADOR':
+      case 'EN PROCESO':
+        if (S && S.porCorregir && S.porCorregir !== n) {
+          return [c.estado === 'BORRADOR' ? 'Borrador' : 'A medio ingresar', 'Tu cuenta ' + S.porCorregir + ' fue devuelta: corrígela en CORREGIR CUENTA. Esta cuenta ' + n + ' queda guardada como está.'];
+        }
+        if (!c.accion) {
+          return [c.estado === 'BORRADOR' ? 'Borrador' : 'A medio ingresar', 'Tu borrador de la cuenta ' + n + ' queda guardado. La ingresas cuando tu cuenta anterior termine su trámite.'];
+        }
+        return c.estado === 'BORRADOR'
+          ? ['Borrador', 'Tu cuenta ' + n + ' está en borrador. Termínala en INGRESAR CUENTA y después repórtala a tu supervisor(a).']
+          : ['A medio ingresar', 'Tu cuenta ' + n + ' quedó a medias. Vuelve a INGRESAR CUENTA para terminarla.'];
+      case 'INGRESADA': return ['Ingresada', c.correccion
+        ? cta + ' tiene la corrección guardada. Te falta reportarla: toca CORRECCIÓN para que tu supervisor(a) la vuelva a revisar.'
+        : cta + ' está ingresada. Revisa tus documentos y repórtala para que la vea tu supervisor(a).'];
+      case 'INCOMPLETA': return ['Incompleta', cta + ' quedó incompleta. Complétala en CORREGIR CUENTA y vuelve a reportarla.'];
       case 'REPORTADA': return ['Reportada', 'Ya reportaste la cuenta ' + n + '. Ahora la revisa tu supervisor(a).'];
       case 'REVISADA POR SUPERVISOR': return ['Revisada por tu supervisor(a)', 'Tu supervisor(a) ya revisó la cuenta ' + n + '. Está a la espera de la aprobación de la oficina de Contratación.'];
-      case 'DEVUELTA': return ['Devuelta', cta + ' fue devuelta. Corrígela en Corregir cuenta y vuelve a reportarla.'];
+      case 'DEVUELTA': return ['Devuelta', cta + ' fue devuelta. Corrígela en CORREGIR CUENTA y vuelve a reportarla.'];
       case 'APROBADA': return ['Aprobada', cta + ' fue aprobada por la oficina de Contratación. Descarga tus documentos, unifícalos, súbelos al Plan de pagos del SECOP II y después reporta el plan de pagos.'];
       case 'PLAN DE PAGOS': return ['Plan de pagos reportado', 'Reportaste el plan de pagos de la cuenta ' + n + '. Falta que tu supervisor(a) lo acepte en el SECOP II.'];
       case 'CERRADA': return ['Plan de pagos aceptado', 'Tu supervisor(a) aceptó el plan de pagos de la cuenta ' + n + '. Falta la orden de pago de la oficina de Contabilidad.'];
@@ -110,7 +122,9 @@
     var n = a.informe;
     switch (a.tipo) {
       case 'ingresar': return ['Termina de ingresar tu cuenta ' + n, 'Todavía no la has radicado. Cuando la ingreses, vuelve aquí para reportarla.'];
-      case 'reportarCuenta': return ['Reporta tu cuenta ' + n, 'Antes de reportar, revisa que tus documentos estén completos (planilla, baucher de pago y los anexos que te pidieron) y revísalos uno a uno. Si tu cuenta ya había sido devuelta, con honestidad elige CORRECCIÓN: así la revisión va más rápido.'];
+      /* 28/09 · viene de una devolución: el CORE deja solo CORRECCIÓN y trae su texto */
+      case 'reportarCuenta': if (a.botones && a.botones.length === 1 && a.botones[0].tipo === 'correccion') return [a.titulo || '', a.texto || ''];
+        return ['Reporta tu cuenta ' + n, 'Antes de reportar, revisa que tus documentos estén completos (planilla, baucher de pago y los anexos que te pidieron) y revísalos uno a uno. Si tu cuenta ya había sido devuelta, con honestidad elige CORRECCIÓN: así la revisión va más rápido.'];
       case 'corregirCuenta': return [a.titulo && /Completa/.test(a.titulo) ? 'Completa tu cuenta ' + n : 'Corrige tu cuenta ' + n, a.texto || ''];
       case 'reportarPlan': return ['Reporta el plan de pagos de la cuenta ' + n, 'Antes de reportar, confirma en el SECOP II: 1) subiste la cuenta unificada al Plan de pagos, 2) la planilla quedó validada y 3) el estado dice «Enviado a la entidad». Al reportar pierdes el acceso a la carpeta de Drive; aquí en la app vas a seguir viendo y descargando tus documentos.'];
       case 'corregirPlan': return ['Tu supervisor(a) debe aceptar el plan de pagos de la cuenta ' + n, 'Si te pidieron corregir el plan de pagos y ya lo corregiste en el SECOP II siguiendo las indicaciones, avísale.'];

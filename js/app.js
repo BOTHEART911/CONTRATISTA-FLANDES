@@ -370,7 +370,8 @@
       return;
     }
 
-    K.piezas.banner.vista(v === 'inicio' ? 'Contratista' : titulos[v]);
+    /* 28/09 · con una cuenta por corregir, la opción se llama CORREGIR CUENTA */
+    K.piezas.banner.vista(v === 'inicio' ? 'Contratista' : (v === 'cuenta' && porCorregir() ? 'CORREGIR CUENTA' : titulos[v]));
     K.piezas.banner.atras(v === 'inicio' ? null : function () { irA('inicio'); });
 
     /* El borrador pinta su propia pantalla y se encarga de avisar si hay
@@ -450,7 +451,7 @@
 
     bloque('PROCESOS DE CUENTA', [
       acceso('BORRADOR ACTIVIDADES', 'Escribe tus actividades y sube las evidencias', 'img/datos_de_procesos.webp', function () { irA('borrador'); }),
-      acceso('INGRESAR CUENTA', 'Fechas, planilla y documentos para radicar', 'img/datos_de_procesos.webp', function () { irA('cuenta'); }),
+      tarjetaCuenta(),
       /* 4.7 · el seguimiento: lo que en la app vieja eran seis botones
          sueltos del menú (estado de cuenta, plan de pagos, mi cuenta Drive,
          reportar cuenta, recibir egresos y certificación) es UNA vista. */
@@ -556,6 +557,32 @@
       '  <div class="resumen__fila"><span>Secretaría</span><b>' + K.esc(c.secretaria || '—') + '</b></div>' +
       '  <div class="resumen__fila"><span>Estado</span>' + pastillaEstado(c.estado) + '</div>' +
       '</div>';
+  }
+
+  /* 28/09 · CUENTA DEVUELTA O INCOMPLETA (Oss). El arranque dice si hay una
+     cuenta por corregir; entonces la tarjeta INGRESAR CUENTA pasa a ser
+     CORREGIR CUENTA, destacada, y lleva a la cuenta devuelta. Al guardar la
+     corrección, cuenta.js avisa con 'kit:cuentaGuardada' y vuelve a ser
+     INGRESAR CUENTA sin otro viaje al servidor. */
+  function porCorregir() {
+    return (ARRANQUE && ARRANQUE.porCorregir && ARRANQUE.porCorregir.informe) ? ARRANQUE.porCorregir : null;
+  }
+  K.cuando('kit:cuentaGuardada', function () {
+    if (ARRANQUE && ARRANQUE.porCorregir) {
+      ARRANQUE.porCorregir = null;
+      if (K.recuerdo) K.recuerdo.guardar(ligero(ARRANQUE));
+    }
+  });
+  function tarjetaCuenta() {
+    var pc = porCorregir();
+    if (!pc) return acceso('INGRESAR CUENTA', 'Fechas, planilla y documentos para radicar', 'img/datos_de_procesos.webp', function () { irA('cuenta'); });
+    var t = acceso('CORREGIR CUENTA',
+      pc.estado === 'INCOMPLETA' ? 'Tu cuenta ' + pc.informe + ' quedó incompleta: complétala aquí'
+                                 : 'Tu cuenta ' + pc.informe + ' fue devuelta: corrígela aquí',
+      'img/datos_de_procesos.webp', function () { irA('cuenta'); });
+    t.classList.add('acceso--alerta');
+    t.appendChild(K.nodo('<span class="acceso__burbuja" aria-hidden="true">!</span>'));
+    return t;
   }
 
   function acceso(titulo, texto, medio, al) {

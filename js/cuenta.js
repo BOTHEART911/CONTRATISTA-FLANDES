@@ -183,16 +183,22 @@
        cuenta con el borrador a medias, igual que en la app vieja, y lo que
        falta se avisa en el índice y bloquea el botón de radicar. Aquí solo
        quedan los casos en los que de verdad no hay nada que hacer. */
+    /* 28/09 · el título y el paso siguiente los da el CORE según el estado
+       real de la cuenta (INGRESADA → reportarla, REPORTADA → la revisa el
+       supervisor…). Antes todo lo que no fuera ingresar decía "ya está
+       radicada" y hablaba de la cuenta siguiente. */
     var titulos = {
       sinBorrador: 'Primero empieza tu borrador',
-      espera: 'Esta cuenta ya está radicada',
-      turno: 'Todavía no puedes ingresar esta cuenta'   /* F11 · la anterior aún no llega al umbral de ADMIN (CERRADA u ORDEN DE PAGO) */
+      espera: 'Tu cuenta sigue en trámite',
+      turno: 'Tu cuenta anterior sigue en trámite'
     };
-    s.appendChild(K.nodo('<h3 class="grupo__t">' + K.esc(titulos[E.puerta] || 'Todavía no') + '</h3>'));
+    s.appendChild(K.nodo('<h3 class="grupo__t">' + K.esc(E.titulo || titulos[E.puerta] || 'Todavía no') + '</h3>'));
     s.appendChild(K.nodo('<p class="cta-cerrada__p">' + K.esc(E.motivo || '') + '</p>'));
-    if (E.puerta === 'sinBorrador') {
-      var b = K.nodo('<button type="button" class="kit-btn kit-btn--marca">Ir a BORRADOR ACTIVIDADES</button>');
-      b.addEventListener('click', function () { location.hash = '#/borrador'; });
+    var destino = E.puerta === 'sinBorrador' ? 'borrador' : E.ir;
+    if (destino) {
+      var texto = E.puerta === 'sinBorrador' ? 'Ir a BORRADOR ACTIVIDADES' : (E.boton || 'Ir a ESTADO DE CUENTA');
+      var b = K.nodo('<button type="button" class="kit-btn kit-btn--marca">' + K.esc(texto) + '</button>');
+      b.addEventListener('click', function () { K.vibrar(8); location.hash = '#/' + destino; });
       s.appendChild(b);
     }
     return s;
@@ -211,7 +217,7 @@
     if (corrige && E.observaciones) {
       s.appendChild(K.nodo(
         '<div class="cta-devuelta">' +
-        '  <b>Lo que te pidieron corregir</b>' +
+        '  <b>' + (E.incompleta ? 'Lo que te pidieron completar' : 'Lo que te pidieron corregir') + '</b>' +
         '  <p>' + K.esc(E.observaciones) + '</p>' +
         '</div>'
       ));
@@ -223,7 +229,10 @@
       s.appendChild(K.nodo('<p class="cta-cab__nota">' + K.esc(E.motivo || '') + '</p>'));
     }
     if (corrige) {
-      s.appendChild(K.nodo('<p class="cta-cab__nota">Cambia solo lo que haga falta. <b>Vuelve a elegir la fecha de radicación</b> y reemplaza los archivos que te indicaron.</p>'));
+      s.appendChild(K.nodo('<p class="cta-cab__nota">' + (E.incompleta
+        ? 'Adjunta lo que te pidieron. <b>Vuelve a elegir la fecha de radicación</b> y guarda la corrección.'
+        : 'Cambia solo lo que haga falta. <b>Vuelve a elegir la fecha de radicación</b> y reemplaza los archivos que te indicaron.') +
+        ' Después repórtala en <b>ESTADO DE CUENTA</b> eligiendo <b>CORRECCIÓN</b>.</p>'));
     }
     return s;
   }
@@ -321,6 +330,22 @@
   }
 
   function renglonActividades() {
+    /* 28/09 · al corregir, las actividades son las de la cuenta radicada: el
+       borrador es de la cuenta siguiente y está cerrado mientras haya una
+       cuenta por corregir, así que no se manda allá. */
+    if (E.puerta === 'corregir') {
+      return K.nodo(
+        '<li class="cta-idx cta-idx--ok">' +
+        '  <div class="cta-idx__btn">' +
+        '    <span class="cta-idx__marca" aria-hidden="true">' + K.icono('check', 15) + '</span>' +
+        '    <span class="cta-idx__txt">' +
+        '      <span class="cta-idx__t">Actividades del informe</span>' +
+        '      <span class="cta-idx__p">Se conservan las que radicaste en esta cuenta</span>' +
+        '    </span>' +
+        '  </div>' +
+        '</li>'
+      );
+    }
     var n = faltanActividades();
     var ok = n === 0;
     var li = K.nodo(
@@ -776,7 +801,7 @@
        de linea. Radicar es lo mas serio que hace esta app: ahora sale el
        Resumen de cambios del kit, con cada dato en su fila y en pesos. */
     K.piezas.confirmar.abrir({
-      titulo: 'Revisa antes de radicar',
+      titulo: E.puerta === 'corregir' ? 'Revisa antes de guardar la corrección' : 'Revisa antes de radicar',
       lista: [
         ['Informe', String(E.informe) + (E.total ? ' de ' + E.total : '')],
         ['Periodo', D.inicioPeriodo + ' a ' + D.finPeriodo],
@@ -786,8 +811,8 @@
         ['Te queda', K.pesos(nuevoSaldo())],
         ['Planilla', String(D.planilla) + ' de ' + D.mesPlanilla]
       ].filter(Boolean),
-      nota: 'Una vez radicada, Contratación la ve y ya no la puedes cambiar tú.',
-      si: 'Radicar',
+      nota: 'Después de guardarla, repórtala en ESTADO DE CUENTA para que tu supervisor(a) la revise.',
+      si: E.puerta === 'corregir' ? 'Guardar corrección' : 'Radicar',
       no: 'Revisar'
     }).then(function (ok) {
       if (ok) guardar(caja);
@@ -817,7 +842,8 @@
       .then(function (r) {
         K.ocupado = false;
         K.guardar.borrar(RESPALDO + '.' + E.idContrato);
-        K.piezas.guardado.listo({ sub: 'Tu cuenta quedó radicada.' });
+        K.piezas.guardado.listo({ sub: E.puerta === 'corregir' ? 'Tu corrección quedó guardada.' : 'Tu cuenta quedó guardada.' });
+        avisarGuardada();
         exito(caja, r);
       })
       ['catch'](function (e) {
@@ -841,6 +867,7 @@
         K.piezas.guardado.cerrar();
         if (r.quedo === 'completa') {
           K.guardar.borrar(RESPALDO + '.' + E.idContrato);
+          avisarGuardada();
           exito(caja, r);
           return;
         }
@@ -854,7 +881,7 @@
             texto: 'Tus datos y tus archivos SÍ quedaron guardados, pero los documentos no ' +
                    'terminaron de crearse.',
             nota: 'NO vuelvas a radicar desde cero: se duplicarían los archivos. Entra otra vez ' +
-                  'a INGRESAR CUENTA y toca Radicar; solo se rehacen los documentos.',
+                  'a ' + (E.puerta === 'corregir' ? 'CORREGIR CUENTA' : 'INGRESAR CUENTA') + ' y toca otra vez el botón de guardar; solo se rehacen los documentos.',
             si: 'Entendido'
           }).then(function () { abrir(); });
           return;
@@ -879,11 +906,22 @@
       });
   }
 
+  /* 28/09 · el inicio deja de mostrar CORREGIR CUENTA sin volver al servidor */
+  function avisarGuardada() {
+    if (K.disparar) K.disparar('kit:cuentaGuardada', { informe: E.informe, corregida: E.puerta === 'corregir' });
+  }
+
   function exito(caja, r) {
     caja.innerHTML = '';
+    var corregida = E.puerta === 'corregir';
     var s = K.nodo('<section class="kit-tarjeta cta-exito"></section>');
-    s.appendChild(K.nodo('<h3 class="grupo__t">Cuenta radicada</h3>'));
-    s.appendChild(K.nodo('<p>Tu informe ' + K.esc(E.informe) + ' quedó ingresado y Contratación ya lo puede ver.</p>'));
+    /* 28/09 · guardar no es terminar: la cuenta queda INGRESADA y falta
+       reportarla. Se dice aquí, con el botón, para que nadie vuelva a
+       INGRESAR/CORREGIR CUENTA creyendo que ya la radicó. */
+    s.appendChild(K.nodo('<h3 class="grupo__t">' + (corregida ? 'Corrección guardada' : 'Cuenta guardada') + '</h3>'));
+    s.appendChild(K.nodo('<p>' + (corregida
+      ? 'Guardaste la corrección de tu cuenta ' + K.esc(E.informe) + '. Te falta <b>reportarla</b>: en ESTADO DE CUENTA toca <b>CORRECCIÓN</b> para que tu supervisor(a) la vuelva a revisar.'
+      : 'Guardaste tu cuenta ' + K.esc(E.informe) + '. Te falta <b>reportarla</b>: en ESTADO DE CUENTA toca <b>REPORTE INICIAL</b> para que tu supervisor(a) la revise.') + '</p>'));
     if (r && r.documentos && r.documentos.length) {
       s.appendChild(K.nodo('<p class="cta-exito__docs">Se crearon: ' + K.esc(r.documentos.join(', ')) + '.</p>'));
     }
@@ -895,9 +933,12 @@
       s.appendChild(K.nodo('<a class="kit-btn kit-btn--plano" target="_blank" rel="noopener" href="' +
         K.esc(r.carpeta) + '">Ver mi carpeta en Drive</a>'));
     }
-    var b = K.nodo('<button type="button" class="kit-btn kit-btn--marca">Volver al inicio</button>');
-    b.addEventListener('click', function () { location.hash = '#/inicio'; });
+    var b = K.nodo('<button type="button" class="kit-btn kit-btn--marca">Ir a ESTADO DE CUENTA</button>');
+    b.addEventListener('click', function () { location.hash = '#/seguimiento'; });
     s.appendChild(b);
+    var bi = K.nodo('<button type="button" class="kit-btn kit-btn--plano">Volver al inicio</button>');
+    bi.addEventListener('click', function () { location.hash = '#/inicio'; });
+    s.appendChild(bi);
     caja.appendChild(s);
     K.piezas.creditos.montar(caja);
   }

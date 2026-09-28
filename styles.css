@@ -1872,3 +1872,20 @@
 .sol-gest__f { display: block; font: 600 .72rem/1.3 var(--k-fuente); color: var(--k-apagado); font-variant-numeric: tabular-nums; }
 .sol-gest p { margin: 2px 0 0; font: 400 .86rem/1.5 var(--k-fuente); color: var(--k-tinta); white-space: pre-line; overflow-wrap: anywhere; }
 .sol-adj:empty { display: none; }
+
+/* 28/09 · CORREGIR CUENTA destacada: hay una cuenta devuelta o incompleta.
+   Usa los tokens del kit, así que sirve igual en claro y en oscuro. */
+.acceso--alerta {
+  border-color: color-mix(in srgb, var(--k-malo) 55%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--k-malo) 10%, var(--k-papel)), var(--k-papel) 70%);
+  box-shadow: 0 14px 30px -18px color-mix(in srgb, var(--k-malo) 80%, transparent);
+  animation: acceso-alerta 2.4s ease-in-out 3;
+}
+.acceso--alerta::before { background: var(--k-malo); width: 4px; }
+.acceso--alerta .acceso__t { color: var(--k-malo); }
+.acceso--alerta .acceso__img { background: color-mix(in srgb, var(--k-malo) 12%, transparent); }
+@keyframes acceso-alerta {
+  0%, 100% { box-shadow: 0 14px 30px -18px color-mix(in srgb, var(--k-malo) 80%, transparent); }
+  50%      { box-shadow: 0 0 0 5px color-mix(in srgb, var(--k-malo) 18%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) { .acceso--alerta { animation: none; } }

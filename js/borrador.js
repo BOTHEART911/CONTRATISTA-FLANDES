@@ -116,17 +116,27 @@
   function puertaCerrada() {
     var iconos = { devuelta: 'atras', espera: 'reloj', completa: 'check' };
     var titulos = {
-      devuelta: 'Esta cuenta está devuelta',
-      espera: 'Todavía no',
+      devuelta: 'Tu cuenta fue devuelta',
+      espera: 'Tu cuenta sigue en trámite',
       completa: 'Ya terminaste tu contrato'
     };
+    /* 28/09 · una sola cosa que hacer, con su botón: con una cuenta DEVUELTA
+       o INCOMPLETA, corregirla (aunque ya exista el borrador de la
+       siguiente); si la cuenta está en trámite, en qué va y qué sigue. El
+       título y el destino los manda el CORE. */
     var c = K.nodo(
       '<section class="kit-tarjeta puerta">' +
       '  <p class="puerta__ico">' + K.icono(iconos[E.puerta] || 'aviso', 34) + '</p>' +
-      '  <h3 class="puerta__t">' + K.esc(titulos[E.puerta] || 'Aviso') + '</h3>' +
+      '  <h3 class="puerta__t">' + K.esc(E.titulo || titulos[E.puerta] || 'Aviso') + '</h3>' +
       '  <p class="puerta__p">' + K.esc(E.motivo || '') + '</p>' +
       '</section>'
     );
+    if (E.ir) {
+      var b = K.nodo('<button type="button" class="kit-btn kit-btn--marca">' +
+        K.esc(E.boton || (E.ir === 'cuenta' ? 'Ir a CORREGIR CUENTA' : 'Ir a ESTADO DE CUENTA')) + '</button>');
+      b.addEventListener('click', function () { K.vibrar(8); location.hash = '#/' + E.ir; });
+      c.appendChild(b);
+    }
     return c;
   }
 
