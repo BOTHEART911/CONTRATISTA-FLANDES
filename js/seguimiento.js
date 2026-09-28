@@ -42,6 +42,7 @@
   var app = K.id('app');
 
   var S = null;            /* lo que respondió 'seguimiento', ya mezclado */
+  var GUIA = null;         /* 28/09 · {informe, corregida, errores} tras guardar la cuenta */
   var SEL = 0;             /* el informe que se está mirando */
   var CAJA = null;         /* la vista pintada */
   var CACHE = null;        /* {en, seg, hist} las dos promesas en vuelo */
@@ -184,8 +185,11 @@
         S = d;
         S.egresos = egresosDe(S.cuentas);
         SEL = S.actual;
+        /* 28/09 · recién guardada: se abre esa cuenta y se lleva a la guía */
+        var g = GUIA; GUIA = null;
+        if (g) { S._guia = g; SEL = g.informe; }
         pintar();
-        irA(sub);
+        if (g) irAGuia(); else irA(sub);
         /* la historia llega cuando llegue: completa sin repintar lo que no cambió */
         c.hist.then(function (h) {
           if (!h || S !== d || !document.body.contains(CAJA)) return;
@@ -340,7 +344,13 @@
       '</section>'
     );
     t.appendChild(linea(c));
-    if (c.accion) t.appendChild(cajaAccion(c.accion));
+    var guia = S._guia && S._guia.informe === c.informe && c.accion && c.accion.tipo === 'reportarCuenta';
+    if (guia) t.appendChild(cajaGuia(S._guia, c.accion));
+    if (c.accion) {
+      var ca = cajaAccion(c.accion);
+      if (guia) ca.classList.add('seg-accion--guia');
+      t.appendChild(ca);
+    }
     if (c.observaciones && !c.accion) {
       t.appendChild(K.nodo('<div class="seg-obs"><b>Lo que te indicaron</b><p>' + K.esc(c.observaciones) + '</p></div>'));
     }
@@ -374,6 +384,36 @@
         ));
       });
     return ol;
+  }
+
+  /* 28/09 · LA GUÍA DESPUÉS DE GUARDAR (Oss): no se reporta desde la misma
+     pantalla donde se suben archivos. Se trae a la persona aquí, se le dice
+     que revise sus documentos y que, al final, toque el botón. */
+  function cajaGuia(g, a) {
+    var boton = (a.botones[0] && (BOTON[a.botones[0].texto] || a.botones[0].texto)) || 'REPORTAR';
+    var caja = K.nodo(
+      '<div class="seg-guia" role="status">' +
+      '  <p class="seg-guia__t">' + K.icono('check', 18) + ' ' +
+           (g.corregida ? 'Guardaste la corrección de tu cuenta ' : 'Guardaste tu cuenta ') + K.esc(g.informe) + '</p>' +
+      '  <ol class="seg-guia__pasos">' +
+      '    <li><b>Revisa</b> que tus documentos hayan quedado bien en <button type="button" class="seg-guia__ir">MI CUENTA DRIVE</button>.</li>' +
+      '    <li><b>Finalmente</b> toca <b>' + K.esc(boton) + '</b> aquí abajo para que tu supervisor(a) ' +
+           (g.corregida ? 'la vuelva a revisar.' : 'la revise.') + '</li>' +
+      '  </ol>' +
+      ((g.errores && g.errores.length) ? '<p class="seg-guia__aviso">Ojo: ' + K.esc(g.errores.join(' · ')) + '. Avisa a Contratación antes de reportar.</p>' : '') +
+      '</div>'
+    );
+    caja.querySelector('.seg-guia__ir').addEventListener('click', function () {
+      var d = K.id('seg-docs'); if (d) d.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return caja;
+  }
+
+  function irAGuia() {
+    setTimeout(function () {
+      var g = CAJA && CAJA.querySelector('.seg-guia');
+      if (g) g.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 350);
   }
 
   function cajaAccion(a) {
@@ -784,6 +824,9 @@
 
   window.SEGUIMIENTO = {
     abrir: function (sub) { abrir(sub); },
+    /* 28/09 · al guardar la cuenta, cuenta.js trae a la persona aquí con
+       una guía: revisa tus documentos y después toca el botón de reportar. */
+    guiar: function (g) { GUIA = g || null; CACHE = null; DOCS = {}; },
     precargar: precargar,
     /* 4.9: la ayuda (ayuda.js) habla con las mismas frases de esta vista */
     _detalle: detalle,

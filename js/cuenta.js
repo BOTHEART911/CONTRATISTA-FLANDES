@@ -829,9 +829,9 @@
       .then(function (r) {
         K.ocupado = false;
         K.guardar.borrar(RESPALDO + '.' + E.idContrato);
-        K.piezas.guardado.listo({ sub: E.puerta === 'corregir' ? 'Tu corrección quedó guardada.' : 'Tu cuenta quedó guardada.' });
+        K.piezas.guardado.listo({ sub: E.puerta === 'corregir' ? 'Tu corrección quedó guardada. Ahora revísala y repórtala.' : 'Tu cuenta quedó guardada. Ahora revísala y repórtala.' });
         avisarGuardada();
-        exito(caja, r);
+        irAReportar(caja, r);
       })
       ['catch'](function (e) {
         K.ocupado = false;
@@ -855,7 +855,7 @@
         if (r.quedo === 'completa') {
           K.guardar.borrar(RESPALDO + '.' + E.idContrato);
           avisarGuardada();
-          exito(caja, r);
+          irAReportar(caja, r);
           return;
         }
         if (r.quedo === 'a_medias') {
@@ -896,6 +896,16 @@
   /* 28/09 · el inicio deja de mostrar CORREGIR CUENTA sin volver al servidor */
   function avisarGuardada() {
     if (K.disparar) K.disparar('kit:cuentaGuardada', { informe: E.informe, corregida: E.puerta === 'corregir' });
+  }
+
+  /* 28/09 · guardada la cuenta, se lleva a ESTADO DE CUENTA con una guía:
+     revisar los documentos y, al final, tocar CORRECCIÓN o REPORTE INICIAL
+     (Oss: sin botón de reportar aquí, donde se suben archivos). La pantalla
+     de éxito queda solo de respaldo por si esa vista no está. */
+  function irAReportar(caja, r) {
+    if (!window.SEGUIMIENTO || !window.SEGUIMIENTO.guiar) { exito(caja, r); return; }
+    window.SEGUIMIENTO.guiar({ informe: E.informe, corregida: E.puerta === 'corregir', errores: (r && r.errores) || [] });
+    setTimeout(function () { location.hash = '#/seguimiento'; }, 1400);
   }
 
   function exito(caja, r) {
