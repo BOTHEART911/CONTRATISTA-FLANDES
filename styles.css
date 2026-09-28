@@ -1889,3 +1889,8 @@
   50%      { box-shadow: 0 0 0 5px color-mix(in srgb, var(--k-malo) 18%, transparent); }
 }
 @media (prefers-reduced-motion: reduce) { .acceso--alerta { animation: none; } }
+
+/* 28/09 (2) · el borrador abierto sobre la cuenta devuelta */
+.obl-corrige { display: grid; gap: 10px; margin-bottom: 12px; border-left: 4px solid var(--k-malo); }
+.obl-corrige__t { margin: 0; font-family: var(--k-fuente-titulo); font-size: 1.05rem; color: var(--k-malo); }
+.obl-corrige__p { margin: 0; font-size: .88rem; line-height: 1.45; color: var(--k-apagado); }

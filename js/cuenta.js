@@ -330,22 +330,9 @@
   }
 
   function renglonActividades() {
-    /* 28/09 · al corregir, las actividades son las de la cuenta radicada: el
-       borrador es de la cuenta siguiente y está cerrado mientras haya una
-       cuenta por corregir, así que no se manda allá. */
-    if (E.puerta === 'corregir') {
-      return K.nodo(
-        '<li class="cta-idx cta-idx--ok">' +
-        '  <div class="cta-idx__btn">' +
-        '    <span class="cta-idx__marca" aria-hidden="true">' + K.icono('check', 15) + '</span>' +
-        '    <span class="cta-idx__txt">' +
-        '      <span class="cta-idx__t">Actividades del informe</span>' +
-        '      <span class="cta-idx__p">Se conservan las que radicaste en esta cuenta</span>' +
-        '    </span>' +
-        '  </div>' +
-        '</li>'
-      );
-    }
+    /* 28/09 (2) · al corregir, BORRADOR ACTIVIDADES se abre sobre esta misma
+       cuenta devuelta (Oss: las actividades son lo que más se devuelve). */
+    var corrige = E.puerta === 'corregir';
     var n = faltanActividades();
     var ok = n === 0;
     var li = K.nodo(
@@ -356,7 +343,7 @@
       '    <span class="cta-idx__txt">' +
       '      <span class="cta-idx__t">Actividades del informe</span>' +
       '      <span class="cta-idx__p">' +
-           (ok ? 'Todas escritas'
+           (ok ? (corrige ? 'Toca para revisarlas o corregirlas, con sus evidencias' : 'Todas escritas')
                : (n === 1 ? 'Falta 1 obligación por escribir'
                           : 'Faltan ' + n + ' obligaciones por escribir')) +
       '      </span>' +

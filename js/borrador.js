@@ -207,6 +207,25 @@
     var total = E.obligaciones.length;
     var pct = total ? Math.round(escritas * 100 / total) : 0;
 
+    /* 28/09 (2) · corrigiendo la cuenta devuelta: se dice qué cuenta es, qué
+       pidieron y que se termina en CORREGIR CUENTA (rehace los formatos). */
+    var corr = null;
+    if (E.puerta === 'corregir') {
+      corr = K.nodo(
+        '<section class="kit-tarjeta obl-corrige">' +
+        '  <h3 class="obl-corrige__t">' + K.esc(E.titulo || ('Corrige tu cuenta ' + E.informe)) + '</h3>' +
+        (E.observaciones ? '  <div class="cta-devuelta"><b>' + (E.incompleta ? 'Lo que te pidieron completar' : 'Lo que te pidieron corregir') +
+          '</b><p>' + K.esc(E.observaciones) + '</p></div>' : '') +
+        '  <p class="obl-corrige__p">' + K.esc(E.motivo || '') + '</p>' +
+        '  <button type="button" class="kit-btn kit-btn--plano">Ir a CORREGIR CUENTA</button>' +
+        '</section>'
+      );
+      corr.querySelector('button').addEventListener('click', function () {
+        K.vibrar(8);
+        if (!sucio) { location.hash = '#/cuenta'; return; }
+        guardar(false).then(function () { location.hash = '#/cuenta'; }, function () {});
+      });
+    }
     var c = K.nodo(
       '<section class="kit-tarjeta resumen-inf">' +
       '  <div class="resumen-inf__alto">' +
@@ -215,15 +234,18 @@
       '      <p class="resumen-inf__n">' + E.informe +
              (E.total ? ' <span>de ' + K.esc(E.total) + '</span>' : '') + '</p>' +
       '    </div>' +
-      '    <span class="kit-pastilla ' + (E.puerta === 'editar' ? 'kit-pastilla--aviso' : 'kit-pastilla--ok') +
-         '" aria-pressed="true">' + (E.puerta === 'editar' ? 'Borrador' : 'Nuevo') + '</span>' +
+      '    <span class="kit-pastilla ' + (E.puerta === 'editar' || E.puerta === 'corregir' ? 'kit-pastilla--aviso' : 'kit-pastilla--ok') +
+         '" aria-pressed="true">' + (E.puerta === 'corregir' ? 'Corrección' : E.puerta === 'editar' ? 'Borrador' : 'Nuevo') + '</span>' +
       '  </div>' +
       '  <div class="barra"><i style="width:' + Math.max(4, pct) + '%"></i></div>' +
       '  <p class="resumen-inf__p">' + escritas + ' de ' + total + ' obligaciones escritas' +
          ' · ' + conFoto + ' con evidencia</p>' +
       '</section>'
     );
-    return c;
+    if (!corr) return c;
+    var f = document.createDocumentFragment();
+    f.appendChild(corr); f.appendChild(c);
+    return f;
   }
 
   function tarjetaObligacion(o, i, caja) {
@@ -586,7 +608,9 @@
         if (conAviso) {
           K.piezas.guardado.listo({
             titulo: '¡Guardado!',
-            sub: r.escritas + ' de ' + r.obligaciones + ' obligaciones escritas'
+            sub: E.puerta === 'corregir'
+              ? 'Ahora ve a CORREGIR CUENTA y toca Guardar la corrección para rehacer tus formatos.'
+              : r.escritas + ' de ' + r.obligaciones + ' obligaciones escritas'
           });
           /* El tablero se repinta para que el progreso refleje lo guardado. */
           if (location.hash.indexOf('/borrador/') < 0) abrirDeNuevo();

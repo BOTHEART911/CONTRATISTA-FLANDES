@@ -450,7 +450,9 @@
     }
 
     bloque('PROCESOS DE CUENTA', [
-      acceso('BORRADOR ACTIVIDADES', 'Escribe tus actividades y sube las evidencias', 'img/datos_de_procesos.webp', function () { irA('borrador'); }),
+      acceso('BORRADOR ACTIVIDADES', porCorregir()
+        ? 'Corrige aquí las actividades y evidencias de tu cuenta ' + porCorregir().informe
+        : 'Escribe tus actividades y sube las evidencias', 'img/datos_de_procesos.webp', function () { irA('borrador'); }),
       tarjetaCuenta(),
       /* 4.7 · el seguimiento: lo que en la app vieja eran seis botones
          sueltos del menú (estado de cuenta, plan de pagos, mi cuenta Drive,
