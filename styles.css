@@ -1912,3 +1912,11 @@
   50%      { box-shadow: 0 0 0 6px rgba(var(--k-marca-rgb), .22); }
 }
 @media (prefers-reduced-motion: reduce) { .seg-accion--guia { animation: none; } }
+
+/* 28/09 · la fecha de radicación en el último paso y el aviso del camino */
+.cta-radica { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--k-linea); }
+.cta-radica__t { margin: 0; font-weight: 700; color: var(--k-tinta); }
+.cta-radica__p { margin: 2px 0 10px; font-size: .84rem; color: var(--k-apagado); }
+.cta-pie__camino { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: .88rem; line-height: 1.4; }
+.cta-pie__camino--rapido { color: var(--k-ok); }
+.cta-pie__camino--completo { color: var(--k-apagado); }

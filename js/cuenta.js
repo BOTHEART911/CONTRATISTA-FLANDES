@@ -43,9 +43,11 @@
 
   var BLOQUES = [
     {
-      id: 'fechas', titulo: 'Fechas y periodo',
-      pista: 'Cuándo radicas y qué periodo estás cobrando',
-      campos: ['fechaRadicacion', 'inicioPeriodo', 'finPeriodo']
+      /* 28/09 · la fecha de radicación ya no va aquí: se elige al final, al
+         guardar, igual en INGRESAR y en CORREGIR CUENTA (Oss). */
+      id: 'fechas', titulo: 'Periodo',
+      pista: 'Qué periodo estás cobrando',
+      campos: ['inicioPeriodo', 'finPeriodo']
     },
     {
       id: 'pago', titulo: 'Relación de pago',
@@ -230,8 +232,8 @@
     }
     if (corrige) {
       s.appendChild(K.nodo('<p class="cta-cab__nota">' + (E.incompleta
-        ? 'Adjunta lo que te pidieron. <b>Vuelve a elegir la fecha de radicación</b> y guarda la corrección.'
-        : 'Cambia solo lo que haga falta. <b>Vuelve a elegir la fecha de radicación</b> y reemplaza los archivos que te indicaron.') +
+        ? 'Adjunta lo que te pidieron y guarda la corrección; la fecha de radicación la eliges al final.'
+        : 'Cambia solo lo que haga falta y reemplaza los archivos que te indicaron; la fecha de radicación la eliges al final.') +
         ' Después repórtala en <b>ESTADO DE CUENTA</b> eligiendo <b>CORRECCIÓN</b>.</p>'));
     }
     return s;
@@ -289,7 +291,7 @@
   }
 
   function resumenBloque(b) {
-    if (b.id === 'fechas') return D.inicioPeriodo + ' a ' + D.finPeriodo + ' · radica el ' + D.fechaRadicacion;
+    if (b.id === 'fechas') return D.inicioPeriodo + ' a ' + D.finPeriodo;
     if (b.id === 'pago') return 'Cobras ' + K.pesos(D.cobro) + ' · queda ' + K.pesos(nuevoSaldo()) +
       (E.rpCesion && E.rpCesion.pedir ? ' · RP cesión ' + rpCesionCompleto() : '');
     if (b.id === 'planilla') return 'Planilla ' + D.planilla + ' de ' + D.mesPlanilla;
@@ -316,12 +318,40 @@
       ));
     }
 
+    /* 28/09 · en la corrección se dice antes qué va a pasar: si solo cambió
+       documentos, se guarda en segundos; si cambió datos del informe, se
+       rehacen los formatos. El que decide de verdad es el CORE. */
+    if (E.puerta === 'corregir' && !falta.length) {
+      var rapida = caminoRapido();
+      s.appendChild(K.nodo('<p class="cta-pie__camino cta-pie__camino--' + (rapida ? 'rapido' : 'completo') + '">' +
+        K.icono(rapida ? 'cohete' : 'reloj', 15) + ' ' + (rapida
+          ? 'Solo cambiaste documentos: tu corrección se guarda en segundos.'
+          : 'Cambiaste datos del informe: se rehacen tus formatos (de medio minuto a dos minutos).') + '</p>'));
+    }
     var b = K.nodo('<button type="button" class="kit-btn kit-btn--marca cta-pie__btn">' +
       (E.puerta === 'corregir' ? 'Guardar la corrección' : 'Radicar mi cuenta') + '</button>');
     if (falta.length) b.disabled = true;
     b.addEventListener('click', function () { confirmar(caja); });
     s.appendChild(b);
     return s;
+  }
+
+  /* 28/09 · lo mismo que compara el CORE (FC_cambioTexto_): la fecha de
+     radicación no cuenta, porque cambia siempre y va en los dos formatos
+     que se rehacen también en la corrección rápida. */
+  var TEXTO_CORRECCION = ['inicioPeriodo', 'finPeriodo', 'saldo', 'cobro', 'planilla', 'mesPlanilla',
+    'base', 'salud', 'pension', 'riesgos', 'caja', 'sena', 'icbf', 'facturaNum',
+    'planillaA', 'mesPlanillaA', 'baseA', 'saludA', 'pensionA', 'riesgosA', 'cajaA', 'senaA', 'icbfA', 'rpCesion'];
+  function caminoRapido() {
+    if (E.puerta !== 'corregir' || E.rehacerActividades) return false;
+    var antes = E.campos || {};
+    return !TEXTO_CORRECCION.some(function (k) {
+      if (D[k] === undefined) return false;
+      var a = String(antes[k] === undefined || antes[k] === null ? '' : antes[k]).trim().toUpperCase();
+      var n = String(D[k] === undefined || D[k] === null ? '' : D[k]).trim().toUpperCase();
+      if (/^[\d.$ ,]+$/.test(a + n) && (a || n)) { a = String(K.aNumero(a)); n = String(K.aNumero(n)); }
+      return a !== n;
+    });
   }
 
   /* Cuántas actividades faltan, según lo que dijo el CORE al abrir. */
@@ -412,32 +442,8 @@
     /* La fecha de radicación NO es un calendario libre: solo valen hoy y los
        dos hábiles siguientes, y eso lo decide el CORE. Enseñar un calendario
        entero para después rechazar 364 días es hacer perder el tiempo. */
-    var g = grupo(s, 'Fecha de radicación', 'Es el día en que Contratación recibe tu cuenta.');
-    var fila = K.nodo('<div class="cta-fechas"></div>');
-    (E.fechasRadicacion || []).forEach(function (f) {
-      var b = K.nodo('<button type="button" class="cta-fecha' + (D.fechaRadicacion === f ? ' cta-fecha--on' : '') + '">' +
-        '<span class="cta-fecha__d">' + K.esc(f.slice(0, 5)) + '</span>' +
-        '<span class="cta-fecha__n">' + K.esc(diaSemana(f)) + '</span>' +
-        '</button>');
-      b.addEventListener('click', function () {
-        D.fechaRadicacion = f;
-        recordar();
-        K.$$('.cta-fecha', fila).forEach(function (x) { x.classList.remove('cta-fecha--on'); });
-        b.classList.add('cta-fecha--on');
-        K.vibrar(8);
-      });
-      fila.appendChild(b);
-    });
-    g.appendChild(fila);
-    /* 10.1: el CORE explica por qué salen esas fechas (pasó el día de corte del
-       mes: se ofrecen los primeros hábiles del siguiente) o por qué no sale
-       ninguna (cerró la radicación de la vigencia). Lo dice ADMIN. */
-    if (E.avisoRadicacion) {
-      var av = K.nodo('<p class="formulario__nota formulario__nota--fuerte cta-fechas__aviso"></p>');
-      av.textContent = E.avisoRadicacion;
-      g.appendChild(av);
-    }
-
+    /* 28/09 · la fecha de radicación se elige al final, al guardar
+       (fechasRadicacion más abajo). Aquí queda solo el periodo. */
     campoFecha(s, 'inicioPeriodo', 'Inicio del periodo', 'El primer día que estás cobrando');
     campoFecha(s, 'finPeriodo', 'Fin del periodo', 'El último día que estás cobrando');
   }
@@ -783,16 +789,53 @@
 
   /* ══════════════ guardar de verdad ══════════════ */
 
+  /* 28/09 · LA FECHA DE RADICACIÓN, AL FINAL (Oss). La misma regla de
+     siempre (la decide el CORE: hoy o los hábiles siguientes, después de
+     las 4 p. m. el siguiente, pasado el corte los primeros del mes
+     siguiente), pero se elige en el último paso, igual al ingresar y al
+     corregir. Así nadie entra a otro bloque solo para cambiar la fecha. */
+  function fechasRadicacion(hoja, boton) {
+    var cuerpo = hoja && hoja.querySelector('.kit-capa__cuerpo');
+    if (!cuerpo) return;
+    var opciones = E.fechasRadicacion || [];
+    if (opciones.indexOf(D.fechaRadicacion) < 0) D.fechaRadicacion = '';
+    var g = K.nodo('<div class="cta-radica"><p class="cta-radica__t">¿Qué día radicas?</p>' +
+      '<p class="cta-radica__p">Es el día en que Contratación recibe tu cuenta.</p><div class="cta-fechas"></div></div>');
+    var fila = g.querySelector('.cta-fechas');
+    opciones.forEach(function (f) {
+      var b = K.nodo('<button type="button" class="cta-fecha' + (D.fechaRadicacion === f ? ' cta-fecha--on' : '') + '">' +
+        '<span class="cta-fecha__d">' + K.esc(f.slice(0, 5)) + '</span>' +
+        '<span class="cta-fecha__n">' + K.esc(diaSemana(f)) + '</span></button>');
+      b.addEventListener('click', function () {
+        D.fechaRadicacion = f;
+        recordar();
+        K.$$('.cta-fecha', fila).forEach(function (x) { x.classList.remove('cta-fecha--on'); });
+        b.classList.add('cta-fecha--on');
+        K.vibrar(8);
+        boton.disabled = false;
+      });
+      fila.appendChild(b);
+    });
+    /* 10.1: el CORE explica por qué salen esas fechas o por qué no sale
+       ninguna (cerró la radicación de la vigencia). Lo dice ADMIN. */
+    if (E.avisoRadicacion || !opciones.length) {
+      var av = K.nodo('<p class="formulario__nota formulario__nota--fuerte cta-fechas__aviso"></p>');
+      av.textContent = E.avisoRadicacion || 'Hoy no hay fechas de radicación disponibles.';
+      g.appendChild(av);
+    }
+    cuerpo.insertBefore(g, cuerpo.firstChild);
+    boton.disabled = !D.fechaRadicacion;
+  }
+
   function confirmar(caja) {
     /* 4.5: era un confirm del navegador con cinco lineas pegadas con saltos
        de linea. Radicar es lo mas serio que hace esta app: ahora sale el
        Resumen de cambios del kit, con cada dato en su fila y en pesos. */
-    K.piezas.confirmar.abrir({
+    var promesa = K.piezas.confirmar.abrir({
       titulo: E.puerta === 'corregir' ? 'Revisa antes de guardar la corrección' : 'Revisa antes de radicar',
       lista: [
         ['Informe', String(E.informe) + (E.total ? ' de ' + E.total : '')],
         ['Periodo', D.inicioPeriodo + ' a ' + D.finPeriodo],
-        ['Radicas el', String(D.fechaRadicacion)],
         ['Cobras', K.pesos(D.cobro)],
         E.rpCesion && E.rpCesion.pedir ? ['RP de la cesión', rpCesionCompleto()] : null,
         ['Te queda', K.pesos(nuevoSaldo())],
@@ -801,8 +844,13 @@
       nota: 'Después de guardarla, repórtala en ESTADO DE CUENTA para que tu supervisor(a) la revise.',
       si: E.puerta === 'corregir' ? 'Guardar corrección' : 'Radicar',
       no: 'Revisar'
-    }).then(function (ok) {
-      if (ok) guardar(caja);
+    });
+    /* la capa ya está en la página: se le ponen las fechas encima del resumen */
+    var capas = document.querySelectorAll('.kit-conf');
+    var hoja = capas[capas.length - 1];
+    fechasRadicacion(hoja, hoja && hoja.querySelector('.kit-conf__si'));
+    promesa.then(function (ok) {
+      if (ok && D.fechaRadicacion) guardar(caja);
     });
   }
 
@@ -811,19 +859,30 @@
        debajo: se perdería lo escrito justo cuando más duele. */
     K.ocupado = true;
 
+    var rapida = caminoRapido();
     K.piezas.guardado.abrir({
-      titulo: 'Guardando tu cuenta',
-      sub: 'Primero los datos, después tus documentos.',
-      pasos: ['Guardando los datos', 'Creando tus documentos', 'Terminando']
+      titulo: E.puerta === 'corregir' ? 'Guardando tu corrección' : 'Guardando tu cuenta',
+      sub: rapida ? 'Solo cambiaste documentos: esto toma unos segundos.' : 'Primero los datos, después tus documentos.',
+      pasos: ['Guardando los datos', rapida ? 'Poniendo la fecha en tus formatos' : 'Creando tus documentos', 'Terminando']
     });
 
     K.pedir('cuentaGuardar', { campos: D, total: E.total }, { ms: 120000 })
-      .then(function () {
-        K.piezas.guardado.abrir({
-          titulo: 'Creando tus documentos',
-          sub: 'Esto tarda entre <b>medio minuto y dos minutos</b>. No cierres la app.',
-          pasos: ['Armando el formato de actividades', 'Metiendo tus evidencias', 'Pasando todo a PDF']
-        });
+      .then(function (g) {
+        /* 28/09 · el camino lo decidió el CORE: rápido = solo los formatos
+           que llevan la fecha de radicación */
+        if (g && g.modoDocs === 'rapido') {
+          K.piezas.guardado.abrir({
+            titulo: 'Actualizando tus formatos',
+            sub: 'Solo cambia la fecha de radicación. Unos segundos.',
+            pasos: ['Formato equivalente', 'Formato de exoneración', 'Listo']
+          });
+        } else {
+          K.piezas.guardado.abrir({
+            titulo: 'Creando tus documentos',
+            sub: 'Esto tarda entre <b>medio minuto y dos minutos</b>. No cierres la app.',
+            pasos: ['Armando el formato de actividades', 'Metiendo tus evidencias', 'Pasando todo a PDF']
+          });
+        }
         return K.pedir('cuentaDocumentos', {}, { ms: 300000 });
       })
       .then(function (r) {
