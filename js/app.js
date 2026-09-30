@@ -527,7 +527,12 @@
            está pintado: cuando la persona toque la tarjeta, ya está. */
         /* 29/09 · con el temporizador de la VISTA: si la persona ya se fue
            del inicio, la precarga ni se pide (kit.js, K.vista). */
-        if (window.SEGUIMIENTO) K.vista.luego(function () { window.SEGUIMIENTO.precargar(); }, 1200);
+        /* 30/09 · SE QUITA la precarga. Medido en producción: eran las dos
+           ejecuciones más pesadas del ecosistema (seguimiento + historia, ~5 s
+           de servidor juntas) y salían en CADA apertura de cada contratista:
+           384 el 29/09, más que los propios inicios. Todos los usuarios
+           comparten la misma fila de Apps Script, así que esa precarga
+           frenaba a todos. El ESTADO DE CUENTA las pide al entrar. */
       })
       ['catch'](function (e) { destino.appendChild(errorCaja(e)); });
   }

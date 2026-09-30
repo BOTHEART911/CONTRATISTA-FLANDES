@@ -68,8 +68,15 @@
     var c = { en: ahora };
     var op = { ms: 90000, fondo: !!fondo };
     c.seg = c.segP = K.pedir('seguimiento', { historia: false }, op);
-    c.histP = K.pedir('seguimientoHistoria', {}, op);
-    c.hist = c.histP['catch'](function () { return null; });
+    /* 30/09 · la historia es lo secundario de la vista: va DETRÁS de la
+       principal (cola de fondo del kit) en vez de competir con ella en la
+       fila de Apps Script. */
+    c.histP = K.pedir('seguimientoHistoria', {}, { ms: 90000, fondo: true });
+    c.hist = c.histP['catch'](function (e) {
+      /* si se cortó al salir de la vista, la próxima entrada la vuelve a pedir */
+      if (e && e.codigo === 'CANCELADA' && CACHE === c) CACHE = null;
+      return null;
+    });
     /* 4.9 · lo precargado también le sirve a la ayuda del inicio (quién
        aprobó, qué toca ahora) sin haber entrado a esta vista */
     c.seg.then(function (d) {
