@@ -148,13 +148,24 @@ self.addEventListener('activate', function (e) {
    ============================================================ */
 var ESTADO = null;   /* Promise<{red, fresco}> de la última apertura */
 
+/* 30/09 · CON TOPE. Sin él, en un celular con mala señal esta pregunta
+   podía tardar lo que la red quisiera, y TODOS los archivos de la app la
+   esperaban antes de salir de la caché: la app no se pintaba. Si GitHub no
+   contesta en 1,5 s se sigue con la caché (como antes del 29/09) y la
+   versión nueva se ve en la siguiente apertura. */
+var TOPE_VERSION = 1500, TOPE_HTML = 4000;
+
+function conTope(promesa, ms, valor) {
+  return Promise.race([promesa, new Promise(function (r) { setTimeout(function () { r(valor); }, ms); })]);
+}
+
 function versionDeLaRed() {
-  return fetch(RUTA_VERSION + '?t=' + Date.now(), { cache: 'no-store' }).then(function (r) {
+  return conTope(fetch(RUTA_VERSION + '?t=' + Date.now(), { cache: 'no-store' }).then(function (r) {
     return r.ok ? r.text() : '';
   }).then(function (t) {
     var m = /APP_VERSION\s*=\s*["']([^"']+)["']/.exec(String(t || ''));
     return m ? m[1].trim() : '';
-  })['catch'](function () { return ''; });
+  })['catch'](function () { return ''; }), TOPE_VERSION, '');
 }
 
 function comprobarEstado() {
@@ -210,21 +221,32 @@ self.addEventListener('fetch', function (e) {
   /* El HTML siempre de la red, y a la vez la pregunta por la versión. */
   if (req.mode === 'navigate') {
     var estado = comprobarEstado();
+    /* 25/09 · 'no-cache': se le pregunta a GitHub si cambió (responde 304
+       si no) en vez de fiarse de la copia de 10 minutos del navegador. */
+    var deRed = fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then(function (r) {
+      return estado.then(function (s) {
+        /* en modo fresco NO se guarda: esta caché es la de la versión vieja */
+        if (!s.fresco && r && r.status === 200) {
+          var copia = r.clone();
+          caches.open(VERSION).then(function (c) { c.put('./index.html', copia); });
+        }
+        return r;
+      });
+    });
+    var enCache = function () {
+      return caches.open(VERSION).then(function (c) { return c.match('./index.html'); });
+    };
     e.respondWith(
-      /* 25/09 · 'no-cache': se le pregunta a GitHub si cambió (responde 304
-         si no) en vez de fiarse de la copia de 10 minutos del navegador. */
-      fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then(function (r) {
-        return estado.then(function (s) {
-          /* en modo fresco NO se guarda: esta caché es la de la versión vieja */
-          if (!s.fresco && r && r.status === 200) {
-            var copia = r.clone();
-            caches.open(VERSION).then(function (c) { c.put('./index.html', copia); });
-          }
-          return r;
-        });
-      })['catch'](function () {
-        return caches.match('./index.html').then(function (r) { return r || Response.error(); });
-      })
+      /* 30/09 · con tope: si GitHub no entrega el HTML en 4 s y esta versión
+         lo tiene guardado, se abre con el guardado (no se queda en blanco). */
+      conTope(deRed.then(function (r) { return { r: r }; }, function () { return { r: null }; }), TOPE_HTML, null)
+        .then(function (x) {
+          if (x && x.r) return x.r;
+          return enCache().then(function (c) {
+            if (c) return c;
+            return deRed['catch'](function () { return Response.error(); });
+          });
+        })
     );
     return;
   }
