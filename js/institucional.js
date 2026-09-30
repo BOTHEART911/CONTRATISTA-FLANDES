@@ -393,10 +393,15 @@
   function vistaDirectorio() {
     var c = caja('ins');
     var p = DIR ? Promise.resolve(DIR) : K.pedir('directorio').then(function (l) { DIR = l || []; return DIR; });
-    K.piezas.esqueletos.mientras(c, p, { forma: 'filas', cuantos: 6, espera: 'Trayendo el directorio' })
+    /* 30/09 · la cabecera primero; la lista llega detrás */
+    c.appendChild(cabecera('ubicacion', 'DIRECTORIO INSTITUCIONAL',
+      'Las dependencias de la Alcaldía: dónde quedan, su correo y sus líneas. Toca para escribir, llamar o llegar.'));
+    var zona = K.nodo('<div></div>');
+    c.appendChild(zona);
+    K.piezas.esqueletos.mientras(zona, p, { forma: 'filas', cuantos: 6, espera: 'Trayendo el directorio' })
       .then(function () { pintarDirectorio(c); })
       ['catch'](function (e) {
-        c.appendChild(errorCaja(e, function () { DIR = null; rehacer(); }));
+        zona.appendChild(errorCaja(e, function () { DIR = null; rehacer(); }));
         K.piezas.creditos.montar(c);
       });
   }
