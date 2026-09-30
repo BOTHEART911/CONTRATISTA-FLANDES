@@ -191,7 +191,18 @@
         /* 4.5: la comprobación de la sesión y la carga del inicio son la
            MISMA llamada. Ver `arranque()` aquí arriba. Se le devuelve a la
            pieza de sesión SOLO el usuario, que es lo que ella guarda. */
-        comprobar: function () { return arranque({ abrir: true }).then(function (d) { return d.yo; }); },
+        comprobar: function (login) {
+          /* 29/09 · el login trae el inicio en el MISMO viaje (antes eran dos
+             seguidos: login ~1,8 s + inicio ~2,4 s de servidor, más ~2 s de
+             plataforma cada uno). Si no lo trae (varios contratos, CORE viejo),
+             se pide como siempre. */
+          var ya = login && login.arranque;
+          return arranque(ya ? { datos: ya } : { abrir: true }).then(function (d) { return d.yo; });
+        },
+        arranqueEnLogin: true,
+        /* lo que el inicio del contratista necesita para no mandar de nuevo el
+           catálogo de municipios ni contar los avisos de más */
+        datosArranque: function () { return { avisos: 1, selloMunicipios: selloMunicipiosGuardado() }; },
         /* 26/09 · sin contrato activo o sin registro: la solicitud a
            Contratación (solicitudes.js). El caso llega en la MISMA respuesta
            del login fallido; no hay viaje extra. */
@@ -514,7 +525,9 @@
         /* 4.7 · el estado de cuenta cuesta de 3 a 4 s de servidor y otros
            2 a 3 de viaje (medido). Se pide por detrás en cuanto el inicio
            está pintado: cuando la persona toque la tarjeta, ya está. */
-        if (window.SEGUIMIENTO) setTimeout(function () { window.SEGUIMIENTO.precargar(); }, 1200);
+        /* 29/09 · con el temporizador de la VISTA: si la persona ya se fue
+           del inicio, la precarga ni se pide (kit.js, K.vista). */
+        if (window.SEGUIMIENTO) K.vista.luego(function () { window.SEGUIMIENTO.precargar(); }, 1200);
       })
       ['catch'](function (e) { destino.appendChild(errorCaja(e)); });
   }

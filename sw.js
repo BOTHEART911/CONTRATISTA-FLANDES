@@ -124,6 +124,57 @@ self.addEventListener('activate', function (e) {
   );
 });
 
+/* ============================================================
+   29/09 · MODO FRESCO: LA VERSIÓN NUEVA DESDE LA PRIMERA APERTURA
+
+   El problema (medido en Chromium con red lenta)
+     Tras publicar, este service worker (el VIEJO) seguía sirviendo el
+     armazón viejo desde su caché mientras el nuevo se instalaba. Con
+     red lenta la instalación tardaba más que la visita: la app abría
+     vieja, a los ~20 s recargaba y en la apertura siguiente volvía a
+     pasar. Por fuera: "publiqué y en los teléfonos sigue la anterior".
+
+   Lo que hace ahora
+     En cada apertura (navegación) se pregunta a GitHub el número
+     publicado, EN PARALELO con el index.html, sin gastar tiempo extra.
+       · Si coincide con el de esta caché: todo sale de la caché (rápido).
+       · Si NO coincide (hay publicación nueva y este es el viejo): esa
+         apertura se sirve ENTERA de la red, archivo por archivo
+         confirmado con GitHub. La persona ve lo nuevo ya, sin recargas,
+         y el service worker nuevo se instala por detrás.
+       · Sin internet: la caché, como siempre.
+     Y le cuenta a la página qué número vio en la red (SW_RED), así la
+     app no repite esa pregunta antes de hablar con el CORE.
+   ============================================================ */
+var ESTADO = null;   /* Promise<{red, fresco}> de la última apertura */
+
+function versionDeLaRed() {
+  return fetch(RUTA_VERSION + '?t=' + Date.now(), { cache: 'no-store' }).then(function (r) {
+    return r.ok ? r.text() : '';
+  }).then(function (t) {
+    var m = /APP_VERSION\s*=\s*["']([^"']+)["']/.exec(String(t || ''));
+    return m ? m[1].trim() : '';
+  })['catch'](function () { return ''; });
+}
+
+function comprobarEstado() {
+  ESTADO = versionDeLaRed().then(function (red) {
+    var fresco = !!red && red !== APP_VERSION;
+    if (fresco && self.registration && self.registration.update) {
+      try { self.registration.update()['catch'](function () {}); } catch (err) {}
+    }
+    return { red: red, fresco: fresco };
+  });
+  return ESTADO;
+}
+
+/* De la red, confirmando con GitHub (304 si no cambió); sin red, la caché. */
+function deLaRed(req) {
+  return fetch(req, { cache: 'no-cache' })['catch'](function () {
+    return caches.match(req).then(function (r) { return r || Response.error(); });
+  });
+}
+
 self.addEventListener('fetch', function (e) {
   var req = e.request;
   if (req.method !== 'GET') return;
@@ -135,21 +186,19 @@ self.addEventListener('fetch', function (e) {
      a la red. El service worker no se mete en medio. */
   if (url.origin !== self.location.origin) return;
 
-  /* El version.js de la RAÍZ nunca pasa por el caché: es el archivo con el
-     que la app pregunta "¿hay algo nuevo publicado?", y servírselo desde el
-     caché sería contestarle siempre que no. Ojo, es solo ese: kit/version.js
-     es la pieza del kit y se cachea como cualquier otro script. */
+  /* El version.js de la RAÍZ nunca pasa por el caché. Ojo, es solo ese:
+     kit/version.js es la pieza del kit y se cachea como cualquier script. */
   if (url.pathname === RUTA_VERSION) {
-    /* 25/09 · La página lo carga con <script src="version.js"> para saber QUÉ
-       versión está corriendo. Ese número tiene que ser el del armazón que
-       este service worker sirve, no el de GitHub: si no, tras publicar, la
-       primera apertura mostraba el número nuevo con el código viejo del
-       caché y la app creía estar al día (hacía falta abrirla dos veces).
-       La pregunta "¿hay algo nuevo?" de kit/version.js lleva ?t= y sí va a
-       la red. */
+    /* <script src="version.js">: el número del armazón QUE SE ESTÁ
+       SIRVIENDO (en modo fresco, el de la red) + lo que vio la red. La
+       pregunta "¿hay algo nuevo?" de kit/version.js lleva ?t= y va a la red. */
     if (url.search.indexOf('t=') < 0) {
-      e.respondWith(new Response('var APP_VERSION = "' + APP_VERSION + '";',
-        { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-store' } }));
+      e.respondWith((ESTADO || comprobarEstado()).then(function (s) {
+        var v = s.fresco ? s.red : APP_VERSION;
+        return new Response(
+          'var APP_VERSION = "' + v + '";\nvar SW_FRESCO = 1;\nvar SW_RED = "' + (s.red || '') + '";',
+          { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-store' } });
+      }));
       return;
     }
     e.respondWith(fetch(req, { cache: 'no-store' })['catch'](function () {
@@ -158,16 +207,21 @@ self.addEventListener('fetch', function (e) {
     return;
   }
 
-  /* El HTML primero de la red: si no, un cambio de versión se queda
-     escondido detrás del caché y la gente sigue viendo la app vieja. */
+  /* El HTML siempre de la red, y a la vez la pregunta por la versión. */
   if (req.mode === 'navigate') {
+    var estado = comprobarEstado();
     e.respondWith(
       /* 25/09 · 'no-cache': se le pregunta a GitHub si cambió (responde 304
          si no) en vez de fiarse de la copia de 10 minutos del navegador. */
       fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then(function (r) {
-        var copia = r.clone();
-        caches.open(VERSION).then(function (c) { c.put('./index.html', copia); });
-        return r;
+        return estado.then(function (s) {
+          /* en modo fresco NO se guarda: esta caché es la de la versión vieja */
+          if (!s.fresco && r && r.status === 200) {
+            var copia = r.clone();
+            caches.open(VERSION).then(function (c) { c.put('./index.html', copia); });
+          }
+          return r;
+        });
       })['catch'](function () {
         return caches.match('./index.html').then(function (r) { return r || Response.error(); });
       })
@@ -176,16 +230,25 @@ self.addEventListener('fetch', function (e) {
   }
 
   e.respondWith(
-    caches.match(req).then(function (hit) {
-      if (hit) return hit;
-      /* 25/09 · Lo que no está en el armazón también se confirma con GitHub:
-         tras publicar, la caché del navegador todavía guarda lo viejo. */
-      return fetch(req, { cache: 'no-cache' }).then(function (r) {
-        if (r && r.status === 200 && r.type === 'basic') {
-          var copia = r.clone();
-          caches.open(VERSION).then(function (c) { c.put(req, copia); });
-        }
-        return r;
+    /* Si el service worker se reinició a media carga, ESTADO está vacío y
+       se vuelve a preguntar una vez (sin red, responde '' y sale la caché). */
+    (ESTADO || comprobarEstado()).then(function (s) {
+      if (s.fresco) return deLaRed(req);
+      /* 29/09 · SOLO de la caché de ESTA versión. caches.match() a secas
+         busca en todas y, si la de la versión anterior seguía viva (su
+         borrado se cortó), servía de ahí archivos viejos con el service
+         worker nuevo al mando (comprobado en Chromium). */
+      return caches.open(VERSION).then(function (c) { return c.match(req); }).then(function (hit) {
+        if (hit) return hit;
+        /* 25/09 · Lo que no está en el armazón también se confirma con GitHub:
+           tras publicar, la caché del navegador todavía guarda lo viejo. */
+        return fetch(req, { cache: 'no-cache' }).then(function (r) {
+          if (r && r.status === 200 && r.type === 'basic') {
+            var copia = r.clone();
+            caches.open(VERSION).then(function (c) { c.put(req, copia); });
+          }
+          return r;
+        });
       });
     })
   );

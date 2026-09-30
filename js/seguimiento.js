@@ -53,12 +53,23 @@
 
   /* ══════════════ las dos llamadas ══════════════ */
 
-  function pedirTodo(forzar) {
+  /* 29/09 · La precarga del inicio va de FONDO (kit.js): espera a que el
+     inicio termine lo suyo y, si la persona toca otra tarjeta antes de que
+     salga, se descarta sin llegar al servidor. Medido: eran las dos lecturas
+     más pesadas del ecosistema (2,5 y 3,1 s de servidor) y salían en CADA
+     apertura, compitiendo con la vista a la que la persona iba de verdad.
+     Si va al ESTADO DE CUENTA, la vista ADOPTA lo que ya estaba en camino. */
+  function pedirTodo(forzar, fondo) {
     var ahora = Date.now();
-    if (!forzar && CACHE && (ahora - CACHE.en) < FRESCO_MS) return CACHE;
+    if (!forzar && CACHE && (ahora - CACHE.en) < FRESCO_MS) {
+      if (!fondo && K.vista) { K.vista.adoptar(CACHE.segP); K.vista.adoptar(CACHE.histP); }
+      return CACHE;
+    }
     var c = { en: ahora };
-    c.seg = K.pedir('seguimiento', { historia: false }, { ms: 90000 });
-    c.hist = K.pedir('seguimientoHistoria', {}, { ms: 90000 })['catch'](function () { return null; });
+    var op = { ms: 90000, fondo: !!fondo };
+    c.seg = c.segP = K.pedir('seguimiento', { historia: false }, op);
+    c.histP = K.pedir('seguimientoHistoria', {}, op);
+    c.hist = c.histP['catch'](function () { return null; });
     /* 4.9 · lo precargado también le sirve a la ayuda del inicio (quién
        aprobó, qué toca ahora) sin haber entrado a esta vista */
     c.seg.then(function (d) {
@@ -72,7 +83,7 @@
   }
 
   function precargar() {
-    try { pedirTodo(false); } catch (e) {}
+    try { pedirTodo(false, true); } catch (e) {}
   }
 
   /* ══════════════ textos (con sus tildes: los del CORE van sin ellas) ══════════════ */
@@ -180,7 +191,19 @@
     CAJA = K.nodo('<div class="kit-ancho vista seg"></div>');
     app.appendChild(CAJA);
     var c = pedirTodo(false);
-    K.piezas.esqueletos.mientras(CAJA, c.seg, { forma: 'ficha', cuantos: 3, espera: 'Trayendo tu estado de cuenta' })
+    /* 29/09 · PRIMERO LO QUE SE VINO A HACER. Desde la tarjeta CERTIFICACIÓN
+       CONTRATO (y en el contrato NOTIFICADO, que solo tiene eso) la persona
+       esperaba ~4,5 s el estado de cuenta entero para ver un botón que no
+       depende de él. Ahora la certificación sale YA y el resto llega detrás;
+       al llegar, la vista se pinta completa y vuelve a llevarla a esa sección. */
+    var zona = CAJA;
+    if (sub === 'certificacion') {
+      CAJA.appendChild(K.nodo('<section class="kit-tarjeta seg-cert" id="seg-certificacion"></section>'));
+      pintarCert();
+      zona = K.nodo('<div class="seg-espera"></div>');
+      CAJA.appendChild(zona);
+    }
+    K.piezas.esqueletos.mientras(zona, c.seg, { forma: 'ficha', cuantos: 3, espera: 'Trayendo tu estado de cuenta' })
       .then(function (d) {
         S = d;
         S.egresos = egresosDe(S.cuentas);
@@ -200,7 +223,7 @@
         });
       })
       ['catch'](function (e) {
-        CAJA.appendChild(errorCaja(e));
+        zona.appendChild(errorCaja(e));
         K.piezas.creditos.montar(CAJA);
       });
   }
