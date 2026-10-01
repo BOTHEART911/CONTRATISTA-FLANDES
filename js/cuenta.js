@@ -117,6 +117,20 @@
     var caja = K.nodo('<div class="kit-ancho vista cuenta"></div>');
     app.appendChild(caja);
 
+    /* 01/10 · CANDADO DE LA PRIMERA CUENTA. Si el arranque ya dice que la
+       próxima es la cuenta 1 y que faltan datos del contrato, la puerta se
+       pinta YA, sin viaje y antes de llenar nada. El CORE tiene el mismo
+       candado (puerta 'contrato'), así que esto solo ahorra la espera. */
+    var cand = candado();
+    if (cand) {
+      E = { puerta: 'contrato', informe: 1, faltanContrato: cand.faltan, faltanDeContratacion: cand.deContratacion };
+      D = {};
+      BLOQUE = null;
+      if (K.piezas.banner) K.piezas.banner.vista('INGRESAR CUENTA');
+      pintar(caja);
+      return;
+    }
+
     K.piezas.esqueletos.mientras(caja, cargar(), { forma: 'texto', cuantos: 5 })
       .then(function () {
         BLOQUE = sub && porId(sub) ? sub : null;
@@ -130,8 +144,26 @@
       ['catch'](function (e) { caja.appendChild(error(e)); });
   }
 
+  /* Lo que sabe la app (app.js) del contrato y de si la próxima es la cuenta 1. */
+  function candado() {
+    var c = window.CONTRATISTA_CANDADO;
+    return (c && c.estado) ? c.estado() : null;
+  }
+
+  /* El candado escrito por la app y no por el CORE: con un CORE sin desplegar,
+     la cuenta 1 por ingresar y el contrato sin diligenciar se cierran igual. */
+  function candadoLocal(d) {
+    if (!d || d.puerta !== 'ingresar' || d.nueva || Number(d.informe) !== 1) return;
+    var c = window.CONTRATISTA_CANDADO && window.CONTRATISTA_CANDADO.contrato();
+    if (!c || c.yaDiligenciado !== false) return;
+    d.puerta = 'contrato';
+    d.faltanContrato = c.faltanContrato || [];
+    d.faltanDeContratacion = !!c.faltanDeContratacion;
+  }
+
   function cargar() {
     return K.pedir('cuentaEstado').then(function (d) {
+      candadoLocal(d);
       E = d;
       D = {};
       /* Lo que ya esté en la hoja manda sobre el respaldo del teléfono:
@@ -183,7 +215,39 @@
     K.piezas.creditos.montar(caja);
   }
 
+  /* 01/10 · la puerta del contrato: qué falta y el botón que lleva a llenarlo.
+     Los textos se arman aquí también, para el caso en que se pinta sin haber
+     preguntado al CORE. */
+  function puertaContrato() {
+    var faltan = E.faltanContrato || [];
+    var deContr = !!E.faltanDeContratacion;
+    var s = K.nodo('<section class="kit-tarjeta cta-cerrada cta-candado"></section>');
+    s.appendChild(K.nodo('<p class="cta-candado__ico" aria-hidden="true">' + K.icono('candado', 30) + '</p>'));
+    s.appendChild(K.nodo('<h3 class="grupo__t">Primero completa los datos de tu contrato</h3>'));
+    s.appendChild(K.nodo('<p class="cta-cerrada__p">Para ingresar tu primera cuenta tienen que estar todos los datos ' +
+      'del contrato: van impresos en los formatos de tus cuentas.' +
+      (deContr ? ' Algunos los registra Contratación: pídeselos.' : '') + '</p>'));
+    if (faltan.length) {
+      var l = K.nodo('<div class="cta-candado__faltan" aria-label="Lo que falta"></div>');
+      l.appendChild(K.nodo('<span class="cta-candado__rot">' + (faltan.length === 1 ? 'Te falta' : 'Te faltan') + '</span>'));
+      faltan.forEach(function (f) {
+        l.appendChild(K.nodo('<span class="kit-pastilla kit-pastilla--aviso">' + K.esc(f) + '</span>'));
+      });
+      s.appendChild(l);
+    }
+    var b = K.nodo('<button type="button" class="kit-btn kit-btn--marca">' +
+      K.icono(deContr ? 'enviar' : 'lapiz', 17) + ' ' +
+      (deContr ? 'Ir a SOLICITUD CONTRATACIÓN' : 'Completar DATOS DEL CONTRATO') + '</button>');
+    b.addEventListener('click', function () {
+      K.vibrar(8);
+      location.hash = deContr ? '#/contratacion' : '#/proceso/completar';
+    });
+    s.appendChild(b);
+    return s;
+  }
+
   function puertaCerrada() {
+    if (E.puerta === 'contrato') return puertaContrato();
     var s = K.nodo('<section class="kit-tarjeta cta-cerrada"></section>');
     /* 4.4: ya no hay puerta 'faltan'. Desde esta entrega se ENTRA a la
        cuenta con el borrador a medias, igual que en la app vieja, y lo que

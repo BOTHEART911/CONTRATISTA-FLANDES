@@ -44,6 +44,7 @@
    * tiene ya: se manda el sello que guardó y el servidor decide.
    */
   var ARRANQUE = null;
+  var FRESCO = false;     /* 01/10 · el arranque vino del CORE (no del recuerdo del teléfono) */
   var MUNI_K = 'municipios.v2';
 
   function selloMunicipiosGuardado() {
@@ -79,6 +80,7 @@
 
     return (recordado ? Promise.resolve(recordado) : opc.datos ? Promise.resolve(opc.datos) : pedirInicio()).then(function (d) {
       ARRANQUE = d;
+      FRESCO = !recordado;
       YO = d.yo || YO;
       CONTRATO = d.contrato;
       LISTAS = d.listas || LISTAS;
@@ -588,13 +590,42 @@
     return (ARRANQUE && ARRANQUE.porCorregir && ARRANQUE.porCorregir.informe) ? ARRANQUE.porCorregir : null;
   }
   K.cuando('kit:cuentaGuardada', function () {
-    if (ARRANQUE && ARRANQUE.porCorregir) {
+    if (ARRANQUE && (ARRANQUE.porCorregir || ARRANQUE.primeraCuenta)) {
       ARRANQUE.porCorregir = null;
+      ARRANQUE.primeraCuenta = false;   /* 01/10 · ya hay cuenta: el candado no vuelve */
       if (K.recuerdo) K.recuerdo.guardar(ligero(ARRANQUE));
     }
   });
+
+  /*
+   * 01/10 · CANDADO DE LA PRIMERA CUENTA (Oss).
+   * La primera cuenta de cada contrato (también la de un contrato NUEVO del
+   * mismo contratista) no se ingresa sin los datos del contrato, que van
+   * impresos en los formatos. Lo que hace falta para saberlo ya viene en el
+   * arranque (contrato.faltanContrato y primeraCuenta): cero viajes nuevos.
+   * Solo se usa con un arranque FRESCO; con el recordado se le pregunta al
+   * CORE, que tiene el mismo candado. Con un CORE viejo no llegan esos dos
+   * datos y cuenta.js lo deduce de cuentaEstado y de yaDiligenciado.
+   */
+  function candadoContrato() {
+    var c = CONTRATO;
+    if (!c || !FRESCO || !ARRANQUE || ARRANQUE.primeraCuenta !== true) return null;
+    if (!c.faltanContrato || !c.faltanContrato.length) return null;
+    return { faltan: c.faltanContrato, deContratacion: !!c.faltanDeContratacion };
+  }
+  window.CONTRATISTA_CANDADO = {
+    estado: candadoContrato,
+    contrato: function () { return CONTRATO; }
+  };
   function tarjetaCuenta() {
     var pc = porCorregir();
+    if (!pc && candadoContrato()) {
+      var tc = acceso('INGRESAR CUENTA', 'Primero completa los datos de tu contrato',
+        'img/datos_de_procesos.webp', function () { irA('cuenta'); });
+      tc.classList.add('acceso--alerta');
+      tc.appendChild(K.nodo('<span class="acceso__burbuja" aria-hidden="true">!</span>'));
+      return tc;
+    }
     if (!pc) return acceso('INGRESAR CUENTA', 'Fechas, planilla y documentos para radicar', 'img/datos_de_procesos.webp', function () { irA('cuenta'); });
     var t = acceso('CORREGIR CUENTA',
       pc.estado === 'INCOMPLETA' ? 'Tu cuenta ' + pc.informe + ' quedó incompleta: complétala aquí'
@@ -752,7 +783,12 @@
    * cedido o adicionado, lo único que se toca es el RP que corresponde.
    */
 
-  function vistaProceso() {
+  /* 01/10 · #/proceso/completar llega desde el candado de la primera cuenta:
+     el formulario se abre solo y, al guardar completo, vuelve a la cuenta. */
+  var DESDE_CANDADO = false;
+
+  function vistaProceso(sub) {
+    DESDE_CANDADO = sub === 'completar';
     var caja = K.nodo('<div class="kit-ancho vista"></div>');
     app.appendChild(caja);
 
@@ -870,10 +906,11 @@
     var s = K.nodo('<section class="kit-tarjeta grupo"></section>');
 
     if (!c.yaDiligenciado) {
+      var faltan = c.faltanContrato || [];
       s.appendChild(K.nodo(
         '<p class="formulario__nota formulario__nota--fuerte">Todavía te faltan datos ' +
-        'obligatorios del contrato. Sin ellos no se pueden generar los formatos de tu ' +
-        'primera cuenta.</p>'
+        'obligatorios del contrato. Sin ellos no puedes ingresar tu primera cuenta' +
+        (faltan.length ? ': <b>' + faltan.map(K.esc).join(', ') + '</b>.' : '.') + '</p>'
       ));
     }
 
@@ -886,6 +923,10 @@
       s.querySelector('.formulario').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
     s.appendChild(b);
+    /* desde el candado: el formulario ya abierto, sin otro toque */
+    if (DESDE_CANDADO && !c.yaDiligenciado) {
+      setTimeout(function () { if (!b.disabled && b.isConnected) b.click(); }, 0);
+    }
     return s;
   }
 
@@ -1046,7 +1087,23 @@
       K.pedir('guardarContrato', D)
         .then(function (r) {
           CONTRATO = r.contrato;
-          K.piezas.guardado.listo({ sub: 'Tu contrato quedó al día.' });
+          /* Un CORE sin desplegar devuelve el contrato leído ANTES de escribir
+             (no trae faltanContrato). Ese CORE solo acepta el primer guardado
+             con los siete datos, así que si respondió bien, quedó completo. */
+          if (CONTRATO && CONTRATO.faltanContrato === undefined && (r.modo === 'primario' || r.modo === 'cedido')) {
+            CONTRATO.yaDiligenciado = true;
+          }
+          /* 01/10 · se parcha el arranque en memoria (y en el recuerdo): el
+             candado de la primera cuenta se abre sin recargar ni viajar */
+          if (ARRANQUE) {
+            ARRANQUE.contrato = CONTRATO;
+            if (K.recuerdo) K.recuerdo.guardar(ligero(ARRANQUE));
+          }
+          var completo = !!(CONTRATO && CONTRATO.yaDiligenciado);
+          K.piezas.guardado.listo({ sub: completo && DESDE_CANDADO
+            ? 'Tu contrato quedó completo. Ya puedes ingresar tu primera cuenta.'
+            : 'Tu contrato quedó al día.' });
+          if (completo && DESDE_CANDADO) { DESDE_CANDADO = false; irA('cuenta'); return; }
           pintarContrato(caja);
         })
         ['catch'](function (e) {

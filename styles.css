@@ -891,6 +891,16 @@
   color: var(--k-apagado);
 }
 .cta-exito .kit-btn { width: 100%; margin-top: 8px; }
+
+/* 01/10 · candado de la primera cuenta: qué falta del contrato */
+.cta-candado { text-align: center; }
+.cta-candado__ico { margin: 4px 0 6px; color: var(--k-aviso, var(--k-marca)); line-height: 0; }
+.cta-candado__faltan {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
+  margin: 0 0 16px;
+}
+.cta-candado__rot { width: 100%; font-size: .8rem; font-weight: 700; color: var(--k-apagado); }
+.cta-candado .kit-btn { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .cta-exito__docs { font-size: .86rem; }
 .cta-exito__aviso {
   padding: 10px 12px;
