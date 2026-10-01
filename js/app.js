@@ -945,9 +945,9 @@
         'En el clausulado, el número que va en CPS-(aquí)-' + (new Date().getFullYear()) + '. Ejemplo: 021',
         { valor: numProcesoCorto(c.numProceso), numerico: 3, marcador: 'Ej: 021' });
 
-      campoFecha(f, D, 'fechaInicio', 'Fecha de inicio',
+      var fIni = campoFecha(f, D, 'fechaInicio', 'Fecha de inicio',
         'La que dice tu ACTA DE INICIO.', c.fechaInicio);
-      campoFecha(f, D, 'fechaTermino', 'Fecha de terminación',
+      var fFin = campoFecha(f, D, 'fechaTermino', 'Fecha de terminación',
         'Corrobórala en el acta de inicio.', c.fechaTermino);
 
       /* El plazo lo calcula el CORE con las dos fechas. Aquí solo se
@@ -963,9 +963,10 @@
       f.appendChild(plazo);
 
       var fila = K.nodo('<div class="campo-fila"></div>');
-      campoTexto(fila, D, 'meses', 'Meses', '', { valor: c.meses || '', numerico: 3, marcador: 'Automático' });
-      campoTexto(fila, D, 'dias', 'Días', '', { valor: c.dias || '', numerico: 3, marcador: 'Automático' });
+      var inMeses = campoTexto(fila, D, 'meses', 'Meses', '', { valor: c.meses || '', numerico: 3, marcador: 'Automático' });
+      var inDias = campoTexto(fila, D, 'dias', 'Días', '', { valor: c.dias || '', numerico: 3, marcador: 'Automático' });
       f.appendChild(fila);
+      enlazarPlazo(c, D, fIni, fFin, inMeses, inDias, plazo.querySelector('input'), plazo);
 
       campoRP(f, D, 'rp', 'Registro Presupuestal (RP)',
         'Escribe <b>solo los últimos dígitos</b>, los que trae tu RP después de los ceros. ' +
@@ -1044,6 +1045,83 @@
     /* La rueda de fechas se engancha una vez, con el formulario ya montado. */
     if (K.piezas.fechas) K.piezas.fechas.montar(f);
     return f;
+  }
+
+  /*
+   * 01/10 · EL PLAZO AUTOMÁTICO, COMO EN LA APP VIEJA (Oss).
+   * Al poner o cambiar las fechas se llenan solos los meses y los días, y el
+   * TIEMPO DE EJECUCIÓN se escribe solo. Meses y días se pueden corregir a
+   * mano (cuando el acta dice otra cosa) y el texto sigue a lo escrito.
+   * La cuenta es la misma del CORE (FC_plazoContrato_), recuperada de la
+   * hoja CONTRATISTAS: meses de calendario contados desde el día de inicio,
+   * con el día final incluido; lo que sobra son días.
+   */
+  function fechaDe(v) {
+    var t = String(v || '').trim();
+    var m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(t);
+    if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
+    var i = /^(\d{4})-(\d{2})-(\d{2})/.exec(t);
+    return i ? new Date(+i[1], +i[2] - 1, +i[3]) : null;
+  }
+  function mesDesde(a, k) {
+    var d = new Date(a.getFullYear(), a.getMonth() + k, a.getDate());
+    if (d.getDate() !== a.getDate()) d = new Date(a.getFullYear(), a.getMonth() + k + 1, 1);
+    return d;
+  }
+  function plazoContrato(ini, fin) {
+    var a = new Date(ini.getFullYear(), ini.getMonth(), ini.getDate());
+    var tope = new Date(fin.getFullYear(), fin.getMonth(), fin.getDate() + 1);
+    if (tope.getTime() <= a.getTime()) return null;
+    var meses = 0;
+    while (mesDesde(a, meses + 1).getTime() <= tope.getTime()) meses++;
+    return { meses: meses, dias: Math.round((tope.getTime() - mesDesde(a, meses).getTime()) / 86400000) };
+  }
+  function enLetras(n) {
+    var u = ['', 'UNO', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE'];
+    var esp = ['DIEZ', 'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISEIS', 'DIECISIETE', 'DIECIOCHO', 'DIECINUEVE'];
+    var d = ['', 'DIEZ', 'VEINTE', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA'];
+    var c = ['', 'CIENTO', 'DOSCIENTOS', 'TRESCIENTOS', 'CUATROCIENTOS', 'QUINIENTOS', 'SEISCIENTOS', 'SETECIENTOS', 'OCHOCIENTOS', 'NOVECIENTOS'];
+    function dec(x) {
+      if (x < 10) return u[x];
+      if (x < 20) return esp[x - 10];
+      if (x === 20) return 'VEINTE';
+      if (x < 30) return 'VEINTI' + u[x % 10];
+      return d[Math.floor(x / 10)] + (x % 10 ? ' Y ' + u[x % 10] : '');
+    }
+    if (n === 100) return 'CIEN';
+    if (n > 100) return (c[Math.floor(n / 100)] + ' ' + dec(n % 100)).trim();
+    return dec(n) || 'CERO';
+  }
+  /* 'SEIS (6) MESES Y QUINCE (15) DIAS', igual que FC_tiempoEjecucion_ del CORE */
+  function tiempoEjecucion(meses, dias) {
+    meses = parseInt(meses, 10) || 0; dias = parseInt(dias, 10) || 0;
+    var t = '';
+    if (meses > 0) t += (meses === 1 ? 'UN' : enLetras(meses)) + ' (' + meses + ') ' + (meses === 1 ? 'MES' : 'MESES');
+    if (dias > 0) { if (t) t += ' Y '; t += (dias === 1 ? 'UN' : enLetras(dias)) + ' (' + dias + ') ' + (dias === 1 ? 'DIA' : 'DIAS'); }
+    return t;
+  }
+  function enlazarPlazo(c, D, fIni, fFin, inMeses, inDias, inTiempo, caja) {
+    var aviso = K.nodo('<p class="campo__error" hidden>La fecha de terminación es anterior a la de inicio.</p>');
+    caja.appendChild(aviso);
+    function texto() { inTiempo.value = tiempoEjecucion(inMeses.value, inDias.value); }
+    function desdeFechas(escribir) {
+      var a = fechaDe(D.fechaInicio || fIni.value), b = fechaDe(D.fechaTermino || fFin.value);
+      if (!a || !b) { texto(); return; }
+      var p = plazoContrato(a, b);
+      aviso.hidden = !!p;
+      if (!p) return;
+      inMeses.value = String(p.meses);
+      inDias.value = String(p.dias);
+      if (escribir) { D.meses = inMeses.value; D.dias = inDias.value; }
+      texto();
+    }
+    fIni.addEventListener('change', function () { desdeFechas(true); });
+    fFin.addEventListener('change', function () { desdeFechas(true); });
+    inMeses.addEventListener('input', texto);
+    inDias.addEventListener('input', texto);
+    /* al abrir: lo guardado manda; si hay fechas pero faltan los meses, se calculan */
+    if (!String(c.meses || '').trim() && !String(c.dias || '').trim()) desdeFechas(true);
+    else inTiempo.value = c.ejecucion || tiempoEjecucion(c.meses, c.dias);
   }
 
   /* El resumen antes de guardar. La app vieja lo tenía y no era adorno: un
