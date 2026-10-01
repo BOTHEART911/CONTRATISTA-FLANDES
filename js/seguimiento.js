@@ -572,7 +572,9 @@
        para pasar de uno a otro con las flechas. Cada uno se pide SOLO
        cuando se ve, y una sola vez. */
     var paraVisor = todos.map(function (a) {
-      return { titulo: a.nombre, tipo: a.tipo === 'imagen' ? 'imagen' : (a.tipo === 'pdf' ? 'pdf' : 'otro'), cargar: bytesDe(c.informe, a.id) };
+      /* 30/09 · directo de Drive en el visor; si Drive no lo entrega, el CORE */
+      return { titulo: a.nombre, tipo: a.tipo === 'imagen' ? 'imagen' : (a.tipo === 'pdf' ? 'pdf' : 'otro'), cargar: bytesDe(c.informe, a.id),
+               drive: { id: a.id, google: a.mime === 'application/vnd.google-apps.document', mime: a.mime || '', nombre: a.nombre } };
     });
 
     (r.grupos || []).forEach(function (g) {
@@ -614,9 +616,13 @@
   function descargar(doc, boton) {
     if (boton) boton.classList.add('seg-girando');
     Promise.resolve(doc.cargar()).then(function (r) {
-      var bin = atob(String(r.base64 || ''));
-      var bytes = new Uint8Array(bin.length);
-      for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      /* 30/09 · si el documento ya se vio, llega en bytes (directo de Drive) */
+      var bytes = r.bytes;
+      if (!bytes) {
+        var bin = atob(String(r.base64 || ''));
+        bytes = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      }
       var url = URL.createObjectURL(new Blob([bytes], { type: r.mime || 'application/octet-stream' }));
       var a = document.createElement('a');
       a.href = url; a.download = r.nombre || doc.titulo || 'documento';
