@@ -1096,8 +1096,10 @@
   function tiempoEjecucion(meses, dias) {
     meses = parseInt(meses, 10) || 0; dias = parseInt(dias, 10) || 0;
     var t = '';
-    if (meses > 0) t += (meses === 1 ? 'UN' : enLetras(meses)) + ' (' + meses + ') ' + (meses === 1 ? 'MES' : 'MESES');
-    if (dias > 0) { if (t) t += ' Y '; t += (dias === 1 ? 'UN' : enLetras(dias)) + ' (' + dias + ') ' + (dias === 1 ? 'DIA' : 'DIAS'); }
+    /* delante de MESES/DIAS: 'VEINTIUN', 'TREINTA Y UN' (FC_letrasAntesDe_ del CORE) */
+    var antes = function (n) { return enLetras(n).replace(/UNO$/, 'UN'); };
+    if (meses > 0) t += (meses === 1 ? 'UN' : antes(meses)) + ' (' + meses + ') ' + (meses === 1 ? 'MES' : 'MESES');
+    if (dias > 0) { if (t) t += ' Y '; t += (dias === 1 ? 'UN' : antes(dias)) + ' (' + dias + ') ' + (dias === 1 ? 'DIA' : 'DIAS'); }
     return t;
   }
   function enlazarPlazo(c, D, fIni, fFin, inMeses, inDias, inTiempo, caja) {
