@@ -142,7 +142,7 @@
         botones: [
           { texto: '¿Qué documentos necesito?', responde: function () {
               return 'Siempre: certificación bancaria, planilla (PDF sin contraseña) y el baucher de la planilla (foto o PDF).\n' +
-                     'Si aplica: planilla anexa y su baucher, anexos de actividades en un solo PDF, RUT si eres Régimen Simple, factura si facturas electrónicamente, parafiscales si eres persona jurídica, certificado de NO aportes si eres pensionado.\n' +
+                     'Si aplica: planilla anexa y su baucher, planilla ARL suministrada por la Alcaldía (solo si la Alcaldía te paga la ARL por riesgo elevado), anexos de actividades en un solo PDF, RUT si eres Régimen Simple, factura si facturas electrónicamente, parafiscales si eres persona jurídica, certificado de NO aportes si eres pensionado.\n' +
                      'Solo en la primera cuenta: acta de inicio, clausulados, CDP, RP, RUT y certificado de ARL.'; } },
           { texto: '¿Qué pasa si se me va la señal?', responde: function () {
               return 'Nada se pierde: lo escrito queda en este teléfono y cada PDF que subes queda guardado al instante. Vuelve a entrar y sigues donde ibas.'; } },

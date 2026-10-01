@@ -89,6 +89,10 @@
     { k: 'planilla1',  t: 'Planilla',                    obliga: true,  nota: 'Sin contraseña' },
     { k: 'baucher2',   t: 'Baucher planilla anexa',      obliga: false, nota: 'Foto o PDF. Solo si presentas planilla adicional', acepta: IMAGEN_O_PDF },
     { k: 'planilla2',  t: 'Planilla anexa',              obliga: false, nota: 'Solo si presentas planilla adicional' },
+    /* 30/09 · Opcional: solo para quien la Alcaldía le paga la ARL por tener
+       riesgo elevado. Va en BANCO Y PLANILLA y la revisión la muestra en la
+       pestaña Relación de planilla (FC_ARCHIVOS_CUENTA.arlAlcaldia). */
+    { k: 'arlAlcaldia', t: 'Planilla ARL suministrada por la Alcaldía', obliga: false, nota: 'Solo si la Alcaldía te paga la ARL (riesgo elevado)', nuevo: true },
     { k: 'anexos',     t: 'Anexos de actividades',       obliga: false, nota: 'Todo en un solo PDF', mb: 10 },
     { k: 'rutSimple',  t: 'RUT (Régimen Simple)',        obliga: false, nota: 'Solo Régimen Simple' },
     { k: 'facturaPdf', t: 'Factura electrónica',         obliga: false, nota: 'Solo si facturas electrónicamente' },
@@ -616,6 +620,7 @@
 
     var primera = [];
     ARCHIVOS.forEach(function (a) {
+      if (!admitido(a)) return;
       if (a.grupo === 'primera') { primera.push(a); return; }
       s.appendChild(ficha(a));
     });
@@ -624,6 +629,15 @@
     if (primera.some(function (a) { return tieneArchivo(a.k); })) det.open = true;
     primera.forEach(function (a) { det.appendChild(ficha(a)); });
     s.appendChild(det);
+  }
+
+  /* 30/09 · Una casilla NUEVA (nuevo:true) solo se pinta si el CORE ya la
+     admite (cuentaEstado.tiposArchivo). Con un CORE sin desplegar no sale y
+     nadie ve el error "No se reconoce el archivo"; front y CORE se suben en
+     cualquier orden. */
+  function admitido(a) {
+    if (!a.nuevo) return true;
+    return !!(E && E.tiposArchivo && E.tiposArchivo.indexOf(a.k) >= 0);
   }
 
   function ficha(a) {
