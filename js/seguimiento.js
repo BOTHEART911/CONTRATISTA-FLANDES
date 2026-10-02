@@ -504,7 +504,7 @@
       ['Valor de la cuenta', c.valor ? pesos(c.valor) : ''],
       ['Radicada', c.radicada],
       ['Revisada por tu supervisor(a)', revisada, revisada && S ? S.supervisor : '', 'Tu supervisor(a)'],
-      ['Aprobada por Contratación', c.aprobada ? c.aprobada + (c.aprobo && !P ? ' · ' + c.aprobo : '') : '', c.aprobada ? c.aprobo : ''],
+      ['Aprobada por Contratación', c.aprobada ? c.aprobada + (c.aprobo && !P ? ' · ' + c.aprobo : '') : '', c.aprobada ? c.aprobo : '', 'Oficina de Contratación'],
       ['Orden de pago', c.orden ? 'N° ' + c.orden + (c.fechaOrden ? ' · ' + c.fechaOrden : '') : '', c.orden ? c.ordenQuien : ''],
       ['Egreso', c.egreso ? 'N° ' + c.egreso + (c.egreso2 ? ' y ' + c.egreso2 : '') + (c.fechaEgreso ? ' · ' + c.fechaEgreso : '') : '', c.egreso ? c.egresoQuien : ''],
       ['Pagada', c.fechaPago],
