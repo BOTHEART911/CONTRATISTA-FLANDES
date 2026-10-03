@@ -168,7 +168,7 @@
     T.cuentas.forEach(function (c) {
       var x = h.porInforme[c.informe];
       if (!x) return;
-      ['aprobada', 'aprobo', 'orden', 'fechaOrden', 'ordenQuien', 'egreso', 'egreso2', 'fechaEgreso', 'egresoQuien', 'fechaPago', 'fuente', 'banco']
+      ['aprobada', 'aprobo', 'orden', 'fechaOrden', 'ordenQuien', 'egreso', 'egreso2', 'fechaEgreso', 'egresoQuien', 'fechaPago', 'pagoQuien', 'fuente', 'banco']
         .forEach(function (k) { if (!c[k] && x[k]) c[k] = x[k]; });
       if (!c.neto && x.neto) c.neto = x.neto;
       if ((x.devoluciones || []).length > (c.devoluciones || []).length) c.devoluciones = x.devoluciones;
@@ -506,8 +506,9 @@
       ['Revisada por tu supervisor(a)', revisada, revisada && S ? S.supervisor : '', 'Tu supervisor(a)'],
       ['Aprobada por Contratación', c.aprobada ? c.aprobada + (c.aprobo && !P ? ' · ' + c.aprobo : '') : '', c.aprobada ? c.aprobo : '', 'Oficina de Contratación'],
       ['Orden de pago', c.orden ? 'N° ' + c.orden + (c.fechaOrden ? ' · ' + c.fechaOrden : '') : '', c.orden ? c.ordenQuien : ''],
-      ['Egreso', c.egreso ? 'N° ' + c.egreso + (c.egreso2 ? ' y ' + c.egreso2 : '') + (c.fechaEgreso ? ' · ' + c.fechaEgreso : '') : '', c.egreso ? c.egresoQuien : ''],
-      ['Pagada', c.fechaPago],
+      /* 02/10 · EGRESO lleva al usuario EGRESO y PAGADA al usuario PAGO de Tesorería, cada uno con su fecha */
+      ['Egreso', c.egreso ? 'N° ' + c.egreso + (c.egreso2 ? ' y ' + c.egreso2 : '') + (c.fechaEgreso ? ' · ' + c.fechaEgreso : '') : '', c.egreso ? c.egresoQuien : '', 'Tesorería · Egreso'],
+      ['Pagada', c.fechaPago, c.fechaPago ? c.pagoQuien : '', 'Tesorería · Pago'],
       ['Neto girado', c.neto ? pesos(c.neto) : ''],
       ['Fuente', c.fuente ? c.fuente + (c.banco ? ' · Banco ' + c.banco : '') : '']
     ].filter(function (f) { return String(f[1] || '').trim(); });

@@ -579,6 +579,8 @@
 .total { padding: 20px; }
 .total__t { margin: 0 0 8px; font-family: Sora, system-ui, sans-serif; color: var(--k-tinta); }
 .total__p { margin: 0 0 16px; font-size: 13.5px; line-height: 1.5; color: var(--k-tinta-2); }
+.total__aviso { margin: 12px 0 16px; padding: 10px 12px; border-radius: 10px; background: var(--k-aviso-fondo); color: var(--k-aviso); font-size: 13.5px; font-weight: 700; line-height: 1.4; }
+:root[data-tema="oscuro"] .total__aviso { color: #fbbf24; }
 .total .kit-btn { width: 100%; margin-top: 8px; }
 
 /* ── burbuja de avisos sin leer sobre el acceso del inicio ── */

@@ -147,12 +147,13 @@
     var f = K.nodo(
       '<form class="kit-tarjeta total" novalidate>' +
       '  <h3 class="total__t">Antes de empezar</h3>' +
-      '  <p class="total__p">¿Cuántos pagos tendrá este contrato? Es el número de ' +
-      '  informes que vas a radicar en total. Si no estás seguro, míralo en tu ' +
-      '  contrato o pregúntale a tu supervisor: este número ordena todas tus cuentas.</p>' +
-      '  <label class="campo"><span>Número de pagos</span>' +
+      '  <p class="total__p">Escribe el total de informes o pagos que fija el clausulado ' +
+      '  de tu contrato. Si no estás seguro, míralo en tu contrato o pregúntale a tu ' +
+      '  supervisor: este número ordena todas tus cuentas.</p>' +
+      '  <label class="campo"><span>Total de informes o pagos según el clausulado del contrato</span>' +
       '    <input name="total" type="number" inputmode="numeric" min="1" max="24" required>' +
       '  </label>' +
+      '  <p class="total__aviso" role="note">Revisa bien porque no podrás corregir después.</p>' +
       '  <button type="submit" class="kit-btn kit-btn--marca">Empezar mi informe</button>' +
       '</form>'
     );
