@@ -38,6 +38,12 @@
   var E = null;        /* lo que devolvió borradorEstado */
   var textos = [];     /* lo que hay escrito ahora mismo, por obligación */
   var evidencias = []; /* url de la evidencia de cada obligación */
+  /* 05/10 · ARCHIVO DE EVIDENCIA por obligación ({nombre, id, ext} o null).
+     ARCH_ON solo si el CORE ya lo sabe manejar (borradorEstado.archivosEv):
+     con un CORE viejo el bloque no sale y nada se rompe. */
+  var archivos = [], ARCH_ON = false;
+  var subiendoArch = {};  /* i -> {nombre} mientras sube (no bloquea nada) */
+  var localArch = {};     /* i -> File recién subido: Ver lo abre sin viaje */
   var sucio = false;   /* hay cambios sin mandar al CORE */
   var guardando = false;
 
@@ -87,6 +93,8 @@
         E = d;
         textos = (d.actividades || []).slice();
         evidencias = (d.evidencias || []).map(listaEvi);
+        ARCH_ON = Object.prototype.toString.call(d.archivosEv) === '[object Array]';
+        archivos = ARCH_ON ? d.archivosEv.slice() : [];
         if (recuperarRespaldo()) {
           K.aviso('Recuperamos lo que estabas escribiendo la última vez.', 'info', 5000);
         }
@@ -204,7 +212,7 @@
 
   function cabecera() {
     var escritas = textos.filter(function (t) { return String(t || '').trim(); }).length;
-    var conFoto = evidencias.filter(function (u) { return u && u.length; }).length;
+    var conFoto = E.obligaciones.filter(function (o, k) { return (evidencias[k] && evidencias[k].length) || archivos[k]; }).length;
     var total = E.obligaciones.length;
     var pct = total ? Math.round(escritas * 100 / total) : 0;
 
@@ -252,7 +260,8 @@
   function tarjetaObligacion(o, i, caja) {
     var escrito = String(textos[i] || '').trim();
     var foto = (evidencias[i] || []).length;
-    var estado = escrito ? (foto ? 'lista' : 'escrita') : 'pendiente';
+    var arch = archivos[i] || subiendoArch[i];
+    var estado = escrito ? (foto || arch ? 'lista' : 'escrita') : 'pendiente';
     var rotulos = { lista: 'Completa', escrita: 'Falta la evidencia', pendiente: 'Sin diligenciar' };
 
     var t = K.nodo(
@@ -263,7 +272,8 @@
       '    <span class="obl__pie">' +
       '      <span class="obl__estado">' + rotulos[estado] + '</span>' +
            (foto ? '<span class="obl__foto">' + K.icono('clip', 14) + ' ' + foto +
-             (foto === 1 ? ' evidencia' : ' evidencias') + '</span>' : '') +
+             (foto === 1 ? ' imagen' : ' imágenes') + '</span>' : '') +
+           (arch ? '<span class="obl__foto">' + K.icono(iconoArch(arch), 14) + ' 1 archivo</span>' : '') +
       '    </span>' +
       '  </span>' +
       '  <span class="obl__flecha">›</span>' +
@@ -313,10 +323,18 @@
       '      actividades que realizaste en este periodo."></textarea>' +
       '    <p class="edi__cuenta"><span id="edi-cuenta">0</span> caracteres</p>' +
       '  </div>' +
-      '  <div class="kit-tarjeta edi__evi">' +
-      '    <p class="edi__e">Evidencias del cumplimiento</p>' +
+      '  <div class="kit-tarjeta edi__evi edi__bloque">' +
+      '    <p class="edi__bt">' + K.icono('imagen', 20) + '<span>IMÁGENES DE EVIDENCIAS DEL CUMPLIMIENTO</span></p>' +
+      '    <p class="edi__bs">Opcional · hasta 3 imágenes</p>' +
       '    <div id="edi-zona"></div>' +
       '  </div>' +
+      (ARCH_ON
+        ? '  <div class="kit-tarjeta edi__evi edi__bloque edi__bloque--arch">' +
+          '    <p class="edi__bt">' + K.icono('documento', 20) + '<span>ARCHIVO DE EVIDENCIA DEL CUMPLIMIENTO</span></p>' +
+          '    <p class="edi__bs">Opcional · un archivo PDF, Word o Excel de hasta 10 MB</p>' +
+          '    <div id="edi-arch"></div>' +
+          '  </div>'
+        : '') +
       '  <div class="edi__nav">' +
       '    <button type="button" class="kit-btn kit-btn--plano" id="edi-ant">' + K.icono('atras', 17) + ' Anterior</button>' +
       '    <button type="button" class="kit-btn kit-btn--marca" id="edi-sig">Siguiente ' + K.icono('adelante', 17) + '</button>' +
@@ -338,6 +356,7 @@
     });
 
     zonaEvidencia(v.querySelector('#edi-zona'), i);
+    if (ARCH_ON) zonaArchivo(v.querySelector('#edi-arch'), i);
 
     var ant = v.querySelector('#edi-ant'), sig = v.querySelector('#edi-sig');
     ant.disabled = n <= 1;
@@ -577,6 +596,245 @@
     return m ? m[1] : '';
   }
 
+
+  /* ══════════════ archivo de evidencia (05/10) ══════════════
+     Un archivo por obligación (PDF, Word o Excel, hasta 10 MB) con el
+     nombre que escribe la persona. Sube DE FONDO: se puede seguir
+     escribiendo o pasar a otra obligación mientras tanto. Reemplazarlo o
+     quitarlo borra el anterior de Drive para siempre (lo hace el CORE, en
+     cola). El archivo es privado: no se comparte por enlace. */
+
+  var ARCH_ACEPTA = '.pdf,.doc,.docx,.xls,.xlsx,application/pdf,application/msword,' +
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document,' +
+    'application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  var ARCH_EXT = { pdf: 1, doc: 1, docx: 1, xls: 1, xlsx: 1 };
+
+  function extDe(nombre) {
+    var m = /\.([a-z0-9]{2,5})$/i.exec(String(nombre || ''));
+    var e = m ? m[1].toLowerCase() : '';
+    return ARCH_EXT[e] ? e : '';
+  }
+
+  function iconoArch(a) {
+    var e = (a && (a.ext || extDe(a.nombre))) || '';
+    return e === 'pdf' ? 'pdf' : (e === 'xls' || e === 'xlsx') ? 'hoja' : 'documento';
+  }
+
+  /* Lo mismo que limpia el CORE (FCEV_limpiarNombre_), para que lo que la
+     persona ve en el campo sea lo que va a quedar en Drive. */
+  function limpiarNombre(s) {
+    var t = String(s || '').replace(/\.(pdf|docx?|xlsx?)$/i, '');
+    t = t.replace(/[\\\/:*?"<>|#%{}~&·\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
+    t = t.replace(/^[.\-\s]+|[.\-\s]+$/g, '');
+    return t.length > 80 ? t.slice(0, 80).trim() : t;
+  }
+
+  /* Repinta el bloque solo si la persona sigue en esa obligación. */
+  function repintarArch(i) {
+    var d = document.getElementById('edi-arch');
+    if (d && location.hash === '#/borrador/' + (i + 1)) zonaArchivo(d, i);
+  }
+
+  function zonaArchivo(destino, i) {
+    destino.innerHTML = '';
+    var a = archivos[i], sub = subiendoArch[i];
+
+    if (sub) {
+      destino.appendChild(K.nodo(
+        '<div class="arch-ok arch-ok--sube" aria-live="polite">' +
+        '  <span class="arch-ok__ico">' + K.icono(iconoArch(sub), 22) + '</span>' +
+        '  <div class="arch-ok__txt"><p class="arch-ok__t">' + K.esc(sub.nombre) + '</p>' +
+        '  <p class="arch-ok__p"><span class="arch-giro"></span> Subiendo… puedes seguir escribiendo.</p></div>' +
+        '</div>'));
+      return;
+    }
+
+    if (a) {
+      var f = K.nodo(
+        '<div class="arch-ok">' +
+        '  <span class="arch-ok__ico">' + K.icono(iconoArch(a), 22) + '</span>' +
+        '  <div class="arch-ok__txt"><p class="arch-ok__t">' + K.esc(a.nombre) + '</p>' +
+        '  <p class="arch-ok__p">Guardado en tu carpeta de la cuenta.</p></div>' +
+        '  <div class="evi-ok__btns">' +
+        '    <button type="button" class="kit-btn evi-ok__b" data-a="ver">' + K.icono('buscar', 16) + ' Ver</button>' +
+        '    <button type="button" class="kit-btn evi-ok__b" data-a="cambiar">' + K.icono('recargar', 16) + ' Reemplazar</button>' +
+        '    <button type="button" class="kit-btn kit-btn--malo evi-ok__b" data-a="quitar">' + K.icono('basura', 16) + ' Quitar</button>' +
+        '  </div>' +
+        '</div>');
+      f.querySelector('[data-a="ver"]').addEventListener('click', function () { verArchivo(i); });
+      f.querySelector('[data-a="cambiar"]').addEventListener('click', function () { elegirArchivo(destino, i, true); });
+      f.querySelector('[data-a="quitar"]').addEventListener('click', function () { quitarArchivo(destino, i); });
+      destino.appendChild(f);
+      return;
+    }
+    elegirArchivo(destino, i, false);
+  }
+
+  /* Elegir (o reemplazar): la zona de siempre, y en cuanto hay archivo, el
+     campo del nombre, que es obligatorio. */
+  function elegirArchivo(destino, i, reemplaza) {
+    destino.innerHTML = '';
+    var zona = K.nodo('<div></div>');
+    destino.appendChild(zona);
+    var adj = K.piezas.adjuntos.montar(zona, {
+      acepta: ARCH_ACEPTA, varios: false, maximo: 1, maximoMB: 10,
+      etiqueta: 'El archivo de evidencia',
+      alCambiar: function (lista) {
+        if (!lista.length) return;
+        var file = lista[0];
+        if (!extDe(file.name) && !/pdf|msword|wordprocessingml|ms-excel|spreadsheetml/.test(file.type || '')) {
+          K.aviso('Solo se admiten PDF, Word (.doc, .docx) o Excel (.xls, .xlsx).', 'malo', 5000);
+          adj.limpiar();
+          return;
+        }
+        pedirNombre(destino, i, file, reemplaza);
+      }
+    });
+    destino.appendChild(K.nodo('<p class="evi-nota">' + (reemplaza
+      ? 'Elige el archivo que reemplaza al actual. El anterior se borra de tu carpeta para siempre.'
+      : 'Arrástralo aquí o tócalo para elegirlo. Luego le pones nombre.') + '</p>'));
+    if (reemplaza) {
+      var no = K.nodo('<button type="button" class="kit-btn kit-btn--plano arch-no">Dejarlo como está</button>');
+      no.addEventListener('click', function () { zonaArchivo(destino, i); });
+      destino.appendChild(no);
+    }
+  }
+
+  function pedirNombre(destino, i, file, reemplaza) {
+    destino.innerHTML = '';
+    var ext = extDe(file.name) || (/pdf/.test(file.type) ? 'pdf' : '');
+    var f = K.nodo(
+      '<form class="arch-nombre" novalidate>' +
+      '  <div class="arch-ok arch-ok--elegido">' +
+      '    <span class="arch-ok__ico">' + K.icono(iconoArch({ ext: ext }), 22) + '</span>' +
+      '    <div class="arch-ok__txt"><p class="arch-ok__t">' + K.esc(file.name) + '</p>' +
+      '    <p class="arch-ok__p">' + (file.size / 1048576).toFixed(1).replace('.', ',') + ' MB</p></div>' +
+      '  </div>' +
+      '  <label class="edi__lab" for="arch-n-' + i + '">Nombre del archivo <em class="arch-oblig">obligatorio</em></label>' +
+      '  <div class="arch-nombre__fila"><input id="arch-n-' + i + '" class="edi__area arch-nombre__in" maxlength="80" autocomplete="off" ' +
+      '    placeholder="Ej.: Informe de visitas de septiembre">' + (ext ? '<span class="arch-nombre__ext">.' + ext + '</span>' : '') + '</div>' +
+      '  <p class="arch-nombre__err" hidden>Escribe el nombre del archivo.</p>' +
+      '  <div class="arch-nombre__btns">' +
+      '    <button type="button" class="kit-btn kit-btn--plano" data-a="no">Cancelar</button>' +
+      '    <button type="submit" class="kit-btn kit-btn--marca">' + K.icono('nube', 17) + ' Guardar archivo</button>' +
+      '  </div>' +
+      '</form>');
+    var inp = f.querySelector('input'), err = f.querySelector('.arch-nombre__err');
+    inp.value = limpiarNombre(file.name);
+    f.querySelector('[data-a="no"]').addEventListener('click', function () { zonaArchivo(destino, i); });
+    f.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var nombre = limpiarNombre(inp.value);
+      if (!nombre) { err.hidden = false; inp.focus(); return; }
+      subirArchivo(i, file, nombre);
+    });
+    destino.appendChild(f);
+    setTimeout(function () { try { inp.focus(); inp.select(); } catch (e) {} }, 60);
+  }
+
+  /* Sube de fondo. El escudo cubre SOLO el toque (nada de doble envío);
+     el formulario sigue libre mientras viaja. El reintento lo hace el kit
+     con el mismo rid, así un corte no duplica el archivo. */
+  function subirArchivo(i, file, nombre) {
+    if (subiendoArch[i]) return;
+    var fin = K.piezas.antidoble ? K.piezas.antidoble.escudo() : function () {};
+    var ext = extDe(file.name) || (/pdf/.test(file.type) ? 'pdf' : '');
+    subiendoArch[i] = { nombre: nombre + (ext ? '.' + ext : ''), ext: ext };
+    repintarArch(i);
+    var t0 = Date.now();
+    var lector = new FileReader();
+    lector.onload = function () {
+      fin();
+      var s = String(lector.result || '');
+      K.pedir('evidenciaArchivoSubir', {
+        obligacion: i + 1,
+        nombre: nombre,
+        archivo: s.slice(s.indexOf(',') + 1),
+        tipo: file.type || '',
+        nombreOriginal: file.name || '',
+        total: E.total || ''
+      }, { ms: 180000 })
+        .then(function (r) {
+          delete subiendoArch[i];
+          archivos[i] = r.archivo;
+          localArch[i] = file;
+          if (r.informe) E.informe = r.informe;
+          medir('subirArchivo', t0, file.size);
+          K.aviso('El archivo de la obligación ' + (i + 1) + ' quedó guardado como «' + r.archivo.nombre + '».', 'ok', 4500);
+          repintarArch(i);
+        })
+        ['catch'](function (e) {
+          delete subiendoArch[i];
+          K.aviso((e && e.message) || 'No se pudo subir el archivo.', 'malo', 6000);
+          repintarArch(i);
+        });
+    };
+    lector.onerror = function () {
+      fin();
+      delete subiendoArch[i];
+      K.aviso('No se pudo leer el archivo. Intenta elegirlo otra vez.', 'malo', 5000);
+      repintarArch(i);
+    };
+    lector.readAsDataURL(file);
+  }
+
+  /* Ver: si se acaba de subir desde aquí, sale del teléfono sin viaje; si
+     no, lo trae el CORE (Word y Excel llegan ya como PDF). */
+  function verArchivo(i) {
+    var a = archivos[i];
+    if (!a || !K.piezas.visor) return;
+    var file = localArch[i];
+    var t0 = Date.now();
+    K.piezas.visor.abrir([{
+      titulo: 'Obligación ' + (i + 1) + ' · ' + a.nombre,
+      tipo: file && /pdf/i.test(file.type || a.ext) ? 'pdf' : undefined,
+      cargar: function () {
+        if (file && (a.ext === 'pdf' || /pdf/.test(file.type))) {
+          return new Promise(function (res, rej) {
+            var l = new FileReader();
+            l.onload = function () { medir('verArchivoLocal', t0); res({ bytes: new Uint8Array(l.result), mime: 'application/pdf', nombre: a.nombre, tipo: 'pdf' }); };
+            l.onerror = function () { rej(new Error('No se pudo leer el archivo.')); };
+            l.readAsArrayBuffer(file);
+          });
+        }
+        return K.pedir('evidenciaArchivoVer', { obligacion: i + 1 }, { ms: 90000 })
+          .then(function (r) { medir('verArchivo', t0); return r; });
+      }
+    }]);
+  }
+
+  function quitarArchivo(destino, i) {
+    var a = archivos[i];
+    if (!a) return;
+    K.piezas.confirmar.preguntar({
+      titulo: 'Quitar el archivo',
+      texto: 'Vas a quitar «' + a.nombre + '» de la obligación ' + (i + 1) +
+             '. Se borra de tu carpeta de Drive para siempre y no se puede deshacer.',
+      si: 'Sí, quitarlo', no: 'Dejarlo', peligro: true
+    }).then(function (ok) {
+      if (!ok) return;
+      K.piezas.guardado.abrir({ titulo: 'Quitando el archivo' });
+      K.pedir('evidenciaArchivoQuitar', { obligacion: i + 1 })
+        .then(function () {
+          archivos[i] = null;
+          delete localArch[i];
+          K.piezas.guardado.listo({ sub: 'Ya lo quitamos.' });
+          zonaArchivo(destino, i);
+        })
+        ['catch'](function (e) {
+          K.piezas.guardado.fallo();
+          K.aviso((e && e.message) || 'No se pudo quitar.', 'malo', 5000);
+        });
+    });
+  }
+
+  /* Medición de pantalla (regla 15): queda en la consola y en K.medidas si existe. */
+  function medir(que, t0, bytes) {
+    var ms = Date.now() - t0;
+    try { (window.__MEDIDAS = window.__MEDIDAS || []).push({ que: que, ms: ms, kb: bytes ? Math.round(bytes / 1024) : 0 }); } catch (e) {}
+    try { if (K.medir) K.medir(que, ms); } catch (e2) {}
+  }
+
   /* ══════════════ guardar ══════════════ */
 
   function guardar(conAviso) {
@@ -673,6 +931,7 @@
             n: o.n,
             escrita: txt ? 'Sí' : 'No',
             evidencias: (evidencias[i] || []).length,
+            archivo: archivos[i] ? archivos[i].nombre : '',
             palabras: palabras,
             cifras: cifrasDe(txt),
             /* "verbos en pasado" no se puede comprobar de verdad sin
@@ -688,8 +947,10 @@
             return f.filter(function (x) { return x.escrita === 'Sí'; }).length; } },
         { titulo: 'Con evidencia', calcula: function (f) {
             return f.filter(function (x) { return x.evidencias > 0; }).length; } },
-        { titulo: 'Evidencias en total', calcula: function (f) {
+        { titulo: 'Imágenes en total', calcula: function (f) {
             return f.reduce(function (s, x) { return s + x.evidencias; }, 0); } },
+        { titulo: 'Con archivo de evidencia', calcula: function (f) {
+            return f.filter(function (x) { return !!x.archivo; }).length; } },
         { titulo: 'Palabras por obligación', calcula: function (f) {
             var e = f.filter(function (x) { return x.escrita === 'Sí'; });
             if (!e.length) return 0;
@@ -701,7 +962,7 @@
         { texto: '¿Qué me falta para radicar?', responde: function (f) {
             var sinTexto = f.filter(function (x) { return x.escrita === 'No'; })
                             .map(function (x) { return x.n; });
-            var sinFoto = f.filter(function (x) { return x.escrita === 'Sí' && !x.evidencias; })
+            var sinFoto = f.filter(function (x) { return x.escrita === 'Sí' && !x.evidencias && !x.archivo; })
                            .map(function (x) { return x.n; });
             if (!sinTexto.length && !sinFoto.length) {
               return 'Nada: las ' + f.length + ' obligaciones están escritas y con su evidencia. ' +
@@ -713,7 +974,7 @@
                    'Sin estas no se puede radicar.\n';
             }
             if (sinFoto.length) {
-              s += 'Escritas pero sin evidencia (' + sinFoto.length + '): ' + sinFoto.join(', ') + '.\n' +
+              s += 'Escritas pero sin imágenes ni archivo de evidencia (' + sinFoto.length + '): ' + sinFoto.join(', ') + '.\n' +
                    'La cuenta se radica igual, pero el formato de evidencias sale con esos campos en N/A.';
             }
             return s;

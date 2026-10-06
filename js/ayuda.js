@@ -114,20 +114,24 @@
           { texto: '¿Cómo redacto una actividad?', responde: function () {
               return 'Empieza con un verbo en pasado y pon una cifra. Por ejemplo:\n«**Realicé 12 visitas** de seguimiento a las veredas El Paso y Bocas, con **48 familias** atendidas.»\nEvita «apoyar», «colaborar» sin decir cuánto ni dónde.'; } },
           { texto: '¿Cuántas fotos puedo subir?', responde: function () {
-              return 'Hasta **3 imágenes por obligación**. Van en el formato de evidencias, una al lado de la otra y sin deformarse. La app las reduce antes de subirlas, así que no gastan tus datos.'; } }
+              return 'Hasta **3 imágenes por obligación**. Van en el formato de evidencias, una al lado de la otra y sin deformarse. La app las reduce antes de subirlas, así que no gastan tus datos.'; } },
+          { texto: '¿Dónde adjunto un PDF, Word o Excel?', responde: function () {
+              return 'Dentro de cada obligación, en **ARCHIVO DE EVIDENCIA DEL CUMPLIMIENTO**: un archivo por obligación (PDF, Word o Excel, hasta 10 MB) con el **nombre** que tú le pongas. Ya no hay un adjunto general de la cuenta. Si lo reemplazas o lo quitas, el anterior se borra de tu carpeta para siempre.'; } }
         ]
       };
     },
 
     borradorObligacion: function () {
       return {
-        guia: 'Escribe **qué hiciste, cuánto y dónde**, en pasado. Abajo sube hasta 3 fotos que lo prueben. Con **Siguiente** pasas a la próxima obligación sin perder lo escrito.',
+        guia: 'Escribe **qué hiciste, cuánto y dónde**, en pasado. Abajo sube hasta 3 imágenes y, si lo tienes, un **archivo de evidencia** (PDF, Word o Excel) con su nombre. Con **Siguiente** pasas a la próxima obligación sin perder lo escrito.',
         alto: true,
         botones: [
           { texto: 'Dame un ejemplo', responde: function () {
               return '«**Elaboré 4 informes** técnicos de interventoría y **asistí a 6 comités** de obra en el barrio Villa Magdalena.»'; } },
           { texto: '¿Qué foto sirve como evidencia?', responde: function () {
-              return 'Una que muestre la actividad: la reunión con su lista de asistencia, el sitio intervenido, la pantalla del informe entregado. Nada de fotos personales ni capturas borrosas.'; } }
+              return 'Una que muestre la actividad: la reunión con su lista de asistencia, el sitio intervenido, la pantalla del informe entregado. Nada de fotos personales ni capturas borrosas.'; } },
+          { texto: '¿Qué va en el archivo de evidencia?', responde: function () {
+              return 'El soporte que no es una foto: el informe entregado, el listado, el acta, la base de datos. **Uno por obligación**, PDF, Word o Excel de hasta 10 MB. Ponle un nombre claro (ej. «Informe de visitas de septiembre»): con ese nombre queda en tu carpeta y lo ven tu supervisor(a) y Contratación. Sube de fondo: puedes seguir escribiendo mientras tanto.'; } }
         ]
       };
     },
@@ -142,7 +146,7 @@
         botones: [
           { texto: '¿Qué documentos necesito?', responde: function () {
               return 'Siempre: certificación bancaria, planilla (PDF sin contraseña) y el baucher de la planilla (foto o PDF).\n' +
-                     'Si aplica: planilla anexa y su baucher, planilla ARL suministrada por la Alcaldía (solo si la Alcaldía te paga la ARL por riesgo elevado), anexos de actividades en un solo PDF, RUT si eres Régimen Simple, factura si facturas electrónicamente, parafiscales si eres persona jurídica, certificado de NO aportes si eres pensionado.\n' +
+                     'Si aplica: planilla anexa y su baucher, planilla ARL suministrada por la Alcaldía (solo si la Alcaldía te paga la ARL por riesgo elevado), RUT si eres Régimen Simple, factura si facturas electrónicamente, parafiscales si eres persona jurídica, certificado de NO aportes si eres pensionado.\n' +
                      'Solo en la primera cuenta: acta de inicio, clausulados, CDP, RP, RUT y certificado de ARL.'; } },
           { texto: '¿Qué pasa si se me va la señal?', responde: function () {
               return 'Nada se pierde: lo escrito queda en este teléfono y cada PDF que subes queda guardado al instante. Vuelve a entrar y sigues donde ibas.'; } },

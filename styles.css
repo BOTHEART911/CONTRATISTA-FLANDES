@@ -1935,3 +1935,79 @@
 
 /* 01/10 · aviso del plazo cuando la terminación queda antes del inicio */
 .campo__error { margin: 4px 0 0; font-size: .82rem; font-weight: 600; color: var(--k-malo); }
+
+/* ── 05/10 · bloques de evidencia con realce: imágenes y archivo ── */
+.edi__bloque {
+  position: relative;
+  border: 1.5px solid rgba(var(--k-marca-rgb), .35);
+  background: linear-gradient(180deg, rgba(var(--k-marca-rgb), .07), transparent 70%), var(--k-papel);
+  box-shadow: 0 6px 18px -12px rgba(var(--k-marca-rgb), .55);
+}
+.edi__bloque::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 14px; bottom: 14px;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: var(--k-marca);
+}
+.edi__bt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-family: Sora, system-ui, sans-serif;
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: .3px;
+  color: var(--k-marca);
+}
+.edi__bt svg { flex: 0 0 auto; }
+.edi__bs { margin: 3px 0 10px 28px; font-size: 12.5px; color: var(--k-apagado); }
+
+/* ficha del archivo */
+.arch-ok {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border: 1px solid var(--k-linea);
+  border-radius: var(--k-r-sm);
+  background: var(--k-papel-2);
+}
+.arch-ok__ico {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--k-r-sm);
+  color: var(--k-marca);
+  background: rgba(var(--k-marca-rgb), .12);
+  flex: 0 0 auto;
+}
+.arch-ok__txt { flex: 1 1 160px; min-width: 0; }
+.arch-ok__t { margin: 0; font-weight: 700; font-size: 14px; color: var(--k-tinta); overflow-wrap: anywhere; }
+.arch-ok__p { margin: 2px 0 0; font-size: 12.5px; color: var(--k-apagado); display: flex; align-items: center; gap: 6px; }
+.arch-ok--sube { border-style: dashed; border-color: rgba(var(--k-marca-rgb), .5); }
+.arch-giro {
+  width: 12px; height: 12px;
+  border: 2px solid rgba(var(--k-marca-rgb), .25);
+  border-top-color: var(--k-marca);
+  border-radius: 50%;
+  animation: arch-giro .8s linear infinite;
+}
+@keyframes arch-giro { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .arch-giro { animation-duration: 2.4s; } }
+
+/* nombre del archivo (obligatorio) */
+.arch-nombre { display: grid; gap: 8px; }
+.arch-nombre .edi__lab { margin: 6px 0 0; }
+.arch-oblig { font-style: normal; font-size: 11px; font-weight: 700; color: var(--k-malo, #b91c1c); margin-left: 6px; text-transform: uppercase; letter-spacing: .4px; }
+.arch-nombre__fila { display: flex; align-items: center; gap: 8px; }
+.arch-nombre__in { resize: none; padding: 10px 12px; }
+.arch-nombre__ext { font-weight: 700; color: var(--k-apagado); }
+.arch-nombre__err { margin: 0; font-size: 12.5px; color: var(--k-malo, #b91c1c); }
+.arch-nombre__btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.arch-nombre__btns .kit-btn { flex: 1 1 140px; }
+.arch-no { margin-top: 8px; width: 100%; }

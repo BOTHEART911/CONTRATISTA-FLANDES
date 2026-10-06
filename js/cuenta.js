@@ -93,7 +93,9 @@
        riesgo elevado. Va en BANCO Y PLANILLA y la revisión la muestra en la
        pestaña Relación de planilla (FC_ARCHIVOS_CUENTA.arlAlcaldia). */
     { k: 'arlAlcaldia', t: 'Planilla ARL suministrada por la Alcaldía', obliga: false, nota: 'Solo si la Alcaldía te paga la ARL (riesgo elevado)', nuevo: true },
-    { k: 'anexos',     t: 'Anexos de actividades',       obliga: false, nota: 'Todo en un solo PDF', mb: 10 },
+    /* 05/10 · el adjunto general de la cuenta se SUPRIME: ahora cada obligación lleva su archivo
+       de evidencia (BORRADOR ACTIVIDADES). Solo sale si el CORE todavía no lo sabe (sin desplegar). */
+    { k: 'anexos',     t: 'Anexos de actividades',       obliga: false, nota: 'Todo en un solo PDF', mb: 10, viejo: true },
     { k: 'rutSimple',  t: 'RUT (Régimen Simple)',        obliga: false, nota: 'Solo Régimen Simple' },
     { k: 'facturaPdf', t: 'Factura electrónica',         obliga: false, nota: 'Solo si facturas electrónicamente' },
     { k: 'parafiscales', t: 'Certificado parafiscales',  obliga: false, nota: 'Solo personas jurídicas' },
@@ -700,6 +702,7 @@
      nadie ve el error "No se reconoce el archivo"; front y CORE se suben en
      cualquier orden. */
   function admitido(a) {
+    if (a.viejo) return !(E && E.archivoEvidencia);   /* 05/10 */
     if (!a.nuevo) return true;
     return !!(E && E.tiposArchivo && E.tiposArchivo.indexOf(a.k) >= 0);
   }
