@@ -644,7 +644,7 @@
         '<div class="arch-ok arch-ok--sube" aria-live="polite">' +
         '  <span class="arch-ok__ico">' + K.icono(iconoArch(sub), 22) + '</span>' +
         '  <div class="arch-ok__txt"><p class="arch-ok__t">' + K.esc(sub.nombre) + '</p>' +
-        '  <p class="arch-ok__p"><span class="arch-giro"></span> Subiendo… puedes seguir escribiendo.</p></div>' +
+        '  <p class="arch-ok__p"><span class="arch-giro"></span> Subiendo <b class="arch-pct">' + (sub.pct || 0) + ' %</b> · puedes seguir escribiendo.</p></div>' +
         '</div>'));
       return;
     }
@@ -732,75 +732,157 @@
     setTimeout(function () { try { inp.focus(); inp.select(); } catch (e) {} }, 60);
   }
 
-  /* Sube de fondo. El escudo cubre SOLO el toque (nada de doble envío);
-     el formulario sigue libre mientras viaja. El reintento lo hace el kit
-     con el mismo rid, así un corte no duplica el archivo. */
+  /* 05/10 noche · SUBIDA DIRECTA A DRIVE. Medido en producción: pasar el
+     archivo por Apps Script costaba 10,4 s de servidor y las respuestas
+     grandes se cortaban. Ahora:
+       1. evidenciaArchivoPreparar (respuesta < 1 KB): nombre libre y sesión.
+       2. El teléfono sube los bytes DIRECTO a Drive, con su avance.
+       3. evidenciaArchivoListo: el CORE lo registra (y lo comparte).
+     Con un CORE que no tenga la ruta nueva se sube como antes.
+     El escudo cubre SOLO el toque: el formulario sigue libre mientras sube. */
   function subirArchivo(i, file, nombre) {
     if (subiendoArch[i]) return;
     var fin = K.piezas.antidoble ? K.piezas.antidoble.escudo() : function () {};
     var ext = extDe(file.name) || (/pdf/.test(file.type) ? 'pdf' : '');
-    subiendoArch[i] = { nombre: nombre + (ext ? '.' + ext : ''), ext: ext };
+    subiendoArch[i] = { nombre: nombre + (ext ? '.' + ext : ''), ext: ext, pct: 0 };
     repintarArch(i);
-    var t0 = Date.now();
-    var lector = new FileReader();
-    lector.onload = function () {
-      fin();
-      var s = String(lector.result || '');
-      K.pedir('evidenciaArchivoSubir', {
-        obligacion: i + 1,
-        nombre: nombre,
-        archivo: s.slice(s.indexOf(',') + 1),
-        tipo: file.type || '',
-        nombreOriginal: file.name || '',
-        total: E.total || ''
-      }, { ms: 180000 })
-        .then(function (r) {
-          delete subiendoArch[i];
-          archivos[i] = r.archivo;
-          localArch[i] = file;
-          if (r.informe) E.informe = r.informe;
-          medir('subirArchivo', t0, file.size);
-          K.aviso('El archivo de la obligación ' + (i + 1) + ' quedó guardado como «' + r.archivo.nombre + '».', 'ok', 4500);
-          repintarArch(i);
-        })
-        ['catch'](function (e) {
-          delete subiendoArch[i];
-          K.aviso((e && e.message) || 'No se pudo subir el archivo.', 'malo', 6000);
-          repintarArch(i);
+    /* el botón ya no existe (lo reemplazó la ficha de subida): el escudo se
+       suelta ya y la persona sigue escribiendo mientras sube */
+    fin(); fin = function () {};
+    var t0 = Date.now(), tm = {};
+    var meta = { obligacion: i + 1, nombre: nombre, tipo: file.type || '', nombreOriginal: file.name || '', bytes: file.size, total: E.total || '' };
+
+    K.pedir('evidenciaArchivoPreparar', meta, { ms: 60000 })
+      .then(function (p) {
+        fin(); fin = function () {};
+        tm.preparar = Date.now() - t0;
+        if (subiendoArch[i]) subiendoArch[i].nombre = p.nombre;
+        repintarArch(i);
+        var t1 = Date.now();
+        return ponerEnDrive(p.sesion, file, p.mime, i).then(function (id) {
+          tm.drive = Date.now() - t1;
+          var t2 = Date.now();
+          return K.pedir('evidenciaArchivoListo', { obligacion: i + 1, id: id, total: E.total || '' }, { ms: 60000 })
+            .then(function (r) { tm.listo = Date.now() - t2; return r; });
         });
-    };
-    lector.onerror = function () {
-      fin();
-      delete subiendoArch[i];
-      K.aviso('No se pudo leer el archivo. Intenta elegirlo otra vez.', 'malo', 5000);
-      repintarArch(i);
-    };
-    lector.readAsDataURL(file);
+      }, function (e) {
+        /* CORE sin la ruta nueva: el camino de antes */
+        if (e && /no tiene la accion/i.test(e.message || '')) { fin(); fin = function () {}; return subirPorCore(i, file, nombre); }
+        throw e;
+      })
+      .then(function (r) {
+        delete subiendoArch[i];
+        archivos[i] = r.archivo;
+        localArch[i] = file;
+        if (r.informe) E.informe = r.informe;
+        medir('subirArchivo', t0, file.size, tm);
+        K.aviso('El archivo de la obligación ' + (i + 1) + ' quedó guardado como «' + r.archivo.nombre + '».', 'ok', 4500);
+        repintarArch(i);
+      })
+      ['catch'](function (e) {
+        fin();
+        delete subiendoArch[i];
+        K.aviso((e && e.message) || 'No se pudo subir el archivo.', 'malo', 6000);
+        repintarArch(i);
+      });
   }
 
-  /* Ver: si se acaba de subir desde aquí, sale del teléfono sin viaje; si
-     no, lo trae el CORE (Word y Excel llegan ya como PDF). */
+  /* Los bytes van del teléfono a Drive (sin Apps Script), con su avance. Si
+     la red se corta, se pregunta a Drive cuánto llegó y se sigue desde ahí
+     (subida reanudable), hasta 3 veces. */
+  function ponerEnDrive(sesion, file, mime, i) {
+    var intentos = 0;
+    function enviar(desde) {
+      return new Promise(function (res, rej) {
+        var x = new XMLHttpRequest();
+        x.open('PUT', sesion, true);
+        if (desde > 0) x.setRequestHeader('Content-Range', 'bytes ' + desde + '-' + (file.size - 1) + '/' + file.size);
+        x.upload.onprogress = function (ev) {
+          if (!ev.lengthComputable || !subiendoArch[i]) return;
+          var pct = Math.min(99, Math.round((desde + ev.loaded) * 100 / file.size));
+          if (pct !== subiendoArch[i].pct) { subiendoArch[i].pct = pct; pintarAvance(i); }
+        };
+        x.onload = function () {
+          if (x.status === 200 || x.status === 201) {
+            var j = {}; try { j = JSON.parse(x.responseText || '{}'); } catch (e) {}
+            if (j.id) { res(j.id); return; }
+          }
+          rej({ red: x.status === 0 || x.status >= 500, status: x.status });
+        };
+        x.onerror = function () { rej({ red: true, status: 0 }); };
+        x.send(desde > 0 ? file.slice(desde) : file);
+      });
+    }
+    function cuanto() {
+      return new Promise(function (res) {
+        var x = new XMLHttpRequest();
+        x.open('PUT', sesion, true);
+        x.setRequestHeader('Content-Range', 'bytes */' + file.size);
+        x.onload = function () {
+          if (x.status === 200 || x.status === 201) { var j = {}; try { j = JSON.parse(x.responseText || '{}'); } catch (e) {} res({ id: j.id }); return; }
+          var r = x.getResponseHeader('Range'); var m = r && /bytes=0-(\d+)/.exec(r);
+          res({ desde: m ? Number(m[1]) + 1 : 0 });
+        };
+        x.onerror = function () { res({ desde: 0 }); };
+        x.send();
+      });
+    }
+    function intentar(desde) {
+      return enviar(desde)['catch'](function (e) {
+        if (!(e && e.red) || ++intentos > 3) throw new Error('No se pudo subir el archivo a Drive. Revisa tu internet e inténtalo otra vez.');
+        return new Promise(function (r) { setTimeout(r, 800 * intentos); })
+          .then(cuanto).then(function (c) { return c.id ? c.id : intentar(c.desde || 0); });
+      });
+    }
+    return intentar(0);
+  }
+
+  function pintarAvance(i) {
+    var d = document.getElementById('edi-arch');
+    var p = d && d.querySelector('.arch-ok--sube .arch-pct');
+    if (p && subiendoArch[i]) p.textContent = subiendoArch[i].pct + ' %';
+  }
+
+  /* El camino de antes (CORE sin la ruta nueva): el archivo viaja por Apps Script. */
+  function subirPorCore(i, file, nombre) {
+    return new Promise(function (res, rej) {
+      var lector = new FileReader();
+      lector.onload = function () {
+        var s = String(lector.result || '');
+        K.pedir('evidenciaArchivoSubir', {
+          obligacion: i + 1, nombre: nombre, archivo: s.slice(s.indexOf(',') + 1),
+          tipo: file.type || '', nombreOriginal: file.name || '', total: E.total || ''
+        }, { ms: 180000 }).then(res, rej);
+      };
+      lector.onerror = function () { rej(new Error('No se pudo leer el archivo. Intenta elegirlo otra vez.')); };
+      lector.readAsDataURL(file);
+    });
+  }
+
+  /* Ver: si se acaba de subir desde aquí y es PDF, sale del teléfono sin
+     viaje; si no, directo de Drive (PDF con la llave, ~0,5 s) o con el visor
+     de Google (Word y Excel). Nunca pasa por Apps Script. */
   function verArchivo(i) {
     var a = archivos[i];
     if (!a || !K.piezas.visor) return;
     var file = localArch[i];
+    var ext = a.ext || extDe(a.nombre);
+    var titulo = 'Obligación ' + (i + 1) + ' · ' + a.nombre;
+    var url = 'https://drive.google.com/file/d/' + a.id + '/view';
     var t0 = Date.now();
-    K.piezas.visor.abrir([{
-      titulo: 'Obligación ' + (i + 1) + ' · ' + a.nombre,
-      tipo: file && /pdf/i.test(file.type || a.ext) ? 'pdf' : undefined,
-      cargar: function () {
-        if (file && (a.ext === 'pdf' || /pdf/.test(file.type))) {
-          return new Promise(function (res, rej) {
-            var l = new FileReader();
-            l.onload = function () { medir('verArchivoLocal', t0); res({ bytes: new Uint8Array(l.result), mime: 'application/pdf', nombre: a.nombre, tipo: 'pdf' }); };
-            l.onerror = function () { rej(new Error('No se pudo leer el archivo.')); };
-            l.readAsArrayBuffer(file);
-          });
-        }
-        return K.pedir('evidenciaArchivoVer', { obligacion: i + 1 }, { ms: 90000 })
-          .then(function (r) { medir('verArchivo', t0); return r; });
-      }
-    }]);
+    if (ext === 'pdf' && file) {
+      K.piezas.visor.abrir([{ titulo: titulo, tipo: 'pdf', cargar: function () {
+        return new Promise(function (res, rej) {
+          var l = new FileReader();
+          l.onload = function () { medir('verArchivoLocal', t0); res({ bytes: new Uint8Array(l.result), mime: 'application/pdf', nombre: a.nombre, tipo: 'pdf' }); };
+          l.onerror = function () { rej(new Error('No se pudo leer el archivo.')); };
+          l.readAsArrayBuffer(file);
+        });
+      } }]);
+      return;
+    }
+    if (ext === 'pdf') K.piezas.visor.abrir([{ titulo: titulo, url: url, tipo: 'pdf' }]);
+    else K.piezas.visor.abrir([{ titulo: titulo, url: url, marco: true }]);
   }
 
   function quitarArchivo(destino, i) {
@@ -829,9 +911,9 @@
   }
 
   /* Medición de pantalla (regla 15): queda en la consola y en K.medidas si existe. */
-  function medir(que, t0, bytes) {
+  function medir(que, t0, bytes, partes) {
     var ms = Date.now() - t0;
-    try { (window.__MEDIDAS = window.__MEDIDAS || []).push({ que: que, ms: ms, kb: bytes ? Math.round(bytes / 1024) : 0 }); } catch (e) {}
+    try { (window.__MEDIDAS = window.__MEDIDAS || []).push({ que: que, ms: ms, kb: bytes ? Math.round(bytes / 1024) : 0, partes: partes || null }); } catch (e) {}
     try { if (K.medir) K.medir(que, ms); } catch (e2) {}
   }
 
