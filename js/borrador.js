@@ -662,6 +662,8 @@
         '  </div>' +
         '</div>');
       f.querySelector('[data-a="ver"]').addEventListener('click', function () { verArchivo(i); });
+      if (K.piezas.visor && K.piezas.visor.precalentarOficina && a.ext !== 'pdf') K.piezas.visor.precalentarOficina(a.ext || extDe(a.nombre));
+      else if (K.drive && K.drive.precargar && !localArch[i]) K.drive.precargar(a.id);
       f.querySelector('[data-a="cambiar"]').addEventListener('click', function () { elegirArchivo(destino, i, true); });
       f.querySelector('[data-a="quitar"]').addEventListener('click', function () { quitarArchivo(destino, i); });
       destino.appendChild(f);
@@ -870,19 +872,20 @@
     var titulo = 'Obligación ' + (i + 1) + ' · ' + a.nombre;
     var url = 'https://drive.google.com/file/d/' + a.id + '/view';
     var t0 = Date.now();
-    if (ext === 'pdf' && file) {
-      K.piezas.visor.abrir([{ titulo: titulo, tipo: 'pdf', cargar: function () {
+    /* recién subido desde aquí: sale del teléfono, sin viaje */
+    if (file) {
+      K.piezas.visor.abrir([{ titulo: titulo, ext: ext, tipo: ext === 'pdf' ? 'pdf' : undefined, cargar: function () {
         return new Promise(function (res, rej) {
           var l = new FileReader();
-          l.onload = function () { medir('verArchivoLocal', t0); res({ bytes: new Uint8Array(l.result), mime: 'application/pdf', nombre: a.nombre, tipo: 'pdf' }); };
+          l.onload = function () { medir('verArchivoLocal', t0); res({ bytes: new Uint8Array(l.result), mime: file.type || (ext === 'pdf' ? 'application/pdf' : 'application/octet-stream'), nombre: a.nombre, tipo: ext === 'pdf' ? 'pdf' : 'otro' }); };
           l.onerror = function () { rej(new Error('No se pudo leer el archivo.')); };
           l.readAsArrayBuffer(file);
         });
       } }]);
       return;
     }
-    if (ext === 'pdf') K.piezas.visor.abrir([{ titulo: titulo, url: url, tipo: 'pdf' }]);
-    else K.piezas.visor.abrir([{ titulo: titulo, url: url, marco: true }]);
+    /* si no, directo de Drive con la llave (Word y Excel los pinta el teléfono) */
+    K.piezas.visor.abrir([{ titulo: titulo, url: url, ext: ext, tipo: ext === 'pdf' ? 'pdf' : undefined }]);
   }
 
   function quitarArchivo(destino, i) {
