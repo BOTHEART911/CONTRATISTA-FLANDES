@@ -884,8 +884,11 @@
       } }]);
       return;
     }
-    /* si no, directo de Drive con la llave (Word y Excel los pinta el teléfono) */
-    K.piezas.visor.abrir([{ titulo: titulo, url: url, ext: ext, tipo: ext === 'pdf' ? 'pdf' : undefined }]);
+    /* si no, directo de Drive con la llave (Word y Excel los pinta el teléfono);
+       si Drive no lo entrega, lo trae el CORE. Nunca el visor de Google embebido. */
+    K.piezas.visor.abrir([{ titulo: titulo, ext: ext, tipo: ext === 'pdf' ? 'pdf' : undefined, enlace: url,
+      drive: { id: a.id, nombre: a.nombre },
+      cargar: function () { return K.pedir('evidenciaArchivoVer', { obligacion: i + 1 }, { ms: 90000 }); } }]);
   }
 
   function quitarArchivo(destino, i) {

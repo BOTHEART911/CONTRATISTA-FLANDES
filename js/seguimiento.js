@@ -575,7 +575,8 @@
     var paraVisor = todos.map(function (a) {
       /* 30/09 · directo de Drive en el visor; si Drive no lo entrega, el CORE */
       return { titulo: a.nombre, tipo: a.tipo === 'imagen' ? 'imagen' : (a.tipo === 'pdf' ? 'pdf' : 'otro'), cargar: bytesDe(c.informe, a.id),
-               drive: { id: a.id, google: a.mime === 'application/vnd.google-apps.document', mime: a.mime || '', nombre: a.nombre } };
+               drive: { id: a.id, google: a.mime === 'application/vnd.google-apps.document', mime: a.mime || '', nombre: a.nombre },
+               enlace: 'https://drive.google.com/file/d/' + a.id + '/view' };
     });
 
     (r.grupos || []).forEach(function (g) {
@@ -586,7 +587,7 @@
         var li = K.nodo(
           '<li class="seg-archivo">' +
           '  <button type="button" class="seg-archivo__ver">' +
-          '    <span class="seg-archivo__ico">' + K.icono(a.tipo === 'imagen' ? 'imagen' : (a.tipo === 'pdf' ? 'pdf' : 'archivo'), 20) + '</span>' +
+          '    <span class="seg-archivo__ico">' + K.icono(a.tipo === 'imagen' ? 'imagen' : (a.tipo === 'pdf' ? 'pdf' : (/sheet|excel/.test(a.mime || '') ? 'hoja' : (/word/.test(a.mime || '') ? 'documento' : 'archivo'))), 20) + '</span>' +
           '    <span class="seg-archivo__txt"><b>' + K.esc(a.nombre) + '</b><small>' + K.esc([a.fecha, tamano(a.bytes)].filter(Boolean).join(' · ')) + '</small></span>' +
           '  </button>' +
           '  <button type="button" class="seg-archivo__bajar" aria-label="Descargar ' + K.esc(a.nombre) + '" title="Descargar">' + K.icono('descargar', 18) + '</button>' +
