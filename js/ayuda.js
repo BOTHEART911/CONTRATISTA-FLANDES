@@ -328,6 +328,19 @@
               return 'Para **unir en un solo PDF** los documentos de tu cuenta aprobada antes de subirlos al Plan de pagos del SECOP II.'; } }
         ]
       };
+    },
+
+    /* 06/10 · MIS REGISTROS: dónde descargo lo que hice */
+    misregistros: function () {
+      return {
+        guia: 'Aquí están **todas tus cuentas** del contrato: el periodo, lo cobrado, el estado, la orden de pago y el egreso. Descárgalas en **PDF** (una cuenta por bloque, con o sin las actividades) o en **Excel** (una fila por cuenta).',
+        botones: [
+          { texto: '¿Cómo las descargo?', responde: function () {
+              return 'Toca **Descargar PDF** o **Descargar Excel**. Si quieres que el PDF traiga lo que escribiste en cada obligación, marca **Incluir las actividades** antes.'; } },
+          { texto: '¿Y los documentos de cada cuenta?', responde: function () {
+              return 'Cada documento (informe de supervisión, orden de pago, egreso…) está en **ESTADO DE CUENTA → Mi cuenta Drive**. Al descargarlo baja con el mismo nombre que tiene en Drive.'; } }
+        ]
+      };
     }
   };
 
@@ -338,7 +351,7 @@
     cuenta: 'INGRESAR CUENTA', seguimiento: 'ESTADO DE CUENTA', avisos: 'MIS NOTIFICACIONES',
     proceso: 'DATOS DEL CONTRATO', personales: 'DATOS PERSONALES', comunicaciones: 'SOLICITUD A COMUNICACIONES',
     tesoreria: 'SOLICITUD TESORERÍA', contratacion: 'SOLICITUD CONTRATACIÓN', comunicados: 'COMUNICADOS', directorio: 'DIRECTORIO INSTITUCIONAL',
-    tutoriales: 'TUTORIALES DE USO', sitios: 'SITIOS WEB'
+    tutoriales: 'TUTORIALES DE USO', sitios: 'SITIOS WEB', misregistros: 'MIS REGISTROS'
   };
 
   /** La ayuda de una vista. extra: lo que la vista añade (sus cifras). */

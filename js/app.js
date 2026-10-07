@@ -300,6 +300,7 @@
         { texto: 'Actualizar contraseña', al: function () { K.piezas.sesion.cambiarClave(); } },
         { texto: 'Instalar la app', al: function () { K.piezas.instalar.abrir(); } },
         /* guías rápidas: el PDF de esta app (carpeta GUÍAS RÁPIDAS de Drive) */
+        { texto: 'Mis registros (descargar mis cuentas)', al: function () { irA('misregistros'); } },
         { texto: 'Descargar guía rápida', al: function () { if (K.piezas.guia) K.piezas.guia.descargar('CONTRATISTA'); } },
         { texto: 'Soporte', al: function () { if (K.piezas.soporte) K.piezas.soporte.abrir(); } },
         { texto: 'Cerrar sesión', al: salir, peligro: true }
@@ -316,6 +317,7 @@
 
   function salir() {
     if (K.piezas.avisos) K.piezas.avisos.olvidar();
+    if (window.MISREGISTROS) window.MISREGISTROS.olvidar();   /* 06/10 */
     if (K.piezas.insights) K.piezas.insights.quitar();
     K.piezas.sesion.salir();
     location.hash = '';
@@ -331,6 +333,8 @@
     cuenta: vistaCuenta,
     avisos: vistaAvisos,
     seguimiento: vistaSeguimiento,
+    /* 06/10 · MIS REGISTROS: todas mis cuentas, para descargarlas */
+    misregistros: function () { window.MISREGISTROS.configurar({ app: app }); window.MISREGISTROS.vista(); },
     /* 4.8 · trámites (tramites.js) e institucional (institucional.js) */
     comunicaciones: function (sub) { window.TRAMITES.comunicaciones(sub); },
     tesoreria: function (sub) { window.TRAMITES.tesoreria(sub); },
@@ -411,6 +415,7 @@
     cuenta: 'INGRESAR CUENTA',
     avisos: 'MIS NOTIFICACIONES',
     seguimiento: 'ESTADO DE CUENTA',
+    misregistros: 'MIS REGISTROS',
     comunicaciones: 'SOLICITUD A COMUNICACIONES',
     tesoreria: 'SOLICITUD TESORERÍA',
     contratacion: 'SOLICITUD CONTRATACIÓN',
@@ -470,7 +475,9 @@
       /* 4.7 · el seguimiento: lo que en la app vieja eran seis botones
          sueltos del menú (estado de cuenta, plan de pagos, mi cuenta Drive,
          reportar cuenta, recibir egresos y certificación) es UNA vista. */
-      acceso('ESTADO DE CUENTA', 'Dónde va tu cuenta, reportar, tus documentos, pagos y egresos', 'img/procesos_de_cuenta.webp', function () { irA('seguimiento'); })
+      acceso('ESTADO DE CUENTA', 'Dónde va tu cuenta, reportar, tus documentos, pagos y egresos', 'img/procesos_de_cuenta.webp', function () { irA('seguimiento'); }),
+      /* 06/10 · dónde descargo lo que hice: todas mis cuentas en PDF o Excel */
+      accesoIcono('MIS REGISTROS', 'Todas tus cuentas con su estado, la orden de pago y el egreso. Descárgalas en PDF o Excel', 'descargar', function () { irA('misregistros'); })
     ]);
 
     bloque('TRÁMITES Y SOLICITUDES', [
@@ -634,6 +641,21 @@
     t.classList.add('acceso--alerta');
     t.appendChild(K.nodo('<span class="acceso__burbuja" aria-hidden="true">!</span>'));
     return t;
+  }
+
+  /* 06/10 · acceso con ícono del kit (MIS REGISTROS), el mismo de las oficinas */
+  function accesoIcono(titulo, texto, icono, al) {
+    var b = K.nodo(
+      '<button type="button" class="kit-tarjeta acceso">' +
+      '  <span class="acceso__img acceso__img--icono" aria-hidden="true">' + K.icono(icono, 40) + '</span>' +
+      '  <span class="acceso__txt">' +
+      '    <span class="acceso__t">' + K.esc(titulo) + '</span>' +
+      '    <span class="acceso__p">' + K.esc(texto) + '</span>' +
+      '  </span>' +
+      '</button>'
+    );
+    b.addEventListener('click', function () { K.vibrar(8); al(); });
+    return b;
   }
 
   function acceso(titulo, texto, medio, al) {
