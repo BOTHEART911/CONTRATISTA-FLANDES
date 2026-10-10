@@ -37,6 +37,10 @@
   var E = null;          /* lo que respondió cuentaEstado */
   var D = {};            /* lo que la persona lleva escrito */
   var BLOQUE = null;     /* el bloque abierto, o null si el índice */
+  /* 10/10 · #/cuenta/editar: la cuenta guardada y sin reportar se vuelve a abrir.
+     Cada viaje de la vista lleva editar:true para que el CORE abra esa fila. */
+  var EDITANDO = false;
+  function conEd(o) { o = o || {}; if (EDITANDO) o.editar = true; return o; }
   var RESPALDO = 'cuenta.borrador';
 
   /* ══════════════ los cuatro bloques ══════════════ */
@@ -87,19 +91,21 @@
     { k: 'bancaria',   t: 'Certificación bancaria',      obliga: true,  nota: 'Sin contraseña' },
     { k: 'baucher1',   t: 'Baucher de la planilla',      obliga: true,  nota: 'Foto o PDF', acepta: IMAGEN_O_PDF },
     { k: 'planilla1',  t: 'Planilla',                    obliga: true,  nota: 'Sin contraseña' },
-    { k: 'baucher2',   t: 'Baucher planilla anexa',      obliga: false, nota: 'Foto o PDF. Solo si presentas planilla adicional', acepta: IMAGEN_O_PDF },
-    { k: 'planilla2',  t: 'Planilla anexa',              obliga: false, nota: 'Solo si presentas planilla adicional' },
-    /* 30/09 · Opcional: solo para quien la Alcaldía le paga la ARL por tener
-       riesgo elevado. Va en BANCO Y PLANILLA y la revisión la muestra en la
-       pestaña Relación de planilla (FC_ARCHIVOS_CUENTA.arlAlcaldia). */
-    { k: 'arlAlcaldia', t: 'Planilla ARL suministrada por la Alcaldía', obliga: false, nota: 'Solo si la Alcaldía te paga la ARL (riesgo elevado)', nuevo: true },
     /* 05/10 · el adjunto general de la cuenta se SUPRIME: ahora cada obligación lleva su archivo
        de evidencia (BORRADOR ACTIVIDADES). Solo sale si el CORE todavía no lo sabe (sin desplegar). */
     { k: 'anexos',     t: 'Anexos de actividades',       obliga: false, nota: 'Todo en un solo PDF', mb: 10, viejo: true },
-    { k: 'rutSimple',  t: 'RUT (Régimen Simple)',        obliga: false, nota: 'Solo Régimen Simple' },
-    { k: 'facturaPdf', t: 'Factura electrónica',         obliga: false, nota: 'Solo si facturas electrónicamente' },
-    { k: 'parafiscales', t: 'Certificado parafiscales',  obliga: false, nota: 'Solo personas jurídicas' },
-    { k: 'noPension',  t: 'Certificado NO aportes a pensión', obliga: false, nota: 'Solo pensionados' },
+    /* 10/10 · Los opcionales van dentro de una pestaña que el contratista abre
+       y cierra a voluntad (ninguna obliga). Abre sola si ya hay archivo. */
+    { k: 'baucher2',   t: 'Baucher planilla anexa',      obliga: false, nota: 'Foto o PDF', acepta: IMAGEN_O_PDF, pestana: 'anexa' },
+    { k: 'planilla2',  t: 'Planilla anexa',              obliga: false, nota: 'Sin contraseña', pestana: 'anexa' },
+    /* 30/09 · Va en BANCO Y PLANILLA y la revisión la muestra en la pestaña
+       Relación de planilla (FC_ARCHIVOS_CUENTA.arlAlcaldia). */
+    { k: 'arlAlcaldia', t: 'Planilla ARL suministrada por la Alcaldía', obliga: false, nota: 'Riesgo elevado', nuevo: true, pestana: 'arl' },
+    { k: 'otroR',      t: 'Otro documento requerido',    obliga: false, nota: 'El que te pidió tu supervisor(a)', pestana: 'otro' },
+    { k: 'rutSimple',  t: 'RUT (Régimen Simple)',        obliga: false, nota: 'Con la responsabilidad de IVA', pestana: 'iva' },
+    { k: 'facturaPdf', t: 'Factura electrónica',         obliga: false, nota: 'PDF de la factura', pestana: 'factura' },
+    { k: 'parafiscales', t: 'Certificado parafiscales',  obliga: false, nota: 'Aportes parafiscales', pestana: 'parafiscales' },
+    { k: 'noPension',  t: 'Certificado NO aportes a pensión', obliga: false, nota: 'Pensionados', pestana: 'pension' },
     { k: 'actaInicio', t: 'Acta de inicio',              obliga: false, nota: 'Solo primera cuenta', grupo: 'primera' },
     { k: 'clausulados', t: 'Clausulados del contrato',   obliga: false, nota: 'Solo primera cuenta', grupo: 'primera' },
     { k: 'cdp',        t: 'CDP',                         obliga: false, nota: 'Solo primera cuenta', grupo: 'primera' },
@@ -108,14 +114,25 @@
     { k: 'arl',        t: 'Certificado ARL',             obliga: false, nota: 'Primera cuenta, adición incluida', grupo: 'primera' },
     { k: 'otrosi',     t: 'Otrosí',                      obliga: false, nota: 'Si aplica', grupo: 'primera' },
     { k: 'cdpAdicion', t: 'CDP adición',                 obliga: false, nota: 'Solo primera cuenta de adición', grupo: 'primera' },
-    { k: 'rpAdicion',  t: 'RP adición',                  obliga: false, nota: 'Solo primera cuenta de adición', grupo: 'primera' },
-    { k: 'otroR',      t: 'Otro documento requerido',    obliga: false, nota: 'Si te lo piden', grupo: 'primera' }
+    { k: 'rpAdicion',  t: 'RP adición',                  obliga: false, nota: 'Solo primera cuenta de adición', grupo: 'primera' }
+  ];
+
+  /* 10/10 · Pestañas de documentos opcionales, en el orden pedido por Oss. */
+  var PESTANAS = [
+    { k: 'anexa',        t: 'Adjuntaré planilla anexa' },
+    { k: 'arl',          t: 'La Alcaldía realiza mis aportes a ARL' },
+    { k: 'otro',         t: 'Mi supervisor(a) solicitó un documento' },
+    { k: 'iva',          t: 'En mi RUT SÍ soy responsable de IVA' },
+    { k: 'factura',      t: 'Manejo factura electrónica' },
+    { k: 'parafiscales', t: 'Presento certificado de aportes parafiscales' },
+    { k: 'pension',      t: 'No aporto a pensión' }
   ];
 
   /* ══════════════ entrada ══════════════ */
 
   function abrir(sub) {
     app.innerHTML = '';
+    EDITANDO = sub === 'editar';
     var caja = K.nodo('<div class="kit-ancho vista cuenta"></div>');
     app.appendChild(caja);
 
@@ -139,7 +156,7 @@
         /* El rótulo del banner dice lo que de verdad toca hoy: ingresar o
            corregir. Son dos opciones distintas del menú de siempre. */
         if (K.piezas.banner) {
-          K.piezas.banner.vista(E.puerta === 'corregir' ? 'CORREGIR CUENTA' : 'INGRESAR CUENTA');
+          K.piezas.banner.vista(rotulo());
         }
         pintar(caja);
       })
@@ -163,8 +180,16 @@
     d.faltanDeContratacion = !!c.faltanDeContratacion;
   }
 
+  /* 10/10 · el rótulo de la vista: ingresar, corregir o editar */
+  function rotulo() {
+    if (E && E.edicion) return E.puerta === 'corregir' ? 'EDITAR CORRECCIÓN' : 'EDITAR CUENTA';
+    return E && E.puerta === 'corregir' ? 'CORREGIR CUENTA' : 'INGRESAR CUENTA';
+  }
+
   function cargar() {
-    return K.pedir('cuentaEstado').then(function (d) {
+    return K.pedir('cuentaEstado', conEd()).then(function (d) {
+      /* un CORE que aún no sabe editar responde la puerta de siempre: se sigue sin el modo */
+      if (EDITANDO && !d.edicion) EDITANDO = false;
       candadoLocal(d);
       E = d;
       D = {};
@@ -273,6 +298,12 @@
       b.addEventListener('click', function () { K.vibrar(8); location.hash = '#/' + destino; });
       s.appendChild(b);
     }
+    /* 10/10 · guardada y sin reportar: todavía se puede editar */
+    if (E.editable) {
+      var be = K.nodo('<button type="button" class="kit-btn cta-editar">' + K.icono('lapiz', 16) + ' ' + K.esc(E.editable.boton || 'EDITAR CUENTA') + '</button>');
+      be.addEventListener('click', function () { K.vibrar(8); location.hash = '#/cuenta/editar'; });
+      s.appendChild(be);
+    }
     return s;
   }
 
@@ -282,7 +313,7 @@
     s.appendChild(K.nodo(
       '<div class="cta-cab__fila">' +
       '  <span class="kit-pastilla ' + (corrige ? 'kit-pastilla--aviso' : 'kit-pastilla--ok') + '">' +
-      (corrige ? 'CORREGIR CUENTA' : 'INGRESAR CUENTA') + '</span>' +
+      rotulo() + '</span>' +
       '  <span class="cta-cab__inf">Informe ' + K.esc(E.informe) + (E.total ? ' de ' + K.esc(E.total) : '') + '</span>' +
       '</div>'
     ));
@@ -684,11 +715,22 @@
   function bloqueDocumentos(s) {
     s.appendChild(K.nodo('<p class="cta-nota">Cada archivo se guarda solo, apenas lo eliges. Si se te va la señal, lo que ya subiste ahí se queda.</p>'));
 
-    var primera = [];
+    var primera = [], porPestana = {};
     ARCHIVOS.forEach(function (a) {
       if (!admitido(a)) return;
       if (a.grupo === 'primera') { primera.push(a); return; }
+      if (a.pestana) { (porPestana[a.pestana] = porPestana[a.pestana] || []).push(a); return; }
       s.appendChild(ficha(a));
+    });
+
+    /* 10/10 · una pestaña por caso; ninguna obliga, se abre y se cierra libre. */
+    PESTANAS.forEach(function (p) {
+      var lista = porPestana[p.k];
+      if (!lista || !lista.length) return;
+      var d = K.nodo('<details class="cta-anexa cta-pestana" data-pestana="' + p.k + '"><summary>' + K.esc(p.t) + '</summary></details>');
+      if (lista.some(function (a) { return tieneArchivo(a.k); })) d.open = true;
+      lista.forEach(function (a) { d.appendChild(ficha(a)); });
+      s.appendChild(d);
     });
 
     var det = K.nodo('<details class="cta-anexa"><summary>Documentos de primera cuenta, adición y novedades</summary></details>');
@@ -755,7 +797,7 @@
         }).then(function (ok) {
           if (!ok) return;
           K.piezas.guardado.abrir({ titulo: 'Quitando el archivo', sub: 'Un momento.' });
-          K.pedir('cuentaArchivoQuitar', { archivo: a.k })
+          K.pedir('cuentaArchivoQuitar', conEd({ archivo: a.k }))
             .then(function () {
               delete E.archivos[a.k];
               K.piezas.guardado.listo({ sub: 'Quitado' });
@@ -799,12 +841,12 @@
            PDF. Una foto del baucher acababa en Drive llamada
            "Baucher Planilla.pdf" con bytes de JPG dentro, y no había
            forma de verla. Ahora el CORE respeta el formato de origen. */
-        return K.pedir('cuentaArchivo', {
+        return K.pedir('cuentaArchivo', conEd({
           archivo: a.k,
           pdf: arch[0].datos,
           tipo: arch[0].tipo || '',
           nombre: arch[0].nombre || ''
-        }, { ms: 120000 });
+        }), { ms: 120000 });
       })
       .then(function (r) {
         E.archivos = E.archivos || {};
@@ -947,7 +989,7 @@
       pasos: ['Guardando los datos', rapida ? 'Poniendo la fecha en tus formatos' : 'Creando tus documentos', 'Terminando']
     });
 
-    K.pedir('cuentaGuardar', { campos: D, total: E.total }, { ms: 120000 })
+    K.pedir('cuentaGuardar', conEd({ campos: D, total: E.total }), { ms: 120000 })
       .then(function (g) {
         /* 28/09 · el camino lo decidió el CORE: rápido = solo los formatos
            que llevan la fecha de radicación */
@@ -964,7 +1006,7 @@
             pasos: ['Armando el formato de actividades', 'Metiendo tus evidencias', 'Pasando todo a PDF']
           });
         }
-        return K.pedir('cuentaDocumentos', {}, { ms: 300000 });
+        return K.pedir('cuentaDocumentos', conEd({}), { ms: 300000 });
       })
       .then(function (r) {
         K.ocupado = false;
@@ -989,7 +1031,7 @@
 
   function comprobar(caja) {
     K.piezas.guardado.abrir({ titulo: 'Comprobando', sub: 'Se perdió la respuesta. Estamos verificando cómo quedó tu cuenta.' });
-    K.pedir('cuentaComo', {}, { ms: 60000 })
+    K.pedir('cuentaComo', conEd({}), { ms: 60000 })
       .then(function (r) {
         K.piezas.guardado.cerrar();
         if (r.quedo === 'completa') {

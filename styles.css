@@ -2048,3 +2048,10 @@
 .mrc-fila__e { flex: 0 0 auto; font-size: .66rem; }
 .mrc-error p { margin: 0; padding: 14px 16px; color: var(--k-malo); }
 @media (max-width: 480px) { .mrc-fila { flex-wrap: wrap; } .mrc-fila__e { order: -1; margin-left: auto; } }
+
+/* 10/10 · pestañas de documentos opcionales: más juntas entre sí */
+.cta-pestana { margin: 6px 0; }
+.cta-pestana + .cta-anexa { margin-top: 6px; }
+
+/* 10/10 · EDITAR CUENTA en la puerta de espera */
+.cta-editar { margin-top: 10px; width: 100%; }

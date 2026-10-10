@@ -146,12 +146,23 @@
         botones: [
           { texto: '¿Qué documentos necesito?', responde: function () {
               return 'Siempre: certificación bancaria, planilla (PDF sin contraseña) y el baucher de la planilla (foto o PDF).\n' +
-                     'Si aplica: planilla anexa y su baucher, planilla ARL suministrada por la Alcaldía (solo si la Alcaldía te paga la ARL por riesgo elevado), RUT si eres Régimen Simple, factura si facturas electrónicamente, parafiscales si eres persona jurídica, certificado de NO aportes si eres pensionado.\n' +
-                     'Solo en la primera cuenta: acta de inicio, clausulados, CDP, RP, RUT y certificado de ARL.'; } },
+                     'Si aplica, abre la **pestaña** que te corresponde y sube ahí el documento (ninguna es obligatoria; la abres y la cierras cuando quieras):\n' +
+                     '· **Adjuntaré planilla anexa**: baucher y planilla anexa.\n' +
+                     '· **La Alcaldía realiza mis aportes a ARL**: planilla ARL suministrada por la Alcaldía.\n' +
+                     '· **Mi supervisor(a) solicitó un documento**: otro documento requerido.\n' +
+                     '· **En mi RUT SÍ soy responsable de IVA**: RUT (Régimen Simple).\n' +
+                     '· **Manejo factura electrónica**: factura electrónica.\n' +
+                     '· **Presento certificado de aportes parafiscales**: certificado parafiscales.\n' +
+                     '· **No aporto a pensión**: certificado de NO aportes a pensión.\n' +
+                     'Solo en la primera cuenta, adición o novedades: acta de inicio, clausulados, CDP, RP, RUT y certificado de ARL.'; } },
+          { texto: '¿Puedo cambiar algo después de guardar?', responde: function () {
+              return 'Sí, mientras no la hayas reportado. En **ESTADO DE CUENTA** (o aquí mismo) toca **EDITAR CUENTA**; si es una corrección, **EDITAR CORRECCIÓN**. ' +
+                     'Cambia lo que necesites y vuelve a guardar: tus formatos se rehacen. Después la reportas.'; } },
           { texto: '¿Qué pasa si se me va la señal?', responde: function () {
               return 'Nada se pierde: lo escrito queda en este teléfono y cada PDF que subes queda guardado al instante. Vuelve a entrar y sigues donde ibas.'; } },
           { texto: '¿Cuál es el siguiente paso?', responde: function () {
-              return 'Cuando termines, ve a **ESTADO DE CUENTA** y toca **REPORTAR CUENTA**. Hasta que no la reportes, tu supervisor(a) no la ve.'; } }
+              return 'Cuando termines, ve a **ESTADO DE CUENTA** y toca **REPORTAR CUENTA**. Hasta que no la reportes, tu supervisor(a) no la ve. ' +
+                     'Si dejaste algo pendiente, antes de reportar toca **EDITAR CUENTA**.'; } }
         ]
       };
     },
