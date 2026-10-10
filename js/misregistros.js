@@ -35,6 +35,7 @@
 
   function vista() {
     var caja = K.nodo('<div class="kit-ancho vista mrc"></div>');
+    if (K.piezas.exportar && K.piezas.exportar.prepararGerencial) K.piezas.exportar.prepararGerencial();   /* 10/10 · informe gerencial listo antes del toque */
     C.app.appendChild(caja);
     var t0 = Date.now();
     var memo = null;
