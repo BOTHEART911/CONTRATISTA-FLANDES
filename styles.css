@@ -2055,3 +2055,8 @@
 
 /* 10/10 · EDITAR CUENTA en la puerta de espera */
 .cta-editar { margin-top: 10px; width: 100%; }
+
+/* 10/10 · INFORME GERENCIAL en Mis registros: el rango de fechas */
+.mrc-ger .rp-fechas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mrc-ger .rp-fechas label { display: flex; flex-direction: column; gap: 4px; min-width: 0; font: 700 .7rem/1 var(--k-fuente); color: var(--k-apagado); text-transform: uppercase; letter-spacing: .4px; }
+.mrc-ger .rp-fechas input { width: 100%; min-width: 0; box-sizing: border-box; font: 600 .9rem/1 var(--k-fuente); padding: 11px 12px; border-radius: var(--k-r-md); border: 1px solid var(--k-linea); background: var(--k-papel); color: var(--k-tinta); cursor: pointer; }
