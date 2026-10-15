@@ -200,7 +200,9 @@
       Object.keys(E.campos || {}).forEach(function (k) {
         if (String(E.campos[k] || '').trim()) D[k] = E.campos[k];
       });
-      if (!D.saldo && E.saldoSugerido) D.saldo = E.saldoSugerido;
+      /* 15/10 · el saldo lo pone el CORE (con las adiciones ya sumadas por
+         Contratación): lo guardado en la hoja o el sugerido, nunca el respaldo. */
+      if (E.saldoSugerido && !String((E.campos || {}).saldo || '').trim()) D.saldo = E.saldoSugerido;
       /* 5.2 · contrato cedido: el RP de la cesión es obligatorio en la
          cuenta mientras Contabilidad no lo haya usado. Se propone el que
          ya escribió en una cuenta anterior. */
@@ -575,8 +577,13 @@
   /* ---------- bloque 2: pago ---------- */
 
   function bloquePago(s) {
-    campoPesos(s, 'saldo', 'Saldo actual',
-      E.informe === 1 ? 'En tu primera cuenta es el valor del contrato. Revísalo.' : 'Lo que quedaba después de tu cuenta anterior.');
+    /* 15/10 · solo lectura (Oss): lo calcula el sistema; si hubo una adición,
+       Contratación ya la sumó. */
+    var inSaldo = campoPesos(s, 'saldo', 'Saldo actual',
+      E.informe === 1 ? 'Es el valor de tu contrato. Lo pone el sistema.' : 'Lo que quedaba después de tu cuenta anterior, con las adiciones que registró Contratación. Lo pone el sistema.');
+    inSaldo.readOnly = true;
+    inSaldo.classList.add('cta-inp--fijo');
+    inSaldo.setAttribute('aria-readonly', 'true');
     campoPesos(s, 'cobro', 'Valor por cobrar', 'Lo que estás cobrando en esta cuenta.');
 
     var g = grupo(s, 'Nuevo saldo', 'Se calcula solo: saldo menos lo que cobras.');

@@ -622,7 +622,9 @@
   }
   window.CONTRATISTA_CANDADO = {
     estado: candadoContrato,
-    contrato: function () { return CONTRATO; }
+    contrato: function () { return CONTRATO; },
+    /* 15/10 · todos sus contratos (ya vienen con el inicio): certificación de los anteriores */
+    contratos: function () { return (ARRANQUE && ARRANQUE.contratos) || []; }
   };
   function tarjetaCuenta() {
     var pc = porCorregir();

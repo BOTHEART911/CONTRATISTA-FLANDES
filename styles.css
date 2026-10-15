@@ -2060,3 +2060,13 @@
 .mrc-ger .rp-fechas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .mrc-ger .rp-fechas label { display: flex; flex-direction: column; gap: 4px; min-width: 0; font: 700 .7rem/1 var(--k-fuente); color: var(--k-apagado); text-transform: uppercase; letter-spacing: .4px; }
 .mrc-ger .rp-fechas input { width: 100%; min-width: 0; box-sizing: border-box; font: 600 .9rem/1 var(--k-fuente); padding: 11px 12px; border-radius: var(--k-r-md); border: 1px solid var(--k-linea); background: var(--k-papel); color: var(--k-tinta); cursor: pointer; }
+
+/* 15/10 · campo que pone el sistema (saldo) */
+.cta-inp--fijo { background: var(--k-papel-2); color: var(--k-tinta-2); cursor: default; }
+
+/* 15/10 · certificación: escoger el contrato */
+.seg-cert__lista { display: grid; gap: 8px; margin: 10px 0 12px; }
+.seg-cert__op { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--k-linea); border-radius: var(--k-r-md); background: var(--k-papel); cursor: pointer; }
+.seg-cert__op input { margin-top: 3px; accent-color: var(--k-marca); }
+.seg-cert__op span { display: grid; gap: 2px; }
+.seg-cert__op small { color: var(--k-tinta-2); }

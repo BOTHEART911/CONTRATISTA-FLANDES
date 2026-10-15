@@ -720,26 +720,54 @@
 
   /* ---------- 5. certificación del contrato ---------- */
 
+  /* 15/10 · la certificación de CUALQUIERA de sus contratos (Oss): el actual
+     y los anteriores, también los ya terminados. La lista viaja con el inicio. */
+  var CERT_ID = '';
+  function misContratos() {
+    var l = (window.CONTRATISTA_CANDADO && window.CONTRATISTA_CANDADO.contratos()) || [];
+    return l.slice().sort(function (a, b) { return (b.actual ? 1 : 0) - (a.actual ? 1 : 0); });
+  }
+
   function pintarCert() {
     var el = K.id('seg-certificacion');
+    var lista = misContratos();
+    var elegir = '';
+    if (lista.length > 1) {
+      if (!CERT_ID) CERT_ID = (lista.filter(function (c) { return c.actual; })[0] || lista[0]).idContrato;
+      elegir = '<div class="seg-cert__lista" role="radiogroup" aria-label="Contrato">' + lista.map(function (c) {
+        var est = String(c.estado || '').toUpperCase();
+        return '<label class="seg-cert__op"><input type="radio" name="segCert" value="' + K.esc(c.idContrato) + '"' + (c.idContrato === CERT_ID ? ' checked' : '') + '>' +
+          '<span><b>Contrato ' + K.esc(c.contrato || c.idContrato) + (c.actual ? ' · actual' : '') + '</b>' +
+          '<small>' + K.esc([c.secretaria, est === 'ACTIVO' ? 'En ejecución' : (est === 'NOTIFICADO' || est === 'INACTIVO' ? 'Terminado' : est)].filter(Boolean).join(' · ')) + '</small></span></label>';
+      }).join('') + '</div>';
+    }
     el.innerHTML =
       '<h3 class="seg-sec__t">CERTIFICACIÓN CONTRATO</h3>' +
-      '<p class="seg-sec__p">El certificado de tu contrato con su código de verificación y su QR. Se abre aquí para verlo, descargarlo o imprimirlo.</p>' +
+      '<p class="seg-sec__p">El certificado de tu contrato con su código de verificación y su QR. Se abre aquí para verlo, descargarlo o imprimirlo.' +
+      (lista.length > 1 ? ' Escoge de cuál de tus contratos.' : '') + '</p>' + elegir +
       '<div class="seg-cert__botones"><button type="button" class="kit-btn kit-btn--marca">' + K.icono('documento', 17) + ' Generar certificación</button></div>';
-    el.querySelector('button').addEventListener('click', generarCert);
+    [].forEach.call(el.querySelectorAll('input[name="segCert"]'), function (r) {
+      r.addEventListener('change', function () { CERT_ID = r.value; });
+    });
+    el.querySelector('.seg-cert__botones button').addEventListener('click', generarCert);
     if (CERT) mostrarCertListo(el);
   }
 
   function generarCert() {
+    if (K.ocupado) return;
     K.ocupado = true;
     K.piezas.guardado.abrir({
       titulo: 'Generando tu certificación',
       sub: 'Tarda unos segundos. No cierres la app.',
       pasos: ['Leyendo tu contrato', 'Armando el documento', 'Poniendo el código de verificación', 'Pasándolo a PDF']
     });
-    K.pedir('certificacion', {}, { ms: 150000 })
+    K.pedir('certificacion', CERT_ID ? { idContrato: CERT_ID } : {}, { ms: 150000 })
       .then(function (r) {
         K.ocupado = false;
+        /* CORE anterior al 15/10: solo sabe la del contrato con que entraste */
+        if (CERT_ID && r && r.idContrato !== CERT_ID && !(r.idContrato === undefined && misContratos()[0] && misContratos()[0].idContrato === CERT_ID)) {
+          K.aviso('Por ahora sale la certificación del contrato con el que entraste. La de tus otros contratos se habilita con la próxima actualización.', 'aviso', 8000);
+        }
         CERT = r;
         K.piezas.guardado.listo({ sub: 'Código ' + (r.idDoc || '') });
         var el = K.id('seg-certificacion');
