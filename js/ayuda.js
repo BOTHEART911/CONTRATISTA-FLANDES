@@ -116,7 +116,11 @@
           { texto: '¿Cuántas fotos puedo subir?', responde: function () {
               return 'Hasta **3 imágenes por obligación**. Van en el formato de evidencias, una al lado de la otra y sin deformarse. La app las reduce antes de subirlas, así que no gastan tus datos.'; } },
           { texto: '¿Dónde adjunto un PDF, Word o Excel?', responde: function () {
-              return 'Dentro de cada obligación, en **ARCHIVO DE EVIDENCIA DEL CUMPLIMIENTO**: un archivo por obligación (PDF, Word o Excel, hasta 10 MB) con el **nombre** que tú le pongas. Ya no hay un adjunto general de la cuenta. Si lo reemplazas o lo quitas, el anterior se borra de tu carpeta para siempre.'; } }
+              return 'Dentro de cada obligación, en **ARCHIVO DE EVIDENCIA DEL CUMPLIMIENTO**: un archivo por obligación (PDF, Word o Excel, hasta 10 MB) con el **nombre** que tú le pongas. Ya no hay un adjunto general de la cuenta. Si lo reemplazas o lo quitas, el anterior se borra de tu carpeta para siempre.'; } },
+          { texto: '¿Por qué no puedo pasar a la siguiente cuenta?', responde: function () {
+              return 'Las cuentas van **en orden, una a la vez**. El borrador de la siguiente no se abre mientras una cuenta anterior esté **DEVUELTA**, **INCOMPLETA**, **EN PROCESO** o en **BORRADOR** sin terminar.\n' +
+                     'La app te dice cuál es y te lleva con un botón: **Ir a CORREGIR CUENTA** (si te la devolvieron) o **Ir a INGRESAR CUENTA** (si quedó a medias). ' +
+                     'Cuando esa cuenta queda **INGRESADA** o más adelante, se abre el borrador de la siguiente.'; } }
         ]
       };
     },
@@ -158,6 +162,10 @@
           { texto: '¿Puedo cambiar algo después de guardar?', responde: function () {
               return 'Sí, mientras no la hayas reportado. En **ESTADO DE CUENTA** (o aquí mismo) toca **EDITAR CUENTA**; si es una corrección, **EDITAR CORRECCIÓN**. ' +
                      'Cambia lo que necesites y vuelve a guardar: tus formatos se rehacen. Después la reportas.'; } },
+          { texto: '¿Por qué no puedo cambiar el saldo?', responde: function () {
+              return 'El **Saldo actual** lo pone el sistema y es de solo lectura: en la primera cuenta es el valor de tu contrato y después es lo que quedó de tu cuenta anterior. ' +
+                     'Si te hicieron una **adición**, Contratación ya la sumó al registrarla, junto con los pagos nuevos. Tú solo escribes el **Valor por cobrar**; el **Nuevo saldo** se calcula solo.\n' +
+                     'Si ves un saldo que no cuadra, pregúntale a Contratación en **SOLICITUD A CONTRATACIÓN**.'; } },
           { texto: '¿Qué pasa si se me va la señal?', responde: function () {
               return 'Nada se pierde: lo escrito queda en este teléfono y cada PDF que subes queda guardado al instante. Vuelve a entrar y sigues donde ibas.'; } },
           { texto: '¿Cuál es el siguiente paso?', responde: function () {
@@ -205,6 +213,12 @@
               return 'La última devolución fue en la cuenta ' + u.n + (u.x.fecha ? ', el ' + u.x.fecha : '') +
                      (u.x.quien ? ', por ' + nombre(u.x.quien) : '') + ':\n«' + (u.x.motivo || 'sin motivo escrito') + '»\n' +
                      'Corrígela en **CORREGIR CUENTA** y vuelve a reportarla eligiendo **CORRECCIÓN**.'; } },
+          { texto: '¿Cómo saco mi certificación?', responde: function () {
+              var l = (window.CONTRATISTA_CANDADO && window.CONTRATISTA_CANDADO.contratos()) || [];
+              return 'Baja hasta **CERTIFICACIÓN CONTRATO** y toca **Generar certificación**: se abre aquí mismo para verla, descargarla o imprimirla, con su código y su QR.\n' +
+                     (l.length > 1 ? 'Tienes **' + l.length + ' contratos**: antes de generarla escoge de cuál (el actual o uno anterior, aunque ya haya terminado).\n'
+                                   : 'Si tienes más de un contrato con la Alcaldía, ahí mismo escoges de cuál (el actual o uno anterior).\n') +
+                     'Si el contrato tuvo **cesión**, la certificación lo dice: al **cedente** le certifica su parte (hasta el día antes de la cesión y por el valor que le correspondió) y al **cesionario** desde el día en que empezó, con su propio valor. Cada uno la saca desde su app.'; } },
           { texto: '¿Quién me atiende?', responde: quienMeAtiende }
         ]
       };
