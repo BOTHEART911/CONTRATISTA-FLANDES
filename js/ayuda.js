@@ -166,6 +166,15 @@
               return 'El **Saldo actual** lo pone el sistema y es de solo lectura: en la primera cuenta es el valor de tu contrato y después es lo que quedó de tu cuenta anterior. ' +
                      'Si te hicieron una **adición**, Contratación ya la sumó al registrarla, junto con los pagos nuevos. Tú solo escribes el **Valor por cobrar**; el **Nuevo saldo** se calcula solo.\n' +
                      'Si ves un saldo que no cuadra, pregúntale a Contratación en **SOLICITUD A CONTRATACIÓN**.'; } },
+          { texto: '¿De dónde sale la fecha de inicio?', responde: function () {
+              return 'Desde tu **segunda cuenta**, el **Inicio del periodo** aparece solo: es el **día siguiente** al **Fin del periodo** de tu cuenta anterior del mismo contrato (si terminó el 19/10/2026, empieza el 20/10/2026). ' +
+                     'Si tu periodo empieza otro día, cámbialo. En la primera cuenta, en una cuenta devuelta o en una corrección, la fecha no se toca: queda la que escribiste.'; } },
+          { texto: '¿Cómo se llenan los aportes?', responde: function () {
+              var c = (window.CONTRATISTA_CANDADO && window.CONTRATISTA_CANDADO.config && window.CONTRATISTA_CANDADO.config()) || {};
+              var p = function (v, d) { return String(v || d).replace('.', ','); };
+              return 'En **RELACIÓN DE PLANILLA** escribe primero la **Base de cotización**: mientras esté vacía, salud, pensión y ARL quedan bloqueados. ' +
+                     'Al escribirla se llenan solos: **salud ' + p(c.PLANILLA_PCT_SALUD, '12.5') + ' %**, **pensión ' + p(c.PLANILLA_PCT_PENSION, '16') + ' %** y **ARL ' + p(c.PLANILLA_PCT_ARL, '0.522') + ' %** de la base, redondeados hacia arriba a la centena (base 1.750.905: 218.900, 280.200 y 9.200).\n' +
+                     '**Deben quedar iguales a los de la planilla que adjuntas.** Si tu planilla dice otra cosa, corrígelos a mano. Lo mismo pasa en la **planilla anexa**.'; } },
           { texto: '¿Qué pasa si se me va la señal?', responde: function () {
               return 'Nada se pierde: lo escrito queda en este teléfono y cada PDF que subes queda guardado al instante. Vuelve a entrar y sigues donde ibas.'; } },
           { texto: '¿Cuál es el siguiente paso?', responde: function () {

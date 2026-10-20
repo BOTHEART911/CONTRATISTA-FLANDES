@@ -2070,3 +2070,16 @@
 .seg-cert__op input { margin-top: 3px; accent-color: var(--k-marca); }
 .seg-cert__op span { display: grid; gap: 2px; }
 .seg-cert__op small { color: var(--k-tinta-2); }
+
+/* 19/10 · aviso de los aportes calculados: tiene que verse (Oss) */
+.cta-aviso--planilla {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: -4px 0 16px;
+  border-left: 4px solid var(--k-marca);
+  font-size: .9rem;
+}
+.cta-aviso--planilla svg { flex: 0 0 auto; margin-top: 2px; color: var(--k-marca); }
+.cta-aviso--nota { margin: -8px 0 14px; }
+.cta-inp:disabled { opacity: .7; cursor: not-allowed; }

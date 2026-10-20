@@ -624,7 +624,9 @@
     estado: candadoContrato,
     contrato: function () { return CONTRATO; },
     /* 15/10 · todos sus contratos (ya vienen con el inicio): certificación de los anteriores */
-    contratos: function () { return (ARRANQUE && ARRANQUE.contratos) || []; }
+    contratos: function () { return (ARRANQUE && ARRANQUE.contratos) || []; },
+    /* 19/10 · la configuración pública que llegó con el arranque (porcentajes de los aportes) */
+    config: function () { return (ARRANQUE && ARRANQUE.config) || {}; }
   };
   function tarjetaCuenta() {
     var pc = porCorregir();

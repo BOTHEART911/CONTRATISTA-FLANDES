@@ -26,22 +26,33 @@ firebase.initializeApp(MARCA_FB.FIREBASE || {});
 var ICONO = 'img/icono-192.png';
 var messaging = firebase.messaging();
 
-/* Aviso con la app CERRADA o en segundo plano.
-   El CORE manda notification + data, así que en la mayoría de navegadores
-   la pinta el SDK solo; este handler cubre el resto y deja el destino
-   listo en data.vista. */
+/* La vista que abre un aviso que no dice a cuál ir. En CONTRATISTA casi
+   todos son de su cuenta (radicada, revisada, aprobada, devuelta, orden,
+   pago): se abren en ESTADO DE CUENTA. */
+var VISTA_AVISO = 'seguimiento';
+
+/* 19/10 · UN SOLO AVISO POR EVENTO (Oss: llegaban dos, el de la app y uno
+   genérico con la campana y la letra B).
+   La causa: el CORE mandaba el mensaje con `notification` + `data`. Con
+   `notification`, el SDK de Firebase pinta SU aviso (sin icono: Chrome pone
+   la campana y la inicial del sitio, botheart911 → "B") y ADEMÁS llama a
+   este handler, que pintaba el nuestro con otra etiqueta: dos avisos.
+   Ahora el CORE manda SOLO `data` (titulo, cuerpo, tipo, referencia…) y
+   el único que pinta es este handler. Si llega un mensaje viejo con
+   `notification`, el SDK ya lo pintó: aquí no se pinta otro. */
 messaging.onBackgroundMessage(function (payload) {
-  var n = payload.notification || {};
-  var d = payload.data || {};
-  self.registration.showNotification(n.title || 'Alcaldía de Flandes', {
-    body: n.body || '',
+  if (payload && payload.notification) return;
+  var d = (payload && payload.data) || {};
+  var titulo = d.titulo || 'Alcaldía de Flandes';
+  return self.registration.showNotification(titulo, {
+    body: d.cuerpo || '',
     icon: ICONO,
     badge: ICONO,
     /* La etiqueta lleva el prefijo de la app: sin él, un aviso de otra app
        del mismo origen reemplazaría este en el mismo teléfono. */
     tag: NS_FB + 'aviso-' + (d.referencia || d.tipo || ''),
     renotify: true,
-    data: { vista: d.vista || '', tipo: d.tipo || '' }
+    data: { vista: d.vista || String(d.ruta || '').replace(/^#\/?/, '') || VISTA_AVISO, tipo: d.tipo || '' }
   });
 });
 

@@ -203,6 +203,11 @@
       /* 15/10 · el saldo lo pone el CORE (con las adiciones ya sumadas por
          Contratación): lo guardado en la hoja o el sugerido, nunca el respaldo. */
       if (E.saldoSugerido && !String((E.campos || {}).saldo || '').trim()) D.saldo = E.saldoSugerido;
+      /* 19/10 · desde la segunda cuenta, el inicio del periodo sale del día
+         siguiente al fin de la cuenta anterior (lo calcula el CORE y solo lo
+         manda al ingresar). Solo rellena el campo vacío: nunca pisa lo
+         guardado en la hoja ni lo que la persona ya escribió. */
+      if (E.inicioSugerido && !String(D.inicioPeriodo || '').trim()) D.inicioPeriodo = E.inicioSugerido;
       /* 5.2 · contrato cedido: el RP de la cesión es obligatorio en la
          cuenta mientras Contabilidad no lo haya usado. Se propone el que
          ya escribió en una cuenta anterior. */
@@ -548,6 +553,11 @@
     /* 28/09 · la fecha de radicación se elige al final, al guardar
        (fechasRadicacion más abajo). Aquí queda solo el periodo. */
     campoFecha(s, 'inicioPeriodo', 'Inicio del periodo', 'El primer día que estás cobrando');
+    /* 19/10 · se dice de dónde salió la fecha propuesta, sin quitar la pista */
+    if (E.inicioSugerido && D.inicioPeriodo === E.inicioSugerido) {
+      s.appendChild(K.nodo('<p class="cta-aviso cta-aviso--nota">Lo pusimos al día siguiente del fin de tu cuenta anterior. ' +
+        'Si tu periodo empieza otro día, cámbialo.</p>'));
+    }
     campoFecha(s, 'finPeriodo', 'Fin del periodo', 'El último día que estás cobrando');
   }
 
@@ -670,9 +680,10 @@
       } else { av.hidden = true; }
     };
 
-    campoPesos(s, 'salud', 'Aportes a salud', 'Sin intereses.');
-    campoPesos(s, 'pension', 'Aportes a pensión', 'Sin intereses. Si no aportas, escribe 0.');
-    campoPesos(s, 'riesgos', 'Aportes a ARL', 'Sin intereses. Si los paga la entidad, escribe el valor del aporte.');
+    var inSalud = campoPesos(s, 'salud', 'Aportes a salud', 'Sin intereses.');
+    var inPension = campoPesos(s, 'pension', 'Aportes a pensión', 'Sin intereses. Si no aportas, escribe 0.');
+    var inRiesgos = campoPesos(s, 'riesgos', 'Aportes a ARL', 'Sin intereses. Si los paga la entidad, escribe el valor del aporte.');
+    aportesSolos(s, 'base', { salud: inSalud, pension: inPension, riesgos: inRiesgos });
     campoPesos(s, 'caja', 'Caja de compensación', 'Solo si aportas.');
     campoPesos(s, 'sena', 'SENA', 'Solo si aportas.');
     campoPesos(s, 'icbf', 'ICBF', 'Solo si aportas.');
@@ -698,9 +709,10 @@
     sel2.addEventListener('change', function () { D.mesPlanillaA = sel2.value; recordar(); });
     g2.appendChild(sel2);
     campoPesos(det, 'baseA', 'Base de cotización (anexa)', '');
-    campoPesos(det, 'saludA', 'Aportes a salud (anexa)', '');
-    campoPesos(det, 'pensionA', 'Aportes a pensión (anexa)', '');
-    campoPesos(det, 'riesgosA', 'Aportes a ARL (anexa)', '');
+    var inSaludA = campoPesos(det, 'saludA', 'Aportes a salud (anexa)', '');
+    var inPensionA = campoPesos(det, 'pensionA', 'Aportes a pensión (anexa)', '');
+    var inRiesgosA = campoPesos(det, 'riesgosA', 'Aportes a ARL (anexa)', '');
+    var anexaSolos = aportesSolos(det, 'baseA', { saludA: inSaludA, pensionA: inPensionA, riesgosA: inRiesgosA });
     campoPesos(det, 'cajaA', 'Caja de compensación (anexa)', '');
     campoPesos(det, 'senaA', 'SENA (anexa)', '');
     campoPesos(det, 'icbfA', 'ICBF (anexa)', '');
@@ -712,9 +724,95 @@
       recordar();
       K.$$('.cta-inp', det).forEach(function (i) { i.value = ''; });
       sel2.value = '';
+      anexaSolos();   /* sin base, los aportes vuelven a quedar bloqueados */
       K.aviso('Planilla anexa vacía. Se guardará así.', 'info');
     });
     det.appendChild(limpiar);
+  }
+
+  /* ---------- 19/10 · aportes que se llenan solos (Oss) ----------
+
+     Salud, pensión y ARL quedan BLOQUEADOS mientras la base de cotización
+     esté vacía. Al escribir la base se calculan con los porcentajes de
+     ADMIN > Configuración (PLANILLA_PCT_SALUD, _PENSION, _ARL, públicos:
+     llegan con el arranque, sin otro viaje), redondeados HACIA ARRIBA a la
+     centena: base 1.750.905 → 218.900, 280.200 y 9.200. Después la persona
+     los puede corregir a mano para igualarlos a su planilla. Cambiar la base
+     los vuelve a calcular. Va igual en la planilla anexa. */
+  var PCT_DEFECTO = { salud: 12.5, pension: 16, riesgos: 0.522 };
+
+  function porcentajes() {
+    var c = (window.CONTRATISTA_CANDADO && window.CONTRATISTA_CANDADO.config && window.CONTRATISTA_CANDADO.config()) || {};
+    function n(v, d) { var x = Number(String(v === null || v === undefined ? '' : v).replace(',', '.')); return (isFinite(x) && x > 0) ? x : d; }
+    return {
+      salud: n(c.PLANILLA_PCT_SALUD, PCT_DEFECTO.salud),
+      pension: n(c.PLANILLA_PCT_PENSION, PCT_DEFECTO.pension),
+      riesgos: n(c.PLANILLA_PCT_ARL, PCT_DEFECTO.riesgos)
+    };
+  }
+
+  /* En centavos enteros para que 0,522 % no deje basura de coma flotante, y
+     luego a la centena siguiente (una cifra ya redonda se queda igual). */
+  function aporte(base, pct) {
+    if (!(base > 0)) return 0;
+    var centavos = Math.round(base * pct);          /* base × pct / 100 pesos = base × pct centavos */
+    return Math.ceil(centavos / 10000) * 100;
+  }
+
+  function pctTexto(p) { return String(p).replace('.', ',') + ' %'; }
+
+  function aportesSolos(destino, claveBase, campos) {
+    var P = porcentajes();
+    var baseInp = K.$$('.cta-inp', destino).filter(function (i) { return i.dataset.campo === claveBase; })[0];
+    var claves = Object.keys(campos);
+    var rol = function (k) { return /^salud/.test(k) ? 'salud' : (/^pension/.test(k) ? 'pension' : 'riesgos'); };
+
+    /* El aviso va justo debajo de la base, donde la persona está escribiendo
+       (en el teléfono los tres aportes quedan más abajo, fuera de la vista),
+       y no toca los subtítulos de ningún campo. */
+    var aviso = K.nodo('<p class="cta-aviso cta-aviso--planilla" role="status" hidden></p>');
+    var grupoBase = baseInp && baseInp.closest('.cta-campo');
+    if (grupoBase && grupoBase.parentNode) grupoBase.parentNode.insertBefore(aviso, grupoBase.nextSibling);
+    else destino.appendChild(aviso);
+
+    function bloquear() {
+      var hay = K.aNumero(D[claveBase]) > 0;
+      claves.forEach(function (k) {
+        var i = campos[k];
+        i.disabled = !hay;
+        i.classList.toggle('cta-inp--fijo', !hay);
+        i.setAttribute('aria-disabled', hay ? 'false' : 'true');
+        i.title = hay ? '' : 'Primero escribe la base de cotización';
+      });
+      aviso.hidden = !hay;
+      if (hay) {
+        aviso.innerHTML = K.icono('info', 16) + ' <span>Calculamos los aportes con ' +
+          'salud ' + K.esc(pctTexto(P.salud)) + ', pensión ' + K.esc(pctTexto(P.pension)) + ' y ARL ' + K.esc(pctTexto(P.riesgos)) +
+          '. <b>Deben ser iguales a los de la planilla que adjuntas.</b> Si tu planilla dice otra cosa, corrígelos aquí.</span>';
+      }
+      return hay;
+    }
+
+    function calcular() {
+      var b = K.aNumero(D[claveBase]);
+      claves.forEach(function (k) {
+        var i = campos[k];
+        if (b > 0) {
+          var v = aporte(b, P[rol(k)]);
+          D[k] = String(v);
+          i.value = K.numero(v);
+        } else {
+          /* sin base no hay aporte que proponer */
+          D[k] = '';
+          i.value = '';
+        }
+      });
+      recordar();
+    }
+
+    if (baseInp) baseInp.addEventListener('input', function () { calcular(); bloquear(); });
+    bloquear();
+    return bloquear;
   }
 
   /* ---------- bloque 4: documentos ---------- */
