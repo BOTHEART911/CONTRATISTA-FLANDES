@@ -56,7 +56,13 @@ messaging.onBackgroundMessage(function (payload) {
   });
 });
 
-/* Tocar el aviso abre la app donde toca; si ya está abierta, la enfoca. */
+/* Tocar el aviso abre la app en la vista del aviso.
+   21/10 · Con la app abierta o en segundo plano, antes solo se traía al
+   frente: navigate() únicamente funciona en ventanas que controla ESTE
+   service worker, y la app la controla sw.js (otro scope), así que fallaba
+   en silencio. Ahora se le pide a la propia app que cambie de vista
+   (kit/avisos.js escucha el mensaje). Con la app cerrada se abre ya en la
+   vista. */
 self.addEventListener('notificationclick', function (e) {
   e.notification.close();
   var base = new URL('./', self.location.href).href;
@@ -68,7 +74,7 @@ self.addEventListener('notificationclick', function (e) {
       for (var i = 0; i < lista.length; i++) {
         var c = lista[i];
         if (c.url.indexOf(base) === 0 && 'focus' in c) {
-          if (c.navigate) { c.navigate(destino)['catch'](function () {}); }
+          if (vista) { try { c.postMessage({ kitAviso: 'ir', vista: vista }); } catch (err) {} }
           return c.focus();
         }
       }
