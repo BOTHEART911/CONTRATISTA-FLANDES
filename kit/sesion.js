@@ -227,8 +227,6 @@
     K.pedir('login', pide, { sinToken: true, app: 'CORE' })
       .then(function (d) {
         K.guardar.escribir('sesion.ultimoDocumento', doc);
-        /* 07/10 · entró con su documento como contraseña: se le recomienda cambiarla */
-        claveEsDoc = !!(d && d.claveEsDocumento);
 
         /* varios contratos: el CORE devuelve la lista y hay que elegir */
         if (d && d.contratos && d.contratos.length > 1) {
@@ -256,8 +254,10 @@
   function mensajeDe(e) {
     var c = (e && e.codigo) || '';
     if (c === 'SIN_RED') return 'No hay internet. Es tu conexión, no la aplicación.';
-    if (c === 'TIEMPO') return 'El servidor tardó demasiado. Inténtalo otra vez.';
-    if (c === 'RESPUESTA_NO_JSON') return 'Quizás tu internet presenta intermitencias, inténtalo de nuevo. Si el problema persiste, solicita soporte.';
+    if (c === 'RED_LENTA') return 'Tu internet está muy lento. Inténtalo de nuevo en un momento.';
+    if (c === 'TIEMPO') return 'El servidor está tardando. No es tu internet: inténtalo otra vez.';
+    if (c === 'SERVIDOR') return 'El servidor no respondió. No es tu internet: inténtalo en un momento.';
+    if (c === 'RESPUESTA_NO_JSON') return 'La respuesta llegó incompleta. Inténtalo de nuevo; si sigue, solicita soporte.';
     return (e && e.message) || 'No se pudo entrar.';
   }
 
@@ -309,7 +309,6 @@
 
   function terminar(d) {
     if (!d || !d.token) { coheteCerrar(); ocupado(false); error('El servidor no devolvió una sesión válida.'); return; }
-    if (claveEsDoc || (d && d.claveEsDocumento)) { claveEsDoc = false; setTimeout(recomendarCambio, 2400); }
     K.ponerToken(d.token);
     guardarYo(d.usuario || d.yo || d);
     /* 28/09 · con cohete, el verde y el sonido los pone él (sin doble sonido);
@@ -341,19 +340,6 @@
     var c = capa;
     capa = null;
     setTimeout(function () { if (c.parentNode) c.remove(); }, 260);
-  }
-
-  /* ── 07/10 · contraseña = documento: recomendar cambiarla (como la bienvenida de ADMIN) ── */
-
-  var claveEsDoc = false;
-  function recomendarCambio() {
-    if (!K.piezas.confirmar || !K.piezas.confirmar.preguntar) { K.aviso('Tu contraseña es tu número de documento. Te recomendamos cambiarla: toca tu foto y elige "Actualizar contraseña".', 'aviso', 9000); return; }
-    K.piezas.confirmar.preguntar({
-      titulo: 'Actualiza tu contraseña',
-      texto: 'Tu contraseña es tu número de documento. Te recomendamos cambiarla ahora por una que solo tú conozcas.',
-      nota: 'Luego también puedes hacerlo: toca tu foto y elige "Actualizar contraseña".',
-      si: 'Cambiarla ahora', no: 'Después'
-    }).then(function (ok) { if (ok) cambiarClave(); });
   }
 
   /* ── olvidé mi contraseña ── */
@@ -466,7 +452,7 @@
    * SIN_PERMISO...). Si es la red, se reintenta una vez solo y, si sigue,
    * se ofrece reintentar sin perder la sesión.
    */
-  var DE_RED = { SIN_RED: 1, TIEMPO: 1, RESPUESTA_NO_JSON: 1 };
+  var DE_RED = { SIN_RED: 1, RED_LENTA: 1, TIEMPO: 1, SERVIDOR: 1, RESPUESTA_NO_JSON: 1 };
 
   function comprobarSesion(intento) {
     var comprobacion = (typeof cfg.comprobar === 'function')

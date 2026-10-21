@@ -849,7 +849,7 @@
         ['catch'](function (e) {
           K.ocupado = false;
           K.piezas.guardado.fallo();
-          if (e && (e.codigo === 'SIN_RED' || e.codigo === 'TIEMPO' || e.codigo === 'RESPUESTA_NO_JSON')) {
+          if (e && (e.codigo === 'SIN_RED' || e.codigo === 'TIEMPO' || e.codigo === 'SERVIDOR' || e.codigo === 'RED_LENTA' || e.codigo === 'RESPUESTA_NO_JSON')) {
             /* la respuesta se perdió pero el servidor pudo terminar: se
                vuelve a leer el estado antes de dejar que reporte otra vez */
             K.piezas.confirmar.avisar({

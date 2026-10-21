@@ -1126,7 +1126,7 @@
         /* Si el fallo es de red, el servidor pudo terminar igual: preguntar
            antes de asustar a nadie es lo que evita el reenvío que duplica
            archivos en Drive. */
-        if (e && (e.codigo === 'SIN_RED' || e.codigo === 'TIEMPO' || e.codigo === 'RESPUESTA_NO_JSON')) {
+        if (e && (e.codigo === 'SIN_RED' || e.codigo === 'TIEMPO' || e.codigo === 'SERVIDOR' || e.codigo === 'RED_LENTA' || e.codigo === 'RESPUESTA_NO_JSON')) {
           comprobar(caja);
           return;
         }
