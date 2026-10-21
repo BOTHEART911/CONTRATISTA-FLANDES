@@ -1063,7 +1063,7 @@
             }
             if (sinFoto.length) {
               s += 'Escritas pero sin imágenes ni archivo de evidencia (' + sinFoto.length + '): ' + sinFoto.join(', ') + '.\n' +
-                   'La cuenta se radica igual, pero el formato de evidencias sale con esos campos en N/A.';
+                   'La cuenta se radica igual; esas obligaciones no aparecen en el formato de evidencias (solo van las que tienen imágenes).';
             }
             return s;
           } },

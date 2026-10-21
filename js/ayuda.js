@@ -114,7 +114,7 @@
           { texto: '¿Cómo redacto una actividad?', responde: function () {
               return 'Empieza con un verbo en pasado y pon una cifra. Por ejemplo:\n«**Realicé 12 visitas** de seguimiento a las veredas El Paso y Bocas, con **48 familias** atendidas.»\nEvita «apoyar», «colaborar» sin decir cuánto ni dónde.'; } },
           { texto: '¿Cuántas fotos puedo subir?', responde: function () {
-              return 'Hasta **3 imágenes por obligación**. Van en el formato de evidencias, una al lado de la otra y sin deformarse. La app las reduce antes de subirlas, así que no gastan tus datos.'; } },
+              return 'Hasta **3 imágenes por obligación**. Van en el formato de evidencias, una al lado de la otra y sin deformarse. **En el formato solo aparecen las obligaciones que tienen imágenes**: las que no tienen no dejan filas vacías, y si ninguna tiene, no se genera formato de evidencias. La app las reduce antes de subirlas, así que no gastan tus datos.'; } },
           { texto: '¿Dónde adjunto un PDF, Word o Excel?', responde: function () {
               return 'Dentro de cada obligación, en **ARCHIVO DE EVIDENCIA DEL CUMPLIMIENTO**: un archivo por obligación (PDF, Word o Excel, hasta 10 MB) con el **nombre** que tú le pongas. Ya no hay un adjunto general de la cuenta. Si lo reemplazas o lo quitas, el anterior se borra de tu carpeta para siempre.'; } },
           { texto: '¿Por qué no puedo pasar a la siguiente cuenta?', responde: function () {
