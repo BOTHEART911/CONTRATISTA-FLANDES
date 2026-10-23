@@ -2011,6 +2011,17 @@
 .arch-nombre__btns { display: flex; gap: 8px; flex-wrap: wrap; }
 .arch-nombre__btns .kit-btn { flex: 1 1 140px; }
 .arch-no { margin-top: 8px; width: 100%; }
+/* 23/10 · hasta 5 adjuntos por obligación: número 1.1., 1.2.… y "Agregar otro adjunto" */
+#edi-arch { display: grid; gap: 8px; }
+.arch-ok__num {
+  flex: 0 0 auto; min-width: 34px; padding: 3px 7px; border-radius: 999px;
+  background: rgba(var(--k-marca-rgb), .12); color: var(--k-marca);
+  font-weight: 800; font-size: 12.5px; text-align: center; font-variant-numeric: tabular-nums;
+}
+.arch-nombre__num { font-weight: 800; color: var(--k-marca); font-variant-numeric: tabular-nums; }
+.arch-otro { width: 100%; justify-content: center; gap: 6px; border-style: dashed; }
+.arch-otro__n { margin-left: 6px; font-size: 12px; font-weight: 600; color: var(--k-apagado); }
+.arch-hueco { display: grid; gap: 6px; }
 
 /* ══════════ 06/10 · MIS REGISTROS (todas mis cuentas para descargar) ══════════ */
 .acceso__img--icono { display: inline-flex; align-items: center; justify-content: center; color: var(--k-marca); }

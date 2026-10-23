@@ -116,7 +116,7 @@
           { texto: '¿Cuántas fotos puedo subir?', responde: function () {
               return 'Hasta **3 imágenes por obligación**. Van en el formato de evidencias, una al lado de la otra y sin deformarse. **En el formato solo aparecen las obligaciones que tienen imágenes**: las que no tienen no dejan filas vacías, y si ninguna tiene, no se genera formato de evidencias. La app las reduce antes de subirlas, así que no gastan tus datos.'; } },
           { texto: '¿Dónde adjunto un PDF, Word o Excel?', responde: function () {
-              return 'Dentro de cada obligación, en **ARCHIVO DE EVIDENCIA DEL CUMPLIMIENTO**: un archivo por obligación (PDF, Word o Excel, hasta 10 MB) con el **nombre** que tú le pongas. Ya no hay un adjunto general de la cuenta. Si lo reemplazas o lo quitas, el anterior se borra de tu carpeta para siempre.'; } },
+              return 'Dentro de cada obligación, en **ARCHIVO DE EVIDENCIA DEL CUMPLIMIENTO**: hasta **5 adjuntos por obligación** (PDF, Word o Excel, hasta 10 MB cada uno), cada uno con el **nombre** que tú le pongas. El primero va en la casilla y los demás con **Agregar otro adjunto**. Puedes tocar para elegirlo, **arrastrarlo** o **pegarlo con Ctrl+V**. En tu carpeta quedan numerados por obligación: **1.1.**, **1.2.**… (obligación 2: **2.1.**, **2.2.**…). Si reemplazas o quitas uno, el anterior se borra de tu carpeta para siempre y los demás se renumeran.'; } },
           { texto: '¿Por qué no puedo pasar a la siguiente cuenta?', responde: function () {
               return 'Las cuentas van **en orden, una a la vez**. El borrador de la siguiente no se abre mientras una cuenta anterior esté **DEVUELTA**, **INCOMPLETA**, **EN PROCESO** o en **BORRADOR** sin terminar.\n' +
                      'La app te dice cuál es y te lleva con un botón: **Ir a CORREGIR CUENTA** (si te la devolvieron) o **Ir a INGRESAR CUENTA** (si quedó a medias). ' +
@@ -127,7 +127,7 @@
 
     borradorObligacion: function () {
       return {
-        guia: 'Escribe **qué hiciste, cuánto y dónde**, en pasado. Abajo sube hasta 3 imágenes y, si lo tienes, un **archivo de evidencia** (PDF, Word o Excel) con su nombre. Con **Siguiente** pasas a la próxima obligación sin perder lo escrito.',
+        guia: 'Escribe **qué hiciste, cuánto y dónde**, en pasado. Abajo sube hasta 3 imágenes y, si lo tienes, hasta **5 archivos de evidencia** (PDF, Word o Excel) con su nombre: el primero en la casilla y los demás con **Agregar otro adjunto** (también arrastrándolos o con Ctrl+V). Con **Siguiente** pasas a la próxima obligación sin perder lo escrito.',
         alto: true,
         botones: [
           { texto: 'Dame un ejemplo', responde: function () {
@@ -135,7 +135,7 @@
           { texto: '¿Qué foto sirve como evidencia?', responde: function () {
               return 'Una que muestre la actividad: la reunión con su lista de asistencia, el sitio intervenido, la pantalla del informe entregado. Nada de fotos personales ni capturas borrosas.'; } },
           { texto: '¿Qué va en el archivo de evidencia?', responde: function () {
-              return 'El soporte que no es una foto: el informe entregado, el listado, el acta, la base de datos. **Uno por obligación**, PDF, Word o Excel de hasta 10 MB. Ponle un nombre claro (ej. «Informe de visitas de septiembre»): con ese nombre queda en tu carpeta y lo ven tu supervisor(a) y Contratación. Sube de fondo: puedes seguir escribiendo mientras tanto.'; } }
+              return 'El soporte que no es una foto: el informe entregado, el listado, el acta, la base de datos. **Hasta 5 por obligación**, PDF, Word o Excel de hasta 10 MB cada uno. Ponle a cada uno un nombre claro (ej. «Informe de visitas de septiembre»): queda en tu carpeta numerado (**1.1. Informe de visitas de septiembre**, **1.2. …**) y así lo ven tu supervisor(a) y Contratación, y sale en tu informe de actividades. Sube de fondo: puedes seguir escribiendo mientras tanto.'; } }
         ]
       };
     },

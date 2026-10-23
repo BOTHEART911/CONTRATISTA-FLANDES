@@ -42,8 +42,12 @@
      ARCH_ON solo si el CORE ya lo sabe manejar (borradorEstado.archivosEv):
      con un CORE viejo el bloque no sale y nada se rompe. */
   var archivos = [], ARCH_ON = false;
-  var subiendoArch = {};  /* i -> {nombre} mientras sube (no bloquea nada) */
-  var localArch = {};     /* i -> File recién subido: Ver lo abre sin viaje */
+  /* 23/10 · archivos[i] es la LISTA de adjuntos (hasta 5). ARCH_MULTI solo si
+     el CORE ya los maneja (borradorEstado.adjuntosTope): con un CORE de antes
+     queda uno por obligación, como antes. */
+  var ARCH_MULTI = false;
+  var subiendoArch = {};  /* i -> {nombre, reemplaza} mientras sube (no bloquea nada) */
+  var localArch = {};     /* id -> File recién subido: Ver lo abre sin viaje */
   var sucio = false;   /* hay cambios sin mandar al CORE */
   var guardando = false;
 
@@ -131,7 +135,9 @@
         textos = (d.actividades || []).slice();
         evidencias = (d.evidencias || []).map(listaEvi);
         ARCH_ON = Object.prototype.toString.call(d.archivosEv) === '[object Array]';
-        archivos = ARCH_ON ? d.archivosEv.slice() : [];
+        archivos = ARCH_ON ? d.archivosEv.map(listaArch) : [];
+        ARCH_MULTI = ARCH_ON && Number(d.adjuntosTope) > 1;
+        ARCH_TOPE = ARCH_MULTI ? Number(d.adjuntosTope) : 1;
         if (recuperarRespaldo()) {
           K.aviso('Recuperamos lo que estabas escribiendo la última vez.', 'info', 5000);
         }
@@ -249,7 +255,7 @@
 
   function cabecera() {
     var escritas = textos.filter(function (t) { return String(t || '').trim(); }).length;
-    var conFoto = E.obligaciones.filter(function (o, k) { return (evidencias[k] && evidencias[k].length) || archivos[k]; }).length;
+    var conFoto = E.obligaciones.filter(function (o, k) { return (evidencias[k] && evidencias[k].length) || (archivos[k] && archivos[k].length); }).length;
     var total = E.obligaciones.length;
     var pct = total ? Math.round(escritas * 100 / total) : 0;
 
@@ -297,7 +303,8 @@
   function tarjetaObligacion(o, i, caja) {
     var escrito = String(textos[i] || '').trim();
     var foto = (evidencias[i] || []).length;
-    var arch = archivos[i] || subiendoArch[i];
+    var nArch = (archivos[i] || []).length + (subiendoArch[i] && !subiendoArch[i].reemplaza ? 1 : 0);
+    var arch = nArch ? ((archivos[i] || [])[0] || subiendoArch[i]) : null;
     var estado = escrito ? (foto || arch ? 'lista' : 'escrita') : 'pendiente';
     var rotulos = { lista: 'Completa', escrita: 'Falta la evidencia', pendiente: 'Sin diligenciar' };
 
@@ -310,7 +317,7 @@
       '      <span class="obl__estado">' + rotulos[estado] + '</span>' +
            (foto ? '<span class="obl__foto">' + K.icono('clip', 14) + ' ' + foto +
              (foto === 1 ? ' imagen' : ' imágenes') + '</span>' : '') +
-           (arch ? '<span class="obl__foto">' + K.icono(iconoArch(arch), 14) + ' 1 archivo</span>' : '') +
+           (arch ? '<span class="obl__foto">' + K.icono(iconoArch(arch), 14) + ' ' + nArch + (nArch === 1 ? ' adjunto' : ' adjuntos') + '</span>' : '') +
       '    </span>' +
       '  </span>' +
       '  <span class="obl__flecha">›</span>' +
@@ -368,7 +375,7 @@
       (ARCH_ON
         ? '  <div class="kit-tarjeta edi__evi edi__bloque edi__bloque--arch">' +
           '    <p class="edi__bt">' + K.icono('documento', 20) + '<span>ARCHIVO DE EVIDENCIA DEL CUMPLIMIENTO</span></p>' +
-          '    <p class="edi__bs">Opcional · un archivo PDF, Word o Excel de hasta 10 MB</p>' +
+          '    <p class="edi__bs">' + (ARCH_MULTI ? 'Opcional · hasta ' + ARCH_TOPE + ' adjuntos PDF, Word o Excel de hasta 10 MB cada uno' : 'Opcional · un archivo PDF, Word o Excel de hasta 10 MB') + '</p>' +
           '    <div id="edi-arch"></div>' +
           '  </div>'
         : '') +
@@ -635,22 +642,43 @@
   }
 
 
-  /* ══════════════ archivo de evidencia (05/10) ══════════════
-     Un archivo por obligación (PDF, Word o Excel, hasta 10 MB) con el
-     nombre que escribe la persona. Sube DE FONDO: se puede seguir
-     escribiendo o pasar a otra obligación mientras tanto. Reemplazarlo o
-     quitarlo borra el anterior de Drive para siempre (lo hace el CORE, en
-     cola). El archivo es privado: no se comparte por enlace. */
+  /* ══════════════ adjuntos de evidencia (05/10 · 23/10) ══════════════
+     23/10 · hasta CINCO adjuntos por obligación (PDF, Word o Excel, hasta
+     10 MB cada uno): el primero y "Agregar otro adjunto". Se adjuntan
+     tocando, arrastrando o con Ctrl+V. El CORE los numera en Drive por
+     obligación y orden: 1.1., 1.2.… (si se quita uno, los demás se
+     renumeran). Suben DE FONDO: se puede seguir escribiendo o pasar a otra
+     obligación mientras tanto. Reemplazar o quitar borra el anterior de
+     Drive para siempre (lo hace el CORE, en cola). */
 
+  var ARCH_TOPE = 5;
   var ARCH_ACEPTA = '.pdf,.doc,.docx,.xls,.xlsx,application/pdf,application/msword,' +
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document,' +
     'application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
   var ARCH_EXT = { pdf: 1, doc: 1, docx: 1, xls: 1, xlsx: 1 };
+  var RE_NUM = /^\s*\d+\.\d+\.\s+/;
+
+  /* Lo que manda el CORE por obligación: null, un objeto (CORE de antes) o
+     un objeto con .todos (23/10). Siempre se guarda como LISTA. */
+  function listaArch(v) {
+    if (!v) return [];
+    if (Object.prototype.toString.call(v) === '[object Array]') return v.filter(Boolean);
+    if (Object.prototype.toString.call(v.todos) === '[object Array]') return v.todos.filter(Boolean);
+    return v.id ? [v] : [];
+  }
+  function archDe(i) {
+    if (!archivos[i]) archivos[i] = [];
+    return archivos[i];
+  }
 
   function extDe(nombre) {
     var m = /\.([a-z0-9]{2,5})$/i.exec(String(nombre || ''));
     var e = m ? m[1].toLowerCase() : '';
     return ARCH_EXT[e] ? e : '';
+  }
+
+  function esOficina(file) {
+    return !!(extDe(file && file.name) || /pdf|msword|wordprocessingml|ms-excel|spreadsheetml/.test((file && file.type) || ''));
   }
 
   function iconoArch(a) {
@@ -659,13 +687,21 @@
   }
 
   /* Lo mismo que limpia el CORE (FCEV_limpiarNombre_), para que lo que la
-     persona ve en el campo sea lo que va a quedar en Drive. */
+     persona ve en el campo sea lo que va a quedar en Drive (sin el 1.1.,
+     que lo pone el CORE). */
   function limpiarNombre(s) {
-    var t = String(s || '').replace(/\.(pdf|docx?|xlsx?)$/i, '');
+    var t = String(s || '').replace(/\.(pdf|docx?|xlsx?)$/i, '').replace(RE_NUM, '');
     t = t.replace(/[\\\/:*?"<>|#%{}~&·\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
     t = t.replace(/^[.\-\s]+|[.\-\s]+$/g, '');
     return t.length > 80 ? t.slice(0, 80).trim() : t;
   }
+
+  /* "1.2." del nombre, o el que le toca por su lugar. */
+  function numDe(i, k, a) {
+    var m = /^\s*(\d+\.\d+)\./.exec((a && a.nombre) || '');
+    return m ? m[1] : (i + 1) + '.' + (k + 1);
+  }
+  function sinNum(nombre) { return String(nombre || '').replace(RE_NUM, ''); }
 
   /* Repinta el bloque solo si la persona sigue en esa obligación. */
   function repintarArch(i) {
@@ -673,85 +709,150 @@
     if (d && location.hash === '#/borrador/' + (i + 1)) zonaArchivo(d, i);
   }
 
-  function zonaArchivo(destino, i) {
-    destino.innerHTML = '';
-    var a = archivos[i], sub = subiendoArch[i];
-
-    if (sub) {
-      destino.appendChild(K.nodo(
-        '<div class="arch-ok arch-ok--sube" aria-live="polite">' +
-        '  <span class="arch-ok__ico">' + K.icono(iconoArch(sub), 22) + '</span>' +
-        '  <div class="arch-ok__txt"><p class="arch-ok__t">' + K.esc(sub.nombre) + '</p>' +
-        '  <p class="arch-ok__p"><span class="arch-giro"></span> Subiendo <b class="arch-pct">' + (sub.pct || 0) + ' %</b> · puedes seguir escribiendo.</p></div>' +
-        '</div>'));
-      return;
-    }
-
-    if (a) {
-      var f = K.nodo(
-        '<div class="arch-ok">' +
-        '  <span class="arch-ok__ico">' + K.icono(iconoArch(a), 22) + '</span>' +
-        '  <div class="arch-ok__txt"><p class="arch-ok__t">' + K.esc(a.nombre) + '</p>' +
-        '  <p class="arch-ok__p">Guardado en tu carpeta de la cuenta.</p></div>' +
-        '  <div class="evi-ok__btns">' +
-        '    <button type="button" class="kit-btn evi-ok__b" data-a="ver">' + K.icono('buscar', 16) + ' Ver</button>' +
-        '    <button type="button" class="kit-btn evi-ok__b" data-a="cambiar">' + K.icono('recargar', 16) + ' Reemplazar</button>' +
-        '    <button type="button" class="kit-btn kit-btn--malo evi-ok__b" data-a="quitar">' + K.icono('basura', 16) + ' Quitar</button>' +
-        '  </div>' +
-        '</div>');
-      f.querySelector('[data-a="ver"]').addEventListener('click', function () { verArchivo(i); });
-      if (K.piezas.visor && K.piezas.visor.precalentarOficina && a.ext !== 'pdf') K.piezas.visor.precalentarOficina(a.ext || extDe(a.nombre));
-      else if (K.drive && K.drive.precargar && !localArch[i]) K.drive.precargar(a.id);
-      f.querySelector('[data-a="cambiar"]').addEventListener('click', function () { elegirArchivo(destino, i, true); });
-      f.querySelector('[data-a="quitar"]').addEventListener('click', function () { quitarArchivo(destino, i); });
-      destino.appendChild(f);
-      return;
-    }
-    elegirArchivo(destino, i, false);
+  /* Ctrl+V de un PDF, Word o Excel en la obligación abierta: va a los
+     adjuntos aunque la persona no haya tocado la casilla (las imágenes
+     siguen yendo a su casilla, como siempre). Un solo escuchador. */
+  var pegarListo = false;
+  function escucharPegar() {
+    if (pegarListo) return;
+    pegarListo = true;
+    document.addEventListener('paste', function (e) {
+      var m = /^#\/borrador\/(\d+)$/.exec(location.hash);
+      var d = document.getElementById('edi-arch');
+      if (!m || !d || !ARCH_ON || !E) return;
+      var items = (e.clipboardData && e.clipboardData.items) || [];
+      var file = null;
+      for (var k = 0; k < items.length; k++) {
+        if (items[k].kind !== 'file') continue;
+        var f = items[k].getAsFile();
+        if (f && esOficina(f)) { file = f; break; }
+      }
+      if (!file) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      var i = Number(m[1]) - 1;
+      if (subiendoArch[i]) { K.aviso('Espera a que termine de subir el adjunto anterior.', 'aviso', 4000); return; }
+      var rem = d.getAttribute('data-reemplaza') || '';
+      if (!rem && archDe(i).length >= ARCH_TOPE) { K.aviso('Ya tienes ' + ARCH_TOPE + ' adjuntos en esta obligación. Quita o reemplaza uno.', 'aviso', 5000); return; }
+      if (file.size > 10 * 1048576) { K.aviso('El archivo pesa más de 10 MB.', 'malo', 5000); return; }
+      pedirNombre(d, i, file, rem);
+    }, true);
   }
 
-  /* Elegir (o reemplazar): la zona de siempre, y en cuanto hay archivo, el
-     campo del nombre, que es obligatorio. */
-  function elegirArchivo(destino, i, reemplaza) {
+  function zonaArchivo(destino, i) {
     destino.innerHTML = '';
+    destino.removeAttribute('data-reemplaza');
+    escucharPegar();
+    var lista = archDe(i), sub = subiendoArch[i];
+
+    lista.forEach(function (a, k) {
+      if (sub && sub.reemplaza === a.id) { destino.appendChild(fichaSubiendo(sub)); return; }
+      destino.appendChild(fichaArchivo(destino, i, a, k));
+    });
+    if (sub && !sub.reemplaza) destino.appendChild(fichaSubiendo(sub));
+
+    var cuantos = lista.length + (sub && !sub.reemplaza ? 1 : 0);
+    if (!cuantos) { elegirArchivo(destino, i, '', null); return; }
+    if (cuantos < ARCH_TOPE && !sub) {
+      var otro = K.nodo('<button type="button" class="kit-btn kit-btn--plano arch-otro">' + K.icono('mas', 17) +
+        ' Agregar otro adjunto <span class="arch-otro__n">' + cuantos + ' de ' + ARCH_TOPE + '</span></button>');
+      otro.addEventListener('click', function () {
+        K.vibrar(8);
+        var hueco = K.nodo('<div class="arch-hueco"></div>');
+        otro.replaceWith(hueco);
+        elegirArchivo(hueco, i, '', destino);
+      });
+      destino.appendChild(otro);
+    } else if (cuantos >= ARCH_TOPE && ARCH_MULTI) {
+      destino.appendChild(K.nodo('<p class="evi-nota">Llegaste a los ' + ARCH_TOPE + ' adjuntos de esta obligación. Para cambiar uno, toca Reemplazar.</p>'));
+    }
+  }
+
+  function fichaSubiendo(sub) {
+    return K.nodo(
+      '<div class="arch-ok arch-ok--sube" aria-live="polite">' +
+      '  <span class="arch-ok__ico">' + K.icono(iconoArch(sub), 22) + '</span>' +
+      '  <div class="arch-ok__txt"><p class="arch-ok__t">' + K.esc(sub.nombre) + '</p>' +
+      '  <p class="arch-ok__p"><span class="arch-giro"></span> Subiendo <b class="arch-pct">' + (sub.pct || 0) + ' %</b> · puedes seguir escribiendo.</p></div>' +
+      '</div>');
+  }
+
+  function fichaArchivo(destino, i, a, k) {
+    var f = K.nodo(
+      '<div class="arch-ok">' +
+      '  <span class="arch-ok__num">' + K.esc(numDe(i, k, a)) + '</span>' +
+      '  <span class="arch-ok__ico">' + K.icono(iconoArch(a), 22) + '</span>' +
+      '  <div class="arch-ok__txt"><p class="arch-ok__t">' + K.esc(sinNum(a.nombre)) + '</p>' +
+      '  <p class="arch-ok__p">Guardado en tu carpeta de la cuenta.</p></div>' +
+      '  <div class="evi-ok__btns">' +
+      '    <button type="button" class="kit-btn evi-ok__b" data-a="ver">' + K.icono('buscar', 16) + ' Ver</button>' +
+      '    <button type="button" class="kit-btn evi-ok__b" data-a="cambiar">' + K.icono('recargar', 16) + ' Reemplazar</button>' +
+      '    <button type="button" class="kit-btn kit-btn--malo evi-ok__b" data-a="quitar">' + K.icono('basura', 16) + ' Quitar</button>' +
+      '  </div>' +
+      '</div>');
+    f.querySelector('[data-a="ver"]').addEventListener('click', function () { verArchivo(i, a.id); });
+    /* precarga de lo que se va a ver (Word/Excel: la librería; PDF: los bytes) */
+    if (K.piezas.visor && K.piezas.visor.precalentarOficina && (a.ext || extDe(a.nombre)) !== 'pdf') K.piezas.visor.precalentarOficina(a.ext || extDe(a.nombre));
+    else if (K.drive && K.drive.precargar && !localArch[a.id]) K.drive.precargar(a.id);
+    f.querySelector('[data-a="cambiar"]').addEventListener('click', function () {
+      if (subiendoArch[i]) { K.aviso('Espera a que termine de subir el adjunto anterior.', 'aviso', 4000); return; }
+      var hueco = K.nodo('<div class="arch-hueco"></div>');
+      f.replaceWith(hueco);
+      destino.setAttribute('data-reemplaza', a.id);
+      elegirArchivo(hueco, i, a.id, destino);
+    });
+    f.querySelector('[data-a="quitar"]').addEventListener('click', function () { quitarArchivo(destino, i, a); });
+    return f;
+  }
+
+  /* Elegir (o reemplazar): la zona de siempre (tocar, arrastrar o pegar), y
+     en cuanto hay archivo, el campo del nombre, que es obligatorio. */
+  function elegirArchivo(hueco, i, reemplaza, bloque) {
+    hueco.innerHTML = '';
+    var destino = bloque || hueco;
     var zona = K.nodo('<div></div>');
-    destino.appendChild(zona);
+    hueco.appendChild(zona);
     var adj = K.piezas.adjuntos.montar(zona, {
       acepta: ARCH_ACEPTA, varios: false, maximo: 1, maximoMB: 10,
-      etiqueta: 'El archivo de evidencia',
+      etiqueta: 'El adjunto de evidencia',
       alCambiar: function (lista) {
         if (!lista.length) return;
         var file = lista[0];
-        if (!extDe(file.name) && !/pdf|msword|wordprocessingml|ms-excel|spreadsheetml/.test(file.type || '')) {
+        if (!esOficina(file)) {
           K.aviso('Solo se admiten PDF, Word (.doc, .docx) o Excel (.xls, .xlsx).', 'malo', 5000);
           adj.limpiar();
           return;
         }
-        pedirNombre(destino, i, file, reemplaza);
+        pedirNombre(hueco, i, file, reemplaza, destino);
       }
     });
-    destino.appendChild(K.nodo('<p class="evi-nota">' + (reemplaza
+    hueco.appendChild(K.nodo('<p class="evi-nota">' + (reemplaza
       ? 'Elige el archivo que reemplaza al actual. El anterior se borra de tu carpeta para siempre.'
-      : 'Arrástralo aquí o tócalo para elegirlo. Luego le pones nombre.') + '</p>'));
-    if (reemplaza) {
-      var no = K.nodo('<button type="button" class="kit-btn kit-btn--plano arch-no">Dejarlo como está</button>');
-      no.addEventListener('click', function () { zonaArchivo(destino, i); });
-      destino.appendChild(no);
+      : 'Tócalo para elegirlo, arrástralo aquí o pégalo con Ctrl+V. Luego le pones nombre.') + '</p>'));
+    if (bloque) {
+      var no = K.nodo('<button type="button" class="kit-btn kit-btn--plano arch-no">' + (reemplaza ? 'Dejarlo como está' : 'Cancelar') + '</button>');
+      no.addEventListener('click', function () { zonaArchivo(bloque, i); });
+      hueco.appendChild(no);
     }
   }
 
-  function pedirNombre(destino, i, file, reemplaza) {
-    destino.innerHTML = '';
+  function pedirNombre(hueco, i, file, reemplaza, bloque) {
+    var destino = bloque || document.getElementById('edi-arch') || hueco;
+    hueco.innerHTML = '';
     var ext = extDe(file.name) || (/pdf/.test(file.type) ? 'pdf' : '');
+    var lista = archDe(i), k = lista.length;
+    lista.forEach(function (x, j) { if (x.id === reemplaza) k = j; });
     var f = K.nodo(
       '<form class="arch-nombre" novalidate>' +
       '  <div class="arch-ok arch-ok--elegido">' +
+      '    <span class="arch-ok__num">' + (i + 1) + '.' + (k + 1) + '</span>' +
       '    <span class="arch-ok__ico">' + K.icono(iconoArch({ ext: ext }), 22) + '</span>' +
-      '    <div class="arch-ok__txt"><p class="arch-ok__t">' + K.esc(file.name) + '</p>' +
+      '    <div class="arch-ok__txt"><p class="arch-ok__t">' + K.esc(file.name || 'Archivo pegado') + '</p>' +
       '    <p class="arch-ok__p">' + (file.size / 1048576).toFixed(1).replace('.', ',') + ' MB</p></div>' +
       '  </div>' +
       '  <label class="edi__lab" for="arch-n-' + i + '">Nombre del archivo <em class="arch-oblig">obligatorio</em></label>' +
-      '  <div class="arch-nombre__fila"><input id="arch-n-' + i + '" class="edi__area arch-nombre__in" maxlength="80" autocomplete="off" ' +
+      '  <div class="arch-nombre__fila"><span class="arch-nombre__num">' + (i + 1) + '.' + (k + 1) + '.</span>' +
+      '    <input id="arch-n-' + i + '" class="edi__area arch-nombre__in" maxlength="80" autocomplete="off" ' +
       '    placeholder="Ej.: Informe de visitas de septiembre">' + (ext ? '<span class="arch-nombre__ext">.' + ext + '</span>' : '') + '</div>' +
       '  <p class="arch-nombre__err" hidden>Escribe el nombre del archivo.</p>' +
       '  <div class="arch-nombre__btns">' +
@@ -766,9 +867,9 @@
       ev.preventDefault();
       var nombre = limpiarNombre(inp.value);
       if (!nombre) { err.hidden = false; inp.focus(); return; }
-      subirArchivo(i, file, nombre);
+      subirArchivo(i, file, nombre, reemplaza);
     });
-    destino.appendChild(f);
+    hueco.appendChild(f);
     setTimeout(function () { try { inp.focus(); inp.select(); } catch (e) {} }, 60);
   }
 
@@ -779,45 +880,44 @@
        2. El teléfono sube los bytes DIRECTO a Drive, con su avance.
        3. evidenciaArchivoListo: el CORE lo registra (y lo comparte).
      Con un CORE que no tenga la ruta nueva se sube como antes.
-     El escudo cubre SOLO el toque: el formulario sigue libre mientras sube. */
-  function subirArchivo(i, file, nombre) {
+     Uno a la vez por obligación; el formulario sigue libre mientras sube. */
+  function subirArchivo(i, file, nombre, reemplaza) {
     if (subiendoArch[i]) return;
     var fin = K.piezas.antidoble ? K.piezas.antidoble.escudo() : function () {};
     var ext = extDe(file.name) || (/pdf/.test(file.type) ? 'pdf' : '');
-    subiendoArch[i] = { nombre: nombre + (ext ? '.' + ext : ''), ext: ext, pct: 0 };
+    subiendoArch[i] = { nombre: nombre + (ext ? '.' + ext : ''), ext: ext, pct: 0, reemplaza: reemplaza || '' };
     repintarArch(i);
-    /* el botón ya no existe (lo reemplazó la ficha de subida): el escudo se
-       suelta ya y la persona sigue escribiendo mientras sube */
     fin(); fin = function () {};
     var t0 = Date.now(), tm = {};
-    var meta = { obligacion: i + 1, nombre: nombre, tipo: file.type || '', nombreOriginal: file.name || '', bytes: file.size, total: E.total || '' };
+    var rid = 'ev' + t0.toString(36) + Math.random().toString(36).slice(2, 7);
+    var meta = { obligacion: i + 1, nombre: nombre, tipo: file.type || '', nombreOriginal: file.name || '', bytes: file.size,
+                 total: E.total || '', reemplaza: reemplaza || '', rid: rid };
 
     pedirB('evidenciaArchivoPreparar', meta, { ms: 60000 })
       .then(function (p) {
-        fin(); fin = function () {};
         tm.preparar = Date.now() - t0;
-        if (subiendoArch[i]) subiendoArch[i].nombre = p.nombre;
+        if (subiendoArch[i]) subiendoArch[i].nombre = sinNum(p.nombre);
         repintarArch(i);
         var t1 = Date.now();
         return ponerEnDrive(p.sesion, file, p.mime, i).then(function (id) {
           tm.drive = Date.now() - t1;
           var t2 = Date.now();
-          return pedirB('evidenciaArchivoListo', { obligacion: i + 1, id: id, total: E.total || '' }, { ms: 60000 })
+          return pedirB('evidenciaArchivoListo', { obligacion: i + 1, id: id, total: E.total || '', reemplaza: reemplaza || '', rid: rid }, { ms: 60000 })
             .then(function (r) { tm.listo = Date.now() - t2; return r; });
         });
       }, function (e) {
         /* CORE sin la ruta nueva: el camino de antes */
-        if (e && /no tiene la accion/i.test(e.message || '')) { fin(); fin = function () {}; return subirPorCore(i, file, nombre); }
+        if (e && /no tiene la accion/i.test(e.message || '')) return subirPorCore(i, file, nombre, reemplaza);
         throw e;
       })
       .then(function (r) {
         delete subiendoArch[i];
-        archivos[i] = r.archivo;
-        localArch[i] = file;
+        aplicarLista(i, r, reemplaza);
+        localArch[r.archivo.id] = file;
         if (r.informe) E.informe = r.informe;
-          if (r.fila && !E.fila) E.fila = r.fila;   /* 23/10 · la fila nueva viaja en el ancla */
+        if (r.fila && !E.fila) E.fila = r.fila;   /* 23/10 · la fila nueva viaja en el ancla */
         medir('subirArchivo', t0, file.size, tm);
-        K.aviso('El archivo de la obligación ' + (i + 1) + ' quedó guardado como «' + r.archivo.nombre + '».', 'ok', 4500);
+        K.aviso('Adjunto ' + numDe(i, archDe(i).length - 1, r.archivo) + ' de la obligación ' + (i + 1) + ' guardado: «' + sinNum(r.archivo.nombre) + '».', 'ok', 4500);
         repintarArch(i);
       })
       ['catch'](function (e) {
@@ -826,6 +926,15 @@
         K.aviso((e && e.message) || 'No se pudo subir el archivo.', 'malo', 6000);
         repintarArch(i);
       });
+  }
+
+  /* La lista que manda el CORE manda (trae los números al día); con un CORE
+     de antes se arma aquí. */
+  function aplicarLista(i, r, reemplaza) {
+    if (r && Object.prototype.toString.call(r.todos) === '[object Array]') { archivos[i] = r.todos.slice(); return; }
+    var lista = archDe(i), hecho = false;
+    lista.forEach(function (x, j) { if (reemplaza && x.id === reemplaza) { lista[j] = r.archivo; hecho = true; } });
+    if (!hecho) { if (lista.length && !reemplaza && !ARCH_MULTI) lista[0] = r.archivo; else lista.push(r.archivo); }
   }
 
   /* Los bytes van del teléfono a Drive (sin Apps Script), con su avance. Si
@@ -885,14 +994,14 @@
   }
 
   /* El camino de antes (CORE sin la ruta nueva): el archivo viaja por Apps Script. */
-  function subirPorCore(i, file, nombre) {
+  function subirPorCore(i, file, nombre, reemplaza) {
     return new Promise(function (res, rej) {
       var lector = new FileReader();
       lector.onload = function () {
         var s = String(lector.result || '');
         pedirB('evidenciaArchivoSubir', {
           obligacion: i + 1, nombre: nombre, archivo: s.slice(s.indexOf(',') + 1),
-          tipo: file.type || '', nombreOriginal: file.name || '', total: E.total || ''
+          tipo: file.type || '', nombreOriginal: file.name || '', total: E.total || '', reemplaza: reemplaza || ''
         }, { ms: 180000 }).then(res, rej);
       };
       lector.onerror = function () { rej(new Error('No se pudo leer el archivo. Intenta elegirlo otra vez.')); };
@@ -900,51 +1009,57 @@
     });
   }
 
-  /* Ver: si se acaba de subir desde aquí y es PDF, sale del teléfono sin
-     viaje; si no, directo de Drive (PDF con la llave, ~0,5 s) o con el visor
-     de Google (Word y Excel). Nunca pasa por Apps Script. */
-  function verArchivo(i) {
-    var a = archivos[i];
-    if (!a || !K.piezas.visor) return;
-    var file = localArch[i];
+  /* Ver: si se acaba de subir desde aquí, sale del teléfono sin viaje; si
+     no, directo de Drive con la llave (Word y Excel los pinta el teléfono);
+     si Drive no lo entrega, lo trae el CORE. Nunca el visor de Google
+     embebido. Los demás adjuntos de la obligación van en el mismo visor
+     (flechas), ya precargados. */
+  function itemVisor(i, a) {
+    var file = localArch[a.id];
     var ext = a.ext || extDe(a.nombre);
     var titulo = 'Obligación ' + (i + 1) + ' · ' + a.nombre;
-    var url = 'https://drive.google.com/file/d/' + a.id + '/view';
-    var t0 = Date.now();
-    /* recién subido desde aquí: sale del teléfono, sin viaje */
     if (file) {
-      K.piezas.visor.abrir([{ titulo: titulo, ext: ext, tipo: ext === 'pdf' ? 'pdf' : undefined, cargar: function () {
+      return { titulo: titulo, ext: ext, tipo: ext === 'pdf' ? 'pdf' : undefined, cargar: function () {
+        var t0 = Date.now();
         return new Promise(function (res, rej) {
           var l = new FileReader();
           l.onload = function () { medir('verArchivoLocal', t0); res({ bytes: new Uint8Array(l.result), mime: file.type || (ext === 'pdf' ? 'application/pdf' : 'application/octet-stream'), nombre: a.nombre, tipo: ext === 'pdf' ? 'pdf' : 'otro' }); };
           l.onerror = function () { rej(new Error('No se pudo leer el archivo.')); };
           l.readAsArrayBuffer(file);
         });
-      } }]);
-      return;
+      } };
     }
-    /* si no, directo de Drive con la llave (Word y Excel los pinta el teléfono);
-       si Drive no lo entrega, lo trae el CORE. Nunca el visor de Google embebido. */
-    K.piezas.visor.abrir([{ titulo: titulo, ext: ext, tipo: ext === 'pdf' ? 'pdf' : undefined, enlace: url,
+    return { titulo: titulo, ext: ext, tipo: ext === 'pdf' ? 'pdf' : undefined,
+      enlace: 'https://drive.google.com/file/d/' + a.id + '/view',
       drive: { id: a.id, nombre: a.nombre },
-      cargar: function () { return pedirB('evidenciaArchivoVer', { obligacion: i + 1 }, { ms: 90000 }); } }]);
+      cargar: function () { return pedirB('evidenciaArchivoVer', { obligacion: i + 1, id: a.id }, { ms: 90000 }); } };
   }
 
-  function quitarArchivo(destino, i) {
-    var a = archivos[i];
+  function verArchivo(i, id) {
+    var lista = archDe(i);
+    if (!lista.length || !K.piezas.visor) return;
+    var k = 0;
+    lista.forEach(function (x, j) { if (x.id === id) k = j; });
+    K.piezas.visor.abrir(lista.map(function (a) { return itemVisor(i, a); }), { indice: k });
+  }
+
+  function quitarArchivo(destino, i, a) {
     if (!a) return;
+    if (subiendoArch[i]) { K.aviso('Espera a que termine de subir el adjunto anterior.', 'aviso', 4000); return; }
     K.piezas.confirmar.preguntar({
-      titulo: 'Quitar el archivo',
-      texto: 'Vas a quitar «' + a.nombre + '» de la obligación ' + (i + 1) +
-             '. Se borra de tu carpeta de Drive para siempre y no se puede deshacer.',
+      titulo: 'Quitar el adjunto',
+      texto: 'Vas a quitar «' + sinNum(a.nombre) + '» de la obligación ' + (i + 1) +
+             '. Se borra de tu carpeta de Drive para siempre y no se puede deshacer.' +
+             (archDe(i).length > 1 ? ' Los demás adjuntos se renumeran.' : ''),
       si: 'Sí, quitarlo', no: 'Dejarlo', peligro: true
     }).then(function (ok) {
       if (!ok) return;
-      K.piezas.guardado.abrir({ titulo: 'Quitando el archivo' });
-      pedirB('evidenciaArchivoQuitar', { obligacion: i + 1 })
-        .then(function () {
-          archivos[i] = null;
-          delete localArch[i];
+      K.piezas.guardado.abrir({ titulo: 'Quitando el adjunto' });
+      pedirB('evidenciaArchivoQuitar', { obligacion: i + 1, id: a.id })
+        .then(function (r) {
+          if (r && Object.prototype.toString.call(r.todos) === '[object Array]') archivos[i] = r.todos.slice();
+          else archivos[i] = archDe(i).filter(function (x) { return x.id !== a.id; });
+          delete localArch[a.id];
           K.piezas.guardado.listo({ sub: 'Ya lo quitamos.' });
           zonaArchivo(destino, i);
         })
@@ -1059,7 +1174,8 @@
             n: o.n,
             escrita: txt ? 'Sí' : 'No',
             evidencias: (evidencias[i] || []).length,
-            archivo: archivos[i] ? archivos[i].nombre : '',
+            archivo: (archivos[i] || []).map(function (a) { return a.nombre; }).join(' · '),
+            adjuntos: (archivos[i] || []).length,
             palabras: palabras,
             cifras: cifrasDe(txt),
             /* "verbos en pasado" no se puede comprobar de verdad sin
