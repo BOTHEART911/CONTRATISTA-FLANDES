@@ -40,7 +40,21 @@
   /* 10/10 · #/cuenta/editar: la cuenta guardada y sin reportar se vuelve a abrir.
      Cada viaje de la vista lleva editar:true para que el CORE abra esa fila. */
   var EDITANDO = false;
-  function conEd(o) { o = o || {}; if (EDITANDO) o.editar = true; return o; }
+  function conEd(o) { o = o || {}; if (EDITANDO) o.editar = true; if (anclable()) o.ancla = ancla(); return o; }
+  /* 23/10 · ANCLA (Oss: no cruzar cuentas). Cada viaje que escribe dice qué
+     cuenta tiene abierta: fila de CUENTAS + informe + ID CONTRATO. El CORE
+     comprueba esa fila fresca antes de escribir y, si iba a escribir en
+     otra, se detiene (CUENTA_CAMBIO). */
+  function anclable() { return !!(E && E.idContrato && (E.puerta === 'ingresar' || E.puerta === 'corregir')); }
+  function ancla() { return { fila: E.fila || null, informe: E.informe, idContrato: E.idContrato, editar: EDITANDO }; }
+  /* El CORE dijo que la cuenta abierta ya no es la que se ve: se recarga la vista. */
+  function cambioDeCuenta(e) {
+    if (!e || e.codigo !== 'CUENTA_CAMBIO') return false;
+    K.aviso(e.message || 'Tu cuenta cambió. Volvemos a abrirla.', 'malo', 8000);
+    E = null;
+    abrir(EDITANDO ? 'editar' : undefined);
+    return true;
+  }
   var RESPALDO = 'cuenta.borrador';
 
   /* ══════════════ los cuatro bloques ══════════════ */
@@ -133,6 +147,8 @@
   function abrir(sub) {
     app.innerHTML = '';
     EDITANDO = sub === 'editar';
+    /* 23/10 · el ancla del borrador solo vale si se sale de aquí por ACTIVIDADES */
+    try { sessionStorage.removeItem('contratista.ancla'); } catch (x) {}
     var caja = K.nodo('<div class="kit-ancho vista cuenta"></div>');
     app.appendChild(caja);
 
@@ -187,7 +203,8 @@
   }
 
   function cargar() {
-    return K.pedir('cuentaEstado', conEd()).then(function (d) {
+    /* sin ancla: la cuenta que se abre la decide el CORE (la E de antes puede ser de otra visita) */
+    return K.pedir('cuentaEstado', EDITANDO ? { editar: true } : {}).then(function (d) {
       /* un CORE que aún no sabe editar responde la puerta de siempre: se sigue sin el modo */
       if (EDITANDO && !d.edicion) EDITANDO = false;
       candadoLocal(d);
@@ -391,6 +408,8 @@
       };
     }
     var vacios = b.campos.filter(function (c) { return !String(D[c] || '').trim(); });
+    /* 23/10 · con un periodo que no deja radicar hoy, el bloque no queda listo */
+    if (!vacios.length && b.id === 'fechas' && textoRadicacion()) return { clase: 'falta', icono: '!', detalle: 'La radicación va después del fin del periodo' };
     if (!vacios.length) return { clase: 'ok', icono: K.icono('check', 15), detalle: resumenBloque(b) };
     return {
       clase: 'falta', icono: '!',
@@ -491,6 +510,14 @@
     );
     li.querySelector('button').addEventListener('click', function () {
       K.vibrar(8);
+      /* 23/10 · el borrador se abre sobre ESTA cuenta (Isabel: corrigiendo la 8
+         la llevaba a la 9). Viaja en sessionStorage, que vive solo en esta pestaña. */
+      try {
+        var a = ancla();
+        a.volver = EDITANDO ? '#/cuenta/editar' : '#/cuenta';
+        a.t = Date.now();
+        sessionStorage.setItem('contratista.ancla', JSON.stringify(a));
+      } catch (x) {}
       location.hash = '#/borrador';
     });
     return li;
@@ -558,7 +585,38 @@
       s.appendChild(K.nodo('<p class="cta-aviso cta-aviso--nota">Lo pusimos al día siguiente del fin de tu cuenta anterior. ' +
         'Si tu periodo empieza otro día, cámbialo.</p>'));
     }
-    campoFecha(s, 'finPeriodo', 'Fin del periodo', 'El último día que estás cobrando');
+    var inFin = campoFecha(s, 'finPeriodo', 'Fin del periodo', 'El último día que estás cobrando');
+    /* 23/10 · la radicación va DESPUÉS del fin del periodo (Oss). Se avisa al
+       escribir, no al final: con este fin, ¿queda alguna fecha para radicar hoy? */
+    var av = K.nodo('<p class="cta-aviso cta-aviso--nota" hidden></p>');
+    s.appendChild(av);
+    function revisar() {
+      var t = textoRadicacion();
+      av.hidden = !t;
+      av.textContent = t;
+    }
+    inFin.addEventListener('change', revisar);
+    revisar();
+  }
+
+  /* dd/mm/aaaa -> número para comparar (0 si no es fecha) */
+  function diaNum(t) {
+    var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(t || '').trim());
+    return m ? (+m[3]) * 10000 + (+m[2]) * 100 + (+m[1]) : 0;
+  }
+  /* Las fechas de radicación que el CORE ofrece hoy y que caen DESPUÉS del fin del periodo. */
+  function radicacionValidas() {
+    var fin = diaNum(D.finPeriodo);
+    return (E.fechasRadicacion || []).filter(function (f) { return !fin || diaNum(f) > fin; });
+  }
+  /* '' si el periodo deja radicar hoy; si no, por qué. */
+  function textoRadicacion() {
+    var todas = E.fechasRadicacion || [];
+    if (!diaNum(D.finPeriodo) || !todas.length) return '';
+    if (diaNum(D.inicioPeriodo) && diaNum(D.finPeriodo) < diaNum(D.inicioPeriodo)) return 'El fin del periodo es anterior al inicio.';
+    if (radicacionValidas().length) return '';
+    return 'La fecha de radicación tiene que ser posterior al fin del periodo (' + D.finPeriodo + '). ' +
+      'Hoy se puede radicar el ' + todas.join(', ') + ': revisa el fin del periodo o radica cuando termine.';
   }
 
   function diaSemana(ddmmyyyy) {
@@ -582,6 +640,7 @@
     });
     g.appendChild(inp);
     if (K.piezas.fechas) K.piezas.fechas.montar(g);
+    return inp;
   }
 
   /* ---------- bloque 2: pago ---------- */
@@ -956,11 +1015,13 @@
       .then(function (r) {
         E.archivos = E.archivos || {};
         E.archivos[a.k] = r.url;
+        if (r && r.fila && !E.fila) E.fila = r.fila;   /* 23/10 · la cuenta nueva ya tiene fila: el ancla la lleva */
         K.piezas.guardado.listo({ sub: a.t + ' quedó guardado.' });
         pintarFicha(cuerpo, a);
       })
       ['catch'](function (e) {
         K.piezas.guardado.fallo();
+        if (cambioDeCuenta(e)) return;
         K.aviso(e.message || 'No se pudo subir el archivo', 'malo', 6000);
         adj.limpiar();
       });
@@ -1025,7 +1086,8 @@
   function fechasRadicacion(hoja, boton) {
     var cuerpo = hoja && hoja.querySelector('.kit-capa__cuerpo');
     if (!cuerpo) return;
-    var opciones = E.fechasRadicacion || [];
+    /* 23/10 · solo las que caen DESPUÉS del fin del periodo (Oss); el CORE lo vuelve a exigir */
+    var opciones = radicacionValidas();
     if (opciones.indexOf(D.fechaRadicacion) < 0) D.fechaRadicacion = '';
     var g = K.nodo('<div class="cta-radica"><p class="cta-radica__t">¿Qué día radicas?</p>' +
       '<p class="cta-radica__p">Es el día en que Contratación recibe tu cuenta.</p><div class="cta-fechas"></div></div>');
@@ -1048,7 +1110,7 @@
        ninguna (cerró la radicación de la vigencia). Lo dice ADMIN. */
     if (E.avisoRadicacion || !opciones.length) {
       var av = K.nodo('<p class="formulario__nota formulario__nota--fuerte cta-fechas__aviso"></p>');
-      av.textContent = E.avisoRadicacion || 'Hoy no hay fechas de radicación disponibles.';
+      av.textContent = textoRadicacion() || E.avisoRadicacion || 'Hoy no hay fechas de radicación disponibles.';
       g.appendChild(av);
     }
     cuerpo.insertBefore(g, cuerpo.firstChild);
@@ -1130,6 +1192,7 @@
           comprobar(caja);
           return;
         }
+        if (cambioDeCuenta(e)) return;
         K.aviso(e.message || 'No se pudo guardar', 'malo', 8000);
       });
   }

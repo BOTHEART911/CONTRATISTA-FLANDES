@@ -47,6 +47,39 @@
   var sucio = false;   /* hay cambios sin mandar al CORE */
   var guardando = false;
 
+  /* ── 23/10 · ANCLA (Oss: no cruzar cuentas) ──
+     Si se llegó desde INGRESAR / CORREGIR / EDITAR CUENTA (botón ACTIVIDADES),
+     el borrador se abre sobre ESA cuenta (fila de CUENTAS + informe + ID
+     CONTRATO) y no sobre la última. Todo viaje que escribe lleva el ancla de
+     lo que está abierto: el CORE comprueba la fila fresca y, si iba a escribir
+     en otra, se detiene (CUENTA_CAMBIO). */
+  var ANCLA0 = null;   /* la que mandó la vista de la cuenta */
+  var LLAVE_ANCLA = 'contratista.ancla';
+  function anclaDeCuenta() {
+    try {
+      var a = JSON.parse(sessionStorage.getItem(LLAVE_ANCLA) || 'null');
+      if (a && a.t && Date.now() - a.t < 2 * 3600 * 1000 && (a.fila || a.informe)) return a;
+    } catch (e) {}
+    return null;
+  }
+  function anc() {
+    return { fila: E.fila || null, informe: E.informe, idContrato: E.idContrato, editar: !!(ANCLA0 && ANCLA0.editar) };
+  }
+  /* A dónde vuelve "Ir a CORREGIR / EDITAR CUENTA": a la misma vista de la que se vino. */
+  function volverCuenta() { return (ANCLA0 && ANCLA0.volver) || '#/cuenta'; }
+  function pedirB(accion, datos, opciones) {
+    datos = datos || {};
+    if (E && E.idContrato) datos.ancla = anc();
+    return K.pedir(accion, datos, opciones)['catch'](function (e) {
+      if (e && e.codigo === 'CUENTA_CAMBIO') {
+        K.aviso(e.message || 'Tu cuenta cambió. Volvemos a abrirla.', 'malo', 8000);
+        E = null;
+        setTimeout(function () { abrir(); }, 0);
+      }
+      throw e;
+    });
+  }
+
   /* ── respaldo en el aparato ──
      No sustituye al guardado: es la red por si el teléfono se apaga a
      media redacción. Se borra en cuanto el CORE confirma. */
@@ -86,9 +119,13 @@
     var caja = K.nodo('<div class="kit-ancho vista"></div>');
     app.appendChild(caja);
 
+    /* 23/10 · llegó otra ancla (o se perdió la de antes): lo cargado ya no vale */
+    var a0 = anclaDeCuenta();
+    var cambia = a0 ? !ANCLA0 || ANCLA0.t !== a0.t : !!ANCLA0;
+    if (cambia) { ANCLA0 = a0; E = null; }
     if (E) { pintar(caja, sub); return; }
 
-    K.piezas.esqueletos.mientras(caja, K.pedir('borradorEstado'), { forma: 'tarjetas', cuantos: 4 })
+    K.piezas.esqueletos.mientras(caja, K.pedir('borradorEstado', ANCLA0 ? { ancla: ANCLA0 } : {}), { forma: 'tarjetas', cuantos: 4 })
       .then(function (d) {
         E = d;
         textos = (d.actividades || []).slice();
@@ -142,7 +179,7 @@
     if (E.ir) {
       var b = K.nodo('<button type="button" class="kit-btn kit-btn--marca">' +
         K.esc(E.boton || (E.ir === 'cuenta' ? 'Ir a CORREGIR CUENTA' : 'Ir a ESTADO DE CUENTA')) + '</button>');
-      b.addEventListener('click', function () { K.vibrar(8); location.hash = '#/' + E.ir; });
+      b.addEventListener('click', function () { K.vibrar(8); location.hash = E.ir === 'cuenta' ? volverCuenta() : '#/' + E.ir; });
       c.appendChild(b);
     }
     return c;
@@ -219,20 +256,20 @@
     /* 28/09 (2) · corrigiendo la cuenta devuelta: se dice qué cuenta es, qué
        pidieron y que se termina en CORREGIR CUENTA (rehace los formatos). */
     var corr = null;
-    if (E.puerta === 'corregir') {
+    if (E.puerta === 'corregir' || (E.anclada && E.ir === 'cuenta')) {
       corr = K.nodo(
         '<section class="kit-tarjeta obl-corrige">' +
         '  <h3 class="obl-corrige__t">' + K.esc(E.titulo || ('Corrige tu cuenta ' + E.informe)) + '</h3>' +
         (E.observaciones ? '  <div class="cta-devuelta"><b>' + (E.incompleta ? 'Lo que te pidieron completar' : 'Lo que te pidieron corregir') +
           '</b><p>' + K.esc(E.observaciones) + '</p></div>' : '') +
         '  <p class="obl-corrige__p">' + K.esc(E.motivo || '') + '</p>' +
-        '  <button type="button" class="kit-btn kit-btn--plano">Ir a CORREGIR CUENTA</button>' +
+        '  <button type="button" class="kit-btn kit-btn--plano">' + K.esc(E.boton || 'Ir a CORREGIR CUENTA') + '</button>' +
         '</section>'
       );
       corr.querySelector('button').addEventListener('click', function () {
         K.vibrar(8);
-        if (!sucio) { location.hash = '#/cuenta'; return; }
-        guardar(false).then(function () { location.hash = '#/cuenta'; }, function () {});
+        if (!sucio) { location.hash = volverCuenta(); return; }
+        guardar(false).then(function () { location.hash = volverCuenta(); }, function () {});
       });
     }
     var c = K.nodo(
@@ -530,7 +567,7 @@
       }
       K.piezas.imagenes.preparar(tanda[k])
         .then(function (img) {
-          return K.pedir('evidenciaSubir', {
+          return pedirB('evidenciaSubir', {
             obligacion: i + 1,
             imagen: img.dataUrl,
             ranura: ranuraFija || (evisDe(i).length + 1),
@@ -540,6 +577,7 @@
         .then(function (r) {
           evidencias[i] = listaEvi(r.urls && r.urls.length ? r.urls : r.url);
           if (r.informe) E.informe = r.informe;
+          if (r.fila && !E.fila) E.fila = r.fila;   /* 23/10 · la fila nueva viaja en el ancla */
           puestas++;
           siguiente(k + 1);
         })
@@ -566,7 +604,7 @@
     }).then(function (ok) {
       if (!ok) return;
       K.piezas.guardado.abrir({ titulo: 'Quitando la evidencia' });
-      K.pedir('evidenciaQuitar', { obligacion: i + 1, ranura: ranura })
+      pedirB('evidenciaQuitar', { obligacion: i + 1, ranura: ranura })
         .then(function (r) {
           evidencias[i] = listaEvi(r && r.urls);
           K.piezas.guardado.listo({ sub: 'Ya la quitamos.' });
@@ -754,7 +792,7 @@
     var t0 = Date.now(), tm = {};
     var meta = { obligacion: i + 1, nombre: nombre, tipo: file.type || '', nombreOriginal: file.name || '', bytes: file.size, total: E.total || '' };
 
-    K.pedir('evidenciaArchivoPreparar', meta, { ms: 60000 })
+    pedirB('evidenciaArchivoPreparar', meta, { ms: 60000 })
       .then(function (p) {
         fin(); fin = function () {};
         tm.preparar = Date.now() - t0;
@@ -764,7 +802,7 @@
         return ponerEnDrive(p.sesion, file, p.mime, i).then(function (id) {
           tm.drive = Date.now() - t1;
           var t2 = Date.now();
-          return K.pedir('evidenciaArchivoListo', { obligacion: i + 1, id: id, total: E.total || '' }, { ms: 60000 })
+          return pedirB('evidenciaArchivoListo', { obligacion: i + 1, id: id, total: E.total || '' }, { ms: 60000 })
             .then(function (r) { tm.listo = Date.now() - t2; return r; });
         });
       }, function (e) {
@@ -777,6 +815,7 @@
         archivos[i] = r.archivo;
         localArch[i] = file;
         if (r.informe) E.informe = r.informe;
+          if (r.fila && !E.fila) E.fila = r.fila;   /* 23/10 · la fila nueva viaja en el ancla */
         medir('subirArchivo', t0, file.size, tm);
         K.aviso('El archivo de la obligación ' + (i + 1) + ' quedó guardado como «' + r.archivo.nombre + '».', 'ok', 4500);
         repintarArch(i);
@@ -851,7 +890,7 @@
       var lector = new FileReader();
       lector.onload = function () {
         var s = String(lector.result || '');
-        K.pedir('evidenciaArchivoSubir', {
+        pedirB('evidenciaArchivoSubir', {
           obligacion: i + 1, nombre: nombre, archivo: s.slice(s.indexOf(',') + 1),
           tipo: file.type || '', nombreOriginal: file.name || '', total: E.total || ''
         }, { ms: 180000 }).then(res, rej);
@@ -888,7 +927,7 @@
        si Drive no lo entrega, lo trae el CORE. Nunca el visor de Google embebido. */
     K.piezas.visor.abrir([{ titulo: titulo, ext: ext, tipo: ext === 'pdf' ? 'pdf' : undefined, enlace: url,
       drive: { id: a.id, nombre: a.nombre },
-      cargar: function () { return K.pedir('evidenciaArchivoVer', { obligacion: i + 1 }, { ms: 90000 }); } }]);
+      cargar: function () { return pedirB('evidenciaArchivoVer', { obligacion: i + 1 }, { ms: 90000 }); } }]);
   }
 
   function quitarArchivo(destino, i) {
@@ -902,7 +941,7 @@
     }).then(function (ok) {
       if (!ok) return;
       K.piezas.guardado.abrir({ titulo: 'Quitando el archivo' });
-      K.pedir('evidenciaArchivoQuitar', { obligacion: i + 1 })
+      pedirB('evidenciaArchivoQuitar', { obligacion: i + 1 })
         .then(function () {
           archivos[i] = null;
           delete localArch[i];
@@ -933,7 +972,7 @@
     }
     guardando = true;
 
-    var paso = K.pedir('borradorGuardar', {
+    var paso = pedirB('borradorGuardar', {
       actividades: textos,
       total: E.total || ''
     });
@@ -952,6 +991,7 @@
         guardando = false;
         olvidarRespaldo();
         if (r && r.informe) E.informe = r.informe;
+        if (r && r.fila && !E.fila) E.fila = r.fila;   /* 23/10 */
         if (conAviso) {
           K.piezas.guardado.listo({
             titulo: '¡Guardado!',

@@ -354,7 +354,11 @@
     sitios: function () { window.INSTITUCIONAL.sitios(); }
   };
 
-  function irA(v) { location.hash = '#/' + v; }
+  function irA(v) {
+    /* 23/10 · desde el inicio y los avisos el borrador se abre sin ancla (lo decide el CORE) */
+    if (v === 'borrador') { try { sessionStorage.removeItem('contratista.ancla'); } catch (x) {} }
+    location.hash = '#/' + v;
+  }
 
   /** Ajuste 4 · TUTORIALES_ACTIVO llega con la configuración pública del
       arranque (sin viaje extra). Sin arranque todavía, se esconde. */
