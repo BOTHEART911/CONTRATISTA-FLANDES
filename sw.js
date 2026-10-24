@@ -99,7 +99,7 @@ var ARMAZON = [
   './kit/perfil.js',
   './js/ayuda.js',
   /* 24/10 · el asistente de ayuda: pieza del kit, su base y su adaptador */
-  './kit/asistente.js', './kit/asistente.css',
+  './kit/asistente.js', './kit/asistente.css', './kit/gemini.js',
   './js/asistente-base.js', './js/asistente-app.js'
 ];
 
