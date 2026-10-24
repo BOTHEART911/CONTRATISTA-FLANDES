@@ -396,6 +396,7 @@
     /* la guía se calcula AL ABRIR, no al montar: así habla de lo que hay
        en pantalla en ese momento (el estado de cuenta llega después). */
     var cfg = {
+      clave: vista,   /* 24/10 · el asistente sabe en qué vista está (preguntas frecuentes) */
       vista: (extra && extra.vista) || TITULOS[vista] || vista,
       guia: function () { return g().guia; },
       botones: [],

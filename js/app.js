@@ -94,6 +94,10 @@
         ARRANQUE.municipios = K.guardar.leer(MUNI_K, null) || d.municipios;
       }
 
+      /* 24/10 · ASISTENTE: la base viaja SOLO si cambió su sello (como los
+         municipios) y queda en el teléfono. */
+      if (d.asistente && d.asistente.temas && K.piezas.asistente) K.piezas.asistente.base(d.asistente.temas, d.asistente.sello);
+
       /* 4.9 · nombre y foto de la gente de las otras apps: el teléfono
          resuelve cada cara (quien aprobó, quien hizo la orden) sin viajar. */
       if (d.personas && K.piezas.personas) K.piezas.personas.cargar(d.personas);
@@ -140,10 +144,14 @@
     return c;
   }
 
+  /** 24/10 · el sello de la base del asistente que ya tiene el teléfono */
+  function selloAsistente() { return (K.piezas.asistente && K.piezas.asistente.selloGuardado()) || ''; }
+
   function pedirInicio() {
     return K.pedir('inicio', {
       avisos: 1,
-      selloMunicipios: selloMunicipiosGuardado()
+      selloMunicipios: selloMunicipiosGuardado(),
+      selloAsistente: selloAsistente()   /* 24/10 */
     });
   }
 
@@ -204,13 +212,18 @@
         arranqueEnLogin: true,
         /* lo que el inicio del contratista necesita para no mandar de nuevo el
            catálogo de municipios ni contar los avisos de más */
-        datosArranque: function () { return { avisos: 1, selloMunicipios: selloMunicipiosGuardado() }; },
+        datosArranque: function () { return { avisos: 1, selloMunicipios: selloMunicipiosGuardado(), selloAsistente: selloAsistente() }; },
         /* 26/09 · sin contrato activo o sin registro: la solicitud a
            Contratación (solicitudes.js). El caso llega en la MISMA respuesta
            del login fallido; no hay viaje extra. */
         sinAcceso: function (datos, doc) { if (window.SOLCON) window.SOLCON.sinAcceso(datos, doc); },
         alEntrar: arrancar
       });
+      /* 24/10 · el asistente también en la entrada (olvidé mi contraseña,
+         no tengo acceso, cómo instalo la app), sin datos de estado */
+      if (K.piezas.asistente && window.CONTRATISTA_ASISTENTE && !K.token()) {
+        K.piezas.asistente.enEntrada(window.CONTRATISTA_ASISTENTE.entrada);
+      }
     });
   });
 
@@ -230,6 +243,7 @@
 
   function arrancar(yo) {
     YO = yo || {};
+    if (K.piezas.asistente) K.piezas.asistente.salirEntrada();   /* 24/10 */
     montarBanner();
 
     /* 4.9 · LOS AVISOS SE ACTIVAN SOLOS Y ESCONDIDOS (pliego de Oss).
@@ -319,6 +333,7 @@
     if (K.piezas.avisos) K.piezas.avisos.olvidar();
     if (window.MISREGISTROS) window.MISREGISTROS.olvidar();   /* 06/10 */
     if (K.piezas.insights) K.piezas.insights.quitar();
+    if (K.piezas.asistente) K.piezas.asistente.olvidar();   /* 24/10 · la conversación no pasa a otra sesión */
     K.piezas.sesion.salir();
     location.hash = '';
   }
@@ -624,6 +639,13 @@
     if (!c.faltanContrato || !c.faltanContrato.length) return null;
     return { faltan: c.faltanContrato, deContratacion: !!c.faltanDeContratacion };
   }
+  /* 24/10 · lo que el asistente (js/asistente-app.js) lee de la app, sin viajar */
+  window.CONTRATISTA_APP = {
+    arranque: function () { return ARRANQUE; },
+    yo: function () { return YO; },
+    abrirFoto: abrirFoto,
+    irA: irA
+  };
   window.CONTRATISTA_CANDADO = {
     estado: candadoContrato,
     contrato: function () { return CONTRATO; },

@@ -97,7 +97,10 @@ var ARMAZON = [
   /* 4.9 · caras, foto de perfil y la ayuda de cada vista */
   './kit/personas.js', './kit/personas.css',
   './kit/perfil.js',
-  './js/ayuda.js'
+  './js/ayuda.js',
+  /* 24/10 · el asistente de ayuda: pieza del kit, su base y su adaptador */
+  './kit/asistente.js', './kit/asistente.css',
+  './js/asistente-base.js', './js/asistente-app.js'
 ];
 
 self.addEventListener('install', function (e) {
