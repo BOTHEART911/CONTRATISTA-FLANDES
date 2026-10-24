@@ -71,7 +71,7 @@
     GEMINI: {
       apiKey: 'AIzaSyAS3dSe0lFwI5UkSeMTxStnYyT8woABpio',
       siteKey: '6LcaBP8tAAAAAAPrkVoS_GonTaDJV1Hf_ws0nhJy',
-      modelo: 'gemini-3.5-flash-lite'
+      modelo: 'gemini-3.1-flash-lite'
     },
 
     /* Pública por diseño: identifica al remitente, no autoriza a enviar. */
