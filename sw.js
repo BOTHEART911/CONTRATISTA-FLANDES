@@ -112,7 +112,16 @@ self.addEventListener('install', function (e) {
         /* 25/09 · 'reload': se baja de GitHub, no de la caché del navegador.
            Pages deja cada archivo 10 minutos en esa caché y el armazón NUEVO
            se llenaba con copias VIEJAS (comprobado). */
-        return c.add(new Request(u, { cache: 'reload' }))['catch'](function () {});
+        /* 24/10 · y con ?v=<versión>: 'reload' salta la caché del navegador
+           pero NO la de la red de GitHub Pages, que durante el minuto que tarda
+           en propagar una publicación entregó un js/marca.js VIEJO a un armazón
+           NUEVO (comprobado: version.js .2 con marca.js .1). Con la versión en
+           la dirección la red de Pages no tiene copia y lo pide al origen. Se
+           guarda con la dirección limpia, que es la que pide la app. */
+        var sello = u + (u.indexOf('?') < 0 ? '?' : '&') + 'v=' + encodeURIComponent(APP_VERSION);
+        return fetch(new Request(sello, { cache: 'reload' })).then(function (r) {
+          if (r && r.ok) return c.put(new Request(u), r);
+        })['catch'](function () {});
       }));
     }).then(function () { return self.skipWaiting(); })
   );
@@ -184,8 +193,13 @@ function comprobarEstado() {
 }
 
 /* De la red, confirmando con GitHub (304 si no cambió); sin red, la caché. */
-function deLaRed(req) {
-  return fetch(req, { cache: 'no-cache' })['catch'](function () {
+function deLaRed(req, red) {
+  /* 24/10 · con ?v=<versión publicada>: la red de Pages no tiene copia de
+     esa dirección y la pide al origen, así una apertura en pleno minuto de
+     propagación no mezcla archivos nuevos y viejos. */
+  var u = req.url;
+  if (red && req.method === 'GET' && u.indexOf('?') < 0) u += '?v=' + encodeURIComponent(red);
+  return fetch(u === req.url ? req : new Request(u, { credentials: 'same-origin' }), { cache: 'no-cache' })['catch'](function () {
     return caches.match(req).then(function (r) { return r || Response.error(); });
   });
 }
@@ -259,7 +273,7 @@ self.addEventListener('fetch', function (e) {
     /* Si el service worker se reinició a media carga, ESTADO está vacío y
        se vuelve a preguntar una vez (sin red, responde '' y sale la caché). */
     (ESTADO || comprobarEstado()).then(function (s) {
-      if (s.fresco) return deLaRed(req);
+      if (s.fresco) return deLaRed(req, s.red);
       /* 29/09 · SOLO de la caché de ESTA versión. caches.match() a secas
          busca en todas y, si la de la versión anterior seguía viva (su
          borrado se cortó), servía de ahí archivos viejos con el service
