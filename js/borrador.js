@@ -823,6 +823,14 @@
           adj.limpiar();
           return;
         }
+        /* 26/10 · PDF protegido: se revisa en el teléfono antes de seguir */
+        if (window.PDFSEGURO) {
+          window.PDFSEGURO.revisar(file, { campo: 'El adjunto de la obligación ' + (i + 1), maxMB: 10 }).then(function (f) {
+            if (!f) { adj.limpiar(); return; }
+            pedirNombre(hueco, i, f, reemplaza, destino);
+          });
+          return;
+        }
         pedirNombre(hueco, i, file, reemplaza, destino);
       }
     });

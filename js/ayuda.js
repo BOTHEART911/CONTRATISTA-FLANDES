@@ -149,7 +149,7 @@
               (primera ? ' Antes ve a **DATOS DEL CONTRATO**: te faltan datos obligatorios y sin ellos no salen tus formatos.' : ''),
         botones: [
           { texto: '¿Qué documentos necesito?', responde: function () {
-              return 'Siempre: certificación bancaria, planilla (PDF sin contraseña) y el baucher de la planilla (foto o PDF).\n' +
+              return 'Siempre: certificación bancaria, planilla (PDF sin protección: si eliges uno protegido, la app te ofrece quitársela) y el baucher de la planilla (foto o PDF).\n' +
                      'Si aplica, abre la **pestaña** que te corresponde y sube ahí el documento (ninguna es obligatoria; la abres y la cierras cuando quieras):\n' +
                      '· **Adjuntaré planilla anexa**: baucher y planilla anexa.\n' +
                      '· **La Alcaldía realiza mis aportes a ARL**: planilla ARL suministrada por la Alcaldía.\n' +

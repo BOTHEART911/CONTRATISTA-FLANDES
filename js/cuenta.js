@@ -993,11 +993,39 @@
   }
 
   function subir(adj, cuerpo, a) {
+    /* 26/10 · un PDF protegido no entra: se revisa aquí, en el teléfono,
+       antes de subir. Si la persona quita la protección en la app, viaja
+       el PDF limpio; si no, el campo queda vacío. */
+    var elegido = adj.archivos()[0];
+    if (window.PDFSEGURO && elegido) {
+      window.PDFSEGURO.revisar(elegido, { campo: a.t, maxMB: a.mb || 2 }).then(function (f) {
+        if (!f) { adj.limpiar(); return; }
+        subirArchivo(adj, cuerpo, a, f === elegido ? null : f);
+      });
+      return;
+    }
+    subirArchivo(adj, cuerpo, a, null);
+  }
+
+  /* El base64 de un archivo suelto (el PDF limpio que no está en la casilla). */
+  function base64De(f) {
+    return new Promise(function (res, rej) {
+      var r = new FileReader();
+      r.onload = function () {
+        var s = String(r.result || '');
+        res([{ nombre: f.name, tipo: f.type || 'application/pdf', datos: s.slice(s.indexOf(',') + 1) }]);
+      };
+      r.onerror = function () { rej(K.problema('ARCHIVO', 'No se pudo leer el archivo.')); };
+      r.readAsDataURL(f);
+    });
+  }
+
+  function subirArchivo(adj, cuerpo, a, limpio) {
     K.piezas.guardado.abrir({
       titulo: 'Subiendo ' + a.t,
       sub: 'Se guarda ahora mismo en tu carpeta de Drive.'
     });
-    adj.aBase64()
+    (limpio ? base64De(limpio) : adj.aBase64())
       .then(function (arch) {
         if (!arch.length) throw K.problema('ARCHIVO', 'No se pudo leer el archivo.');
         /* 4.6.1 · VIAJA TAMBIÉN EL TIPO Y EL NOMBRE.

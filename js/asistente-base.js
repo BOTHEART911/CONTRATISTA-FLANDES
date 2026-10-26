@@ -286,7 +286,7 @@ window.ASISTENTE_BASE = [
 "el pdf no carga",
 "no puedo subir el pdf"
 ],
-"respuesta": "Todos los documentos van en **PDF sin contraseña**; solo el baucher de la planilla se acepta también como foto. Si tu planilla viene protegida, ábrela e imprímela como PDF nuevo (o usa **Small PDF**, que está en SITIOS WEB). Cada archivo se guarda en cuanto lo eliges.",
+"respuesta": "Todos los documentos van en **PDF sin protección**; solo el baucher de la planilla se acepta también como foto. Si eliges un PDF protegido (con clave o permisos), la app no lo guarda y te ofrece **Quitar la protección aquí**: si te pide clave, escríbela (en las planillas suele ser tu cédula) y se sube un PDF limpio. También puedes abrirlo, tocar **Imprimir → Guardar como PDF** y subir esa copia. Cada archivo se guarda en cuanto lo eliges.",
 "accion": "ir:sitios",
 "estado": "",
 "activo": true,

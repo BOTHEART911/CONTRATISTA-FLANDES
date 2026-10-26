@@ -41,6 +41,7 @@ var ARMAZON = [
   './index.html',
   './js/app.js',
   './js/borrador.js',
+  './js/pdfseguro.js',
   './styles.css',
   './js/marca.js',
   './manifest.json',
