@@ -2162,3 +2162,21 @@
 @media (max-width: 380px) {
   .pp-pie .pp-restablecer span, .pp-pie .pp-restablecer { font-size: .78rem; }
 }
+
+/* 27/10 · miniatura de la primera página: gira igual que va a quedar */
+.pp-mini {
+  position: relative; flex: 0 0 auto; width: 52px; height: 52px; border-radius: 9px;
+  border: 1px solid var(--k-linea); background: var(--k-papel-2);
+  display: grid; place-items: center; overflow: hidden; color: var(--k-marca);
+}
+:root[data-tema="oscuro"] .pp-mini { color: var(--k-marca-clara); }
+.pp-mini img {
+  width: 48px; height: 48px; object-fit: contain; display: block;
+  transition: transform .25s ease; background: #fff; border-radius: 3px;
+}
+.pp-mini__t {
+  position: absolute; right: 2px; bottom: 2px; width: 16px; height: 16px; border-radius: 5px;
+  background: var(--k-papel); color: var(--k-marca); display: grid; place-items: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,.18);
+}
+.pp-item--fuera .pp-mini img { filter: grayscale(1); opacity: .7; }

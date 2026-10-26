@@ -246,7 +246,7 @@
       ST.items.sort(function (x, y) { return x.pos - y.pos || x.nombre.localeCompare(y.nombre, 'es', { numeric: true }); });
       ST.items.forEach(function (i) {
         i.incluido = !!i.ent && i.clase !== 'otro' && i.estado !== 'clave';
-        if (i.rot || i.hz) { if (i.hz) { i.hz = false; i.estado = 'espera'; i.doc = null; } i.rot = 0; }
+        if (i.rot || i.hz) { if (i.hz) { i.hz = false; i.estado = 'espera'; i.doc = null; i.mini = null; } i.rot = 0; }
       });
       pintar();
       cargarTodo();
@@ -301,7 +301,7 @@
       '  <label class="pp-check" title="Incluir en el PDF"><input type="checkbox"' + (it.incluido ? ' checked' : '') +
            (it.clase === 'otro' || it.estado === 'clave' ? ' disabled' : '') + ' aria-label="Incluir ' + K.esc(titulo) + '"><span class="pp-n">' + (n || '') + '</span></label>' +
       '  <button type="button" class="pp-txt" aria-label="Ver ' + K.esc(titulo) + '">' +
-      '    <span class="pp-ico">' + K.icono(icono(it), 20) + '</span>' +
+      '    <span class="pp-mini" data-tipo="' + K.esc(it.clase) + '">' + miniHtml(it) + '</span>' +
       '    <span class="pp-txt__l"><b>' + K.esc(titulo) + '</b>' +
       '      <small>' + K.esc(it.nombre) + '</small>' +
       '      <small class="pp-estado">' + estadoTxt(it) + '</small></span>' +
@@ -311,7 +311,7 @@
       (it.clase === 'excel'
         ? '<button type="button" class="pp-b pp-hz" aria-pressed="' + (it.hz ? 'true' : 'false') + '" title="Vertical u horizontal">' + (it.hz ? 'Horizontal' : 'Vertical') + '</button>'
         : '') +
-      (it.clase === 'pdf' || it.clase === 'imagen' || it.clase === 'google' || it.clase === 'word'
+      (it.clase !== 'otro'
         ? '<button type="button" class="pp-b pp-girar" title="Girar 90°" aria-label="Girar ' + K.esc(titulo) + '"><span class="pp-girar__i" style="transform:rotate(' + it.rot + 'deg)">' + K.icono('girar', 16) + '</span></button>'
         : '') +
       '      <button type="button" class="pp-b pp-sube" title="Subir"' + (k === 0 ? ' disabled' : '') + ' aria-label="Subir ' + K.esc(titulo) + '">' + K.icono('arriba', 16) + '</button>' +
@@ -333,10 +333,13 @@
       it.rot = (it.rot + 90) % 360;
       recordar();
       g.querySelector('.pp-girar__i').style.transform = 'rotate(' + it.rot + 'deg)';
+      var im = li.querySelector('.pp-mini img');
+      if (im) im.style.transform = 'rotate(' + it.rot + 'deg)';
+      K.vibrar && K.vibrar(6);
     });
     var hz = li.querySelector('.pp-hz');
     if (hz) hz.addEventListener('click', function () {
-      it.hz = !it.hz; it.doc = null; it.bytes = null; it.estado = 'espera';
+      it.hz = !it.hz; it.doc = null; it.bytes = null; it.mini = null; it.estado = 'espera';
       recordar(); pintar(); cargarTodo();
     });
     li.querySelector('.pp-txt').addEventListener('click', function () { ver(it); });
@@ -346,7 +349,8 @@
   function estadoTxt(it) {
     switch (it.estado) {
       case 'bajando': return '<span class="pp-gira">' + K.icono('recargar', 12) + '</span> ' + (it.clase === 'word' || it.clase === 'excel' ? 'Pasando a PDF…' : 'Trayendo…');
-      case 'listo': return K.icono('check', 12) + ' ' + (it.paginas ? it.paginas + (it.paginas === 1 ? ' página' : ' páginas') : 'Listo') + (it.kbReal ? ' · ' + tamano(it.kbReal) : '');
+      case 'listo': return K.icono('check', 12) + ' ' + (it.paginas ? it.paginas + (it.paginas === 1 ? ' página' : ' páginas') : 'Listo') + (it.kbReal ? ' · ' + tamano(it.kbReal) : '') +
+        (it.protegido ? ' · protegido, va como imagen' : '');
       case 'clave': return '<span class="pp-malo">Tiene clave: ábrelo, quítasela y vuelve a subirlo.</span>';
       case 'error': return '<span class="pp-malo">' + K.esc(it.err || 'No se pudo traer.') + '</span> <button type="button" class="pp-reintentar">Reintentar</button>';
       default: return it.err ? '<span class="pp-malo">' + K.esc(it.err) + '</span>' : (it.incluido ? 'En espera' : (it.kb ? tamano(it.kb) : ''));
@@ -494,17 +498,23 @@
       if (gen !== GEN) return;
       var x = a[0], L = a[1];
       it.kbReal = Math.round(x.bytes.length / 1024);
-      if (it.clase === 'imagen') {
-        return comoImagen(x.bytes, x.mime || it.mime).then(function (img) {
-          it.img = img; it.paginas = 1; it.estado = 'listo';
-        });
-      }
-      return L.PDFDocument.load(x.bytes, { updateMetadata: false }).then(function (doc) {
-        it.doc = doc; it.paginas = doc.getPageCount(); it.estado = 'listo';
-      }, function (e) {
-        if (/encrypt/i.test(String(e && e.message))) { it.estado = 'clave'; it.incluido = false; return; }
-        throw new Error('El PDF está dañado y no se puede unir.');
-      });
+      var paso = it.clase === 'imagen'
+        ? comoImagen(x.bytes, x.mime || it.mime).then(function (img) {
+            it.img = img; it.paginas = 1; it.estado = 'listo';
+          })
+        : L.PDFDocument.load(x.bytes, { updateMetadata: false }).then(function (doc) {
+            it.doc = doc; it.paginas = doc.getPageCount(); it.estado = 'listo';
+          }, function (e) {
+            if (!/encrypt/i.test(String(e && e.message))) throw new Error('El PDF está dañado y no se puede unir.');
+            /* 26/10 · PROTEGIDO SIN CLAVE DE APERTURA (muchas certificaciones
+               bancarias): se abre, pero no se puede copiar tal cual. Va como
+               imagen de cada página. Si de verdad pide clave, queda fuera. */
+            return rasterizar(x.bytes).then(function (r) {
+              it.raster = r; it.paginas = r.length; it.protegido = true; it.estado = 'listo';
+            }, function () { it.estado = 'clave'; it.incluido = false; });
+          });
+      /* 26/10 · la miniatura sale de fondo con los mismos bytes (sin otro viaje) */
+      return paso.then(function () { if (it.estado === 'listo' && gen === GEN) encolarMini(it, x.bytes); });
     }).then(function () {
       if (gen !== GEN) return;
       MED.push({ paso: 'doc', id: it.id.slice(0, 6), clase: it.clase, kb: it.kbReal, ms: Date.now() - t0 });
@@ -515,6 +525,7 @@
       repintarFila(it);
     });
   }
+
 
   /** JPG/PNG tal cual; lo demás (WEBP, GIF, HEIC si el teléfono lo abre) se pasa a JPG. */
   function comoImagen(bytes, mime) {
@@ -539,17 +550,137 @@
     });
   }
 
+  /* ══════════════ miniaturas (26/10: ver cómo va a quedar al girar) ══════════════ */
+
+  /* La primera página en pequeño. Se arma de fondo, de a 2, cuando el
+     documento ya llegó (los bytes ya están en memoria: no hay viaje). Al
+     girar, la miniatura gira igual que va a quedar en el PDF unido. */
+  function miniHtml(it) {
+    if (!it.mini) return K.icono(icono(it), 20);
+    return '<img src="' + it.mini + '" alt="" style="transform:rotate(' + it.rot + 'deg)">' +
+      '<i class="pp-mini__t">' + K.icono(icono(it), 10) + '</i>';
+  }
+
+  var MINI = { cola: [], vuelo: 0, err: [] };
+  function encolarMini(it, bytes) {
+    if (it.mini) return;
+    MINI.cola.push({ it: it, bytes: bytes, gen: GEN });
+    bombearMini();
+  }
+  function bombearMini() {
+    while (MINI.vuelo < 2 && MINI.cola.length) {
+      var p = MINI.cola.shift();
+      if (p.gen !== GEN) continue;
+      MINI.vuelo++;
+      hacerMini(p.it, p.bytes).then(function (r) { return r; }, function (e) { MINI.err.push(p.it.nombre + ': ' + ((e && e.message) || e)); return null; }).then((function (p) {
+        return function (url) {
+          MINI.vuelo--;
+          if (url && p.gen === GEN) {
+            p.it.mini = url;
+            var li = ST && ST.ol ? ST.ol.querySelector('.pp-item[data-id="' + cssId(p.it.id) + '"] .pp-mini') : null;
+            if (li) li.innerHTML = miniHtml(p.it);
+          }
+          bombearMini();
+        };
+      })(p));
+    }
+  }
+  var MINI_ALTO = 140;
+  function lienzo(w, h) {
+    var c = document.createElement('canvas');
+    var esc = MINI_ALTO / Math.max(w, h);
+    c.width = Math.max(1, Math.round(w * esc)); c.height = Math.max(1, Math.round(h * esc));
+    return c;
+  }
+  function hacerMini(it, bytes) {
+    if (it.clase === 'imagen') {
+      var b = it.img ? it.img.bytes : bytes;
+      return new Promise(function (res, rej) {
+        var url = URL.createObjectURL(new Blob([b], { type: it.img && it.img.tipo === 'png' ? 'image/png' : 'image/jpeg' }));
+        var im = new Image();
+        im.onload = function () {
+          var c = lienzo(im.naturalWidth, im.naturalHeight);
+          c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+          URL.revokeObjectURL(url);
+          res(c.toDataURL('image/jpeg', 0.78));
+        };
+        im.onerror = function () { URL.revokeObjectURL(url); rej(new Error('mini')); };
+        im.src = url;
+      });
+    }
+    var visor = K.piezas.visor;
+    if (!visor || !visor.precalentar) return Promise.reject(new Error('sin pdf.js'));
+    return visor.precalentar().then(function (lib) {
+      if (!lib) throw new Error('sin pdf.js');
+      return lib.getDocument({ data: bytes.slice(0) }).promise.then(function (pdf) {
+        return pdf.getPage(1).then(function (pg) {
+          var v1 = pg.getViewport({ scale: 1 });
+          var c = lienzo(v1.width, v1.height);
+          var vp = pg.getViewport({ scale: c.width / v1.width });
+          var ctx = c.getContext('2d');
+          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+          return pg.render({ canvasContext: ctx, viewport: vp }).promise.then(function () {
+            var u = c.toDataURL('image/jpeg', 0.78);
+            /* cleanup, no destroy: el trabajador de pdf.js es uno solo para
+               toda la app (visor incluido) y destroy lo deja inservible */
+            try { pdf.cleanup(); } catch (e) {}
+            return u;
+          });
+        });
+      });
+    });
+  }
+
+  /** PDF protegido sin clave de apertura → cada página como JPG (~150 ppp). */
+  function rasterizar(bytes) {
+    var visor = K.piezas.visor;
+    if (!visor || !visor.precalentar) return Promise.reject(new Error('sin pdf.js'));
+    return visor.precalentar().then(function (lib) {
+      if (!lib) throw new Error('sin pdf.js');
+      return lib.getDocument({ data: bytes.slice(0), password: '' }).promise.then(function (pdf) {
+        var out = [], n = pdf.numPages;
+        function una(i) {
+          if (i > n) { try { pdf.cleanup(); } catch (e) {} return out; }
+          return pdf.getPage(i).then(function (pg) {
+            var v1 = pg.getViewport({ scale: 1 });
+            var esc = Math.min(2.2, 1700 / Math.max(v1.width, v1.height));
+            var vp = pg.getViewport({ scale: esc });
+            var c = document.createElement('canvas');
+            c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+            var ctx = c.getContext('2d');
+            ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+            return pg.render({ canvasContext: ctx, viewport: vp }).promise.then(function () {
+              return new Promise(function (res, rej) {
+                c.toBlob(function (b) { b ? b.arrayBuffer().then(res, rej) : rej(new Error('jpg')); }, 'image/jpeg', 0.86);
+              });
+            }).then(function (ab) {
+              out.push({ bytes: new Uint8Array(ab), w: v1.width, h: v1.height });
+              return una(i + 1);
+            });
+          });
+        }
+        return una(1);
+      });
+    });
+  }
+
   /* ══════════════ ver uno ══════════════ */
 
+  /* 26/10 · se ve TAL CUAL va a quedar en el PDF unido (con el giro y, el
+     Excel, en la orientación escogida). */
   function ver(it) {
     if (!K.piezas.visor) return;
     var titulo = it.ent ? it.ent.t : sinExt(it.nombre);
     K.piezas.visor.abrir([{
-      titulo: titulo, tipo: it.clase === 'imagen' ? 'imagen' : 'pdf',
+      titulo: titulo + (it.rot ? ' · girado ' + it.rot + '°' : ''), tipo: 'pdf',
       cargar: function () {
-        if (it.clase === 'imagen' && it.img) return Promise.resolve({ bytes: it.img.bytes, mime: it.img.tipo === 'png' ? 'image/png' : 'image/jpeg', nombre: it.nombre });
-        if (it.doc) return it.doc.save().then(function (b) { return { bytes: b, mime: 'application/pdf', nombre: sinExt(it.nombre) + '.pdf' }; });
-        return bytesDe(it).then(function (x) { return { bytes: x.bytes, mime: x.mime, nombre: it.nombre }; });
+        var listo = it.estado === 'listo' ? Promise.resolve() : traer(it, GEN);
+        return listo.then(cargarLib).then(function (L) {
+          if (it.estado !== 'listo') throw new Error(it.err || 'Este documento todavía no se pudo traer.');
+          return L.PDFDocument.create().then(function (out) {
+            return pegar(L, out, it).then(function () { return out.save(); });
+          });
+        }).then(function (b) { return { bytes: b, mime: 'application/pdf', nombre: sinExt(it.nombre) + '.pdf' }; });
       }
     }], { indice: 0 });
   }
@@ -604,6 +735,17 @@
   }
 
   function pegar(L, out, it) {
+    if (it.raster) {
+      return it.raster.reduce(function (p, r) {
+        return p.then(function () {
+          return out.embedJpg(r.bytes).then(function (img) {
+            var pg = out.addPage([r.w, r.h]);
+            pg.drawImage(img, { x: 0, y: 0, width: r.w, height: r.h });
+            if (it.rot) pg.setRotation(L.degrees(it.rot));
+          });
+        });
+      }, Promise.resolve());
+    }
     if (it.clase === 'imagen') {
       var emb = it.img.tipo === 'png' ? out.embedPng(it.img.bytes) : out.embedJpg(it.img.bytes);
       return emb.then(function (img) {
@@ -639,6 +781,7 @@
     /** ¿se ofrece el botón en esta cuenta? */
     aplica: function (estado) { return ESTADOS.indexOf(String(estado || '').toUpperCase()) >= 0; },
     medidas: function () { return MED.slice(); },
+    _miniErr: function () { return MINI.err.slice(); },
     /* para el banco de pruebas */
     _armar: armar, _entradaDe: entradaDe, _norm: norm, _fabrica: FABRICA, _estado: function () { return ST; }
   };
