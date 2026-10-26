@@ -508,7 +508,7 @@ window.ASISTENTE_BASE = [
 "cuenta unificada",
 "enviado a la entidad"
 ],
-"respuesta": "Cuando Contratación **aprueba** tu cuenta: descarga tus documentos en **MI CUENTA DRIVE**, únelos en un solo PDF (Small PDF está en SITIOS WEB), súbelos al **Plan de pagos del SECOP II** y, cuando diga «Enviado a la entidad» y la planilla esté validada, toca **REPORTAR PLAN DE PAGOS** en ESTADO DE CUENTA. Al reportarlo pierdes el acceso a la carpeta de Drive, pero en la app sigues viendo tus documentos.",
+"respuesta": "Cuando Contratación **aprueba** tu cuenta: en **ESTADO DE CUENTA → MI CUENTA DRIVE** toca **UNIFICAR Y DESCARGAR**: la app une tus documentos en un solo PDF, en el orden de la guía y con el nombre listo. Súbelo al **Plan de pagos del SECOP II** y, cuando diga «Enviado a la entidad» y la planilla esté validada, toca **REPORTAR PLAN DE PAGOS** en ESTADO DE CUENTA. Al reportarlo pierdes el acceso a la carpeta de Drive, pero en la app sigues viendo tus documentos.",
 "accion": "ir:plan",
 "estado": "",
 "activo": true,

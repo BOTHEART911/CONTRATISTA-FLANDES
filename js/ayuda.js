@@ -356,10 +356,27 @@
 
     sitios: function () {
       return {
-        guia: 'Los sitios que usas para tu contrato: SECOP II (donde subes el plan de pagos), SIA Observa, la página de la Alcaldía, Small PDF para unir tus PDF y la DIAN.',
+        guia: 'Los sitios que usas para tu contrato: SECOP II (donde subes el plan de pagos), SIA Observa, la página de la Alcaldía, Small PDF y la DIAN.',
         botones: [
-          { texto: '¿Para qué es Small PDF?', responde: function () {
-              return 'Para **unir en un solo PDF** los documentos de tu cuenta aprobada antes de subirlos al Plan de pagos del SECOP II.'; } }
+          { texto: '¿Necesito Small PDF para unir mi cuenta?', responde: function () {
+              return 'Ya no. En **ESTADO DE CUENTA → Mi cuenta Drive** toca **UNIFICAR Y DESCARGAR**: la app une los documentos de tu cuenta aprobada en un solo PDF, en el orden de la guía y con el nombre listo.'; } }
+        ]
+      };
+    },
+
+    /* 26/10 · UNIFICAR Y DESCARGAR (planpagos.js) */
+    unificar: function () {
+      return {
+        guia: 'Tu cuenta en **un solo PDF**, en el orden de la guía del plan de pagos. Revisa la lista: puedes **quitar** un documento, **subirlo o bajarlo**, **girarlo** o poner un **Excel vertical u horizontal**. Cuando todos digan listo, toca **UNIFICAR Y DESCARGAR**: baja con el nombre de tu cuenta, listo para el SECOP II.',
+        botones: [
+          { texto: '¿Qué hago con el PDF?', responde: function () {
+              return 'Súbelo al **Plan de pagos** del SECOP II, **valida la planilla** de aportes y toma **«Enviar a la entidad»**. Después vuelve a ESTADO DE CUENTA y toca **REPORTAR PLAN DE PAGOS**.'; } },
+          { texto: 'Un documento dice «Tiene clave»', responde: function () {
+              return 'Ese PDF está protegido con contraseña y no se puede unir. Ábrelo, guárdalo sin clave y súbelo de nuevo en tu cuenta (o pídeselo a quien te lo dio).'; } },
+          { texto: '¿Por qué un archivo sale sin marcar al final?', responde: function () {
+              return 'Porque está en tu carpeta pero **no está en la guía** del plan de pagos. Márcalo solo si te lo pidieron.'; } },
+          { texto: '¿Se guarda el orden que puse?', responde: function () {
+              return 'Sí, en este teléfono y para esta cuenta. **Orden de la guía** lo deja como al principio.'; } }
         ]
       };
     },
@@ -385,7 +402,7 @@
     cuenta: 'INGRESAR CUENTA', seguimiento: 'ESTADO DE CUENTA', avisos: 'MIS NOTIFICACIONES',
     proceso: 'DATOS DEL CONTRATO', personales: 'DATOS PERSONALES', comunicaciones: 'SOLICITUD A COMUNICACIONES',
     tesoreria: 'SOLICITUD TESORERÍA', contratacion: 'SOLICITUD CONTRATACIÓN', comunicados: 'COMUNICADOS', directorio: 'DIRECTORIO INSTITUCIONAL',
-    tutoriales: 'TUTORIALES DE USO', sitios: 'SITIOS WEB', misregistros: 'MIS REGISTROS'
+    tutoriales: 'TUTORIALES DE USO', sitios: 'SITIOS WEB', misregistros: 'MIS REGISTROS', unificar: 'UNIFICAR Y DESCARGAR'
   };
 
   /** La ayuda de una vista. extra: lo que la vista añade (sus cifras). */
