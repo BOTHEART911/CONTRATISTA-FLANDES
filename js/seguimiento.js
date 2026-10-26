@@ -545,13 +545,19 @@
     }
     if (c.estado === 'APROBADA') {
       t.insertBefore(K.nodo('<p class="seg-pista">' + K.icono('descargar', 15) +
-        ' Descárgalos, únelos en un solo PDF y súbelo al Plan de pagos del SECOP II.</p>'), zona);
+        ' Toca UNIFICAR Y DESCARGAR: te entrega un solo PDF en el orden de la guía, listo para el Plan de pagos del SECOP II.</p>'), zona);
+    }
+    /* 26/10 · UNIFICAR Y DESCARGAR (planpagos.js): desde que la cuenta está aprobada */
+    if (window.PLANPAGOS && window.PLANPAGOS.aplica(c.estado)) {
+      var u = K.nodo('<button type="button" class="kit-btn kit-btn--marca seg-docs__unir">' + K.icono('pdf', 17) + ' UNIFICAR Y DESCARGAR</button>');
+      u.addEventListener('click', function () { K.vibrar && K.vibrar(8); location.hash = '#/unificar/' + c.informe; });
+      t.insertBefore(u, zona);
     }
     if (DOCS[c.informe]) { listaDocs(zona, c, DOCS[c.informe]); return t; }
     var b = K.nodo('<button type="button" class="kit-btn kit-btn--marca seg-docs__ver">' + K.icono('documento', 17) + ' Ver mis documentos</button>');
     b.addEventListener('click', function () {
       b.remove();
-      var p = K.pedir('seguimientoDocs', { informe: c.informe }, { ms: 60000 });
+      var p = docsDe(c.informe);
       K.piezas.esqueletos.mientras(zona, p, { forma: 'filas', cuantos: 4, espera: 'Abriendo tu carpeta' })
         .then(function (r) { DOCS[c.informe] = r; if (c.informe === SEL) listaDocs(zona, c, r); })
         ['catch'](function (e) {
@@ -600,6 +606,15 @@
         ul.appendChild(li);
       });
       zona.appendChild(sec);
+    });
+  }
+
+  /* 26/10 · la carpeta de una cuenta, con la lista del plan de pagos (plan:1):
+     la misma respuesta le sirve a MI CUENTA DRIVE y a UNIFICAR Y DESCARGAR */
+  function docsDe(informe) {
+    if (DOCS[informe] && DOCS[informe]._pp) return Promise.resolve(DOCS[informe]);
+    return K.pedir('seguimientoDocs', { informe: informe, plan: 1 }, { ms: 60000 }).then(function (r) {
+      r = r || {}; r._pp = true; DOCS[informe] = r; return r;
     });
   }
 
@@ -894,6 +909,9 @@
        una guía: revisa tus documentos y después toca el botón de reportar. */
     guiar: function (g) { GUIA = g || null; CACHE = null; DOCS = {}; },
     precargar: precargar,
+    /* 26/10 · para UNIFICAR Y DESCARGAR (planpagos.js) */
+    docsDe: docsDe,
+    datos: function () { return S ? Promise.resolve(S) : pedirTodo(false, false).seg; },
     /* 4.9: la ayuda (ayuda.js) habla con las mismas frases de esta vista */
     _detalle: detalle,
     _accion: textoAccion,

@@ -87,6 +87,7 @@ var ARMAZON = [
   './js/cuenta.js',
   /* 4.7 · el estado de cuenta y el exportador de los egresos */
   './js/seguimiento.js',
+  './js/planpagos.js',
   './js/misregistros.js', './kit/informe-cuentas.js',
   './kit/exportar.js', './kit/exportar.css', './kit/gerencial.js',
   /* 4.8 · trámites (comunicaciones y tesorería) e institucional */

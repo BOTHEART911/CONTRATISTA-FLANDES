@@ -348,6 +348,8 @@
     cuenta: vistaCuenta,
     avisos: vistaAvisos,
     seguimiento: vistaSeguimiento,
+    /* 26/10 · UNIFICAR Y DESCARGAR el plan de pagos de una cuenta (planpagos.js) */
+    unificar: function (sub) { window.PLANPAGOS.abrir(sub); },
     /* 06/10 · MIS REGISTROS: todas mis cuentas, para descargarlas */
     misregistros: function () { window.MISREGISTROS.configurar({ app: app }); window.MISREGISTROS.vista(); },
     /* 4.8 · trámites (tramites.js) e institucional (institucional.js) */
@@ -434,6 +436,7 @@
     cuenta: 'INGRESAR CUENTA',
     avisos: 'MIS NOTIFICACIONES',
     seguimiento: 'ESTADO DE CUENTA',
+    unificar: 'UNIFICAR Y DESCARGAR',
     misregistros: 'MIS REGISTROS',
     comunicaciones: 'SOLICITUD A COMUNICACIONES',
     tesoreria: 'SOLICITUD TESORERÍA',
