@@ -230,6 +230,8 @@
     K.piezas.banner.atras(function () { salir(); });
 
     caja.appendChild(cabecera());
+    /* 27/10 · RECOMENDACIONES PARA TU PRÓXIMA CUENTA (las dejó tu supervisor al aprobar la anterior) */
+    if (E.recomendaciones) caja.appendChild(tarjetaRecomendaciones());
 
     var rejilla = K.nodo('<div class="obl-rejilla"></div>');
     E.obligaciones.forEach(function (o, i) {
@@ -251,6 +253,46 @@
 
     montarInsights();
     K.piezas.creditos.montar(caja);
+  }
+
+  /* 27/10 · llegan en borradorEstado (mismo viaje). Se quedan hasta que las marque como leídas. */
+  function tarjetaRecomendaciones() {
+    var r = E.recomendaciones;
+    var t = K.nodo(
+      '<section class="kit-tarjeta obl-rec" aria-labelledby="obl-rec-t">' +
+      '  <div class="obl-rec__cab">' + K.icono('info', 20) +
+      '    <div><h3 class="obl-rec__t" id="obl-rec-t">Recomendaciones para tu próxima cuenta</h3>' +
+      '    <p class="obl-rec__q"></p></div></div>' +
+      '  <div class="obl-rec__x"></div>' +
+      '  <button type="button" class="kit-btn kit-btn--plano obl-rec__b">' + K.icono('check', 16) + ' Marcar como leídas</button>' +
+      '</section>'
+    );
+    t.querySelector('.obl-rec__q').textContent = 'De ' + (K.piezas.personas ? K.piezas.personas.nombrePropio(r.por) : r.por) +
+      ', supervisor(a) del contrato · tras aprobar tu cuenta ' + r.informe + (r.fecha ? ' · ' + String(r.fecha).slice(0, 10) : '');
+    var lista = t.querySelector('.obl-rec__x');
+    String(r.texto || '').split(/\n+/).map(function (x) { return x.trim(); }).filter(Boolean).forEach(function (l) {
+      var p = K.nodo('<p class="obl-rec__l"></p>');
+      p.textContent = l.replace(/^[-•*]\s*/, '');
+      lista.appendChild(p);
+    });
+    var b = t.querySelector('.obl-rec__b');
+    var hecho = false;
+    var marcar = function () {
+      if (hecho) return Promise.resolve();   /* ya quedó: un segundo toque no vuelve a escribir */
+      b.disabled = true; b.classList.add('kit-ocupado');
+      return K.pedir('recomendacionesLeidas', { fila: r.fila }, { ms: 45000 }).then(function () {
+        hecho = true;
+        E.recomendaciones = null;
+        t.classList.add('obl-rec--fuera');
+        setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 220);
+        K.aviso('Listo. Las tendrás en cuenta en este informe.', 'ok', 3500);
+      }, function (e) {
+        b.disabled = false; b.classList.remove('kit-ocupado');
+        K.aviso((e && e.message) || 'No se pudo guardar. Intenta de nuevo.', 'malo', 6000);
+      });
+    };
+    b.addEventListener('click', (K.piezas.antidoble && K.piezas.antidoble.una) ? K.piezas.antidoble.una(marcar) : marcar);
+    return t;
   }
 
   function cabecera() {

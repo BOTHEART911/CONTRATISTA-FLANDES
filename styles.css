@@ -2201,3 +2201,18 @@
 .pdfs__pie { display: flex; gap: 10px; flex-wrap: wrap; }
 .pdfs__pie .kit-btn { flex: 1 1 160px; }
 .pdfs__si svg { margin-right: 6px; vertical-align: -3px; }
+
+/* ══════════════ 27/10 · RECOMENDACIONES PARA TU PRÓXIMA CUENTA (borrador) ══════════════ */
+.obl-rec { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; padding: 14px 16px;
+  border: 1.5px solid color-mix(in srgb, var(--k-marca) 45%, transparent); background: color-mix(in srgb, var(--k-marca) 7%, var(--k-papel));
+  transition: opacity .2s ease, transform .2s ease; }
+.obl-rec--fuera { opacity: 0; transform: translateY(-6px); }
+.obl-rec__cab { display: flex; gap: 10px; align-items: flex-start; }
+.obl-rec__cab svg { flex: 0 0 auto; color: var(--k-marca); margin-top: 2px; }
+.obl-rec__t { margin: 0; font: 700 1rem/1.3 var(--k-fuente-titulo, var(--k-fuente)); color: var(--k-tinta); }
+.obl-rec__q { margin: 2px 0 0; font-size: .8rem; color: var(--k-tinta-2, var(--k-tinta)); }
+.obl-rec__x { display: flex; flex-direction: column; gap: 6px; }
+.obl-rec__l { margin: 0; padding-left: 18px; position: relative; font-size: .9rem; line-height: 1.45; overflow-wrap: anywhere; }
+.obl-rec__l::before { content: ''; position: absolute; left: 4px; top: .6em; width: 6px; height: 6px; border-radius: 50%; background: var(--k-marca); }
+.obl-rec__b { align-self: flex-start; min-height: 40px; }
+@media (prefers-reduced-motion: reduce) { .obl-rec { transition: none; } }
