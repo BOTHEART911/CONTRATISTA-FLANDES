@@ -506,15 +506,18 @@
       ['Revisada por tu supervisor(a)', revisada, revisada && S ? S.supervisor : '', 'Tu supervisor(a)'],
       ['Aprobada por Contratación', c.aprobada ? c.aprobada + (c.aprobo && !P ? ' · ' + c.aprobo : '') : '', c.aprobada ? c.aprobo : '', 'Oficina de Contratación'],
       ['Orden de pago', c.orden ? 'N° ' + c.orden + (c.fechaOrden ? ' · ' + c.fechaOrden : '') : '', c.orden ? c.ordenQuien : ''],
+      /* 27/10 · la(s) fuente(s) de financiación de la orden (Contabilidad), una por línea */
+      [(c.fuentesFin || []).length > 1 ? 'Fuentes de financiación' : 'Fuente de financiación', (c.fuentesFin || []).join('\n'), '', '', 'seg-dato--fuentes'],
       /* 02/10 · EGRESO lleva al usuario EGRESO y PAGADA al usuario PAGO de Tesorería, cada uno con su fecha */
       ['Egreso', c.egreso ? 'N° ' + c.egreso + (c.egreso2 ? ' y ' + c.egreso2 : '') + (c.fechaEgreso ? ' · ' + c.fechaEgreso : '') : '', c.egreso ? c.egresoQuien : '', 'Tesorería · Egreso'],
       ['Pagada', c.fechaPago, c.fechaPago ? c.pagoQuien : '', 'Tesorería · Pago'],
       ['Neto girado', c.neto ? pesos(c.neto) : ''],
-      ['Fuente', c.fuente ? c.fuente + (c.banco ? ' · Banco ' + c.banco : '') : '']
+      /* 27/10 · la que escoge Tesorería al pagar (destinación y banco): antes decía "Fuente" */
+      ['Pagado desde', c.fuente ? c.fuente + (c.banco ? ' · Banco ' + c.banco : '') : '']
     ].filter(function (f) { return String(f[1] || '').trim(); });
     var dl = K.nodo('<dl class="seg-datos"></dl>');
     filas.forEach(function (f) {
-      var fila = K.nodo('<div class="seg-dato"><dt>' + K.esc(f[0]) + '</dt><dd>' + K.esc(f[1]) + '</dd></div>');
+      var fila = K.nodo('<div class="seg-dato' + (f[4] ? ' ' + f[4] : '') + '"><dt>' + K.esc(f[0]) + '</dt><dd>' + K.esc(f[1]).replace(/\n/g, '<br>') + '</dd></div>');
       if (f[2] && P) {
         /* el dato queda en su sitio y la persona va debajo, a lo ancho:
            así ni el nombre ni el N° de orden se cortan en un teléfono */

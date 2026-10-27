@@ -2223,3 +2223,9 @@
 .obl-rec__l::before { content: ''; position: absolute; left: 4px; top: .6em; width: 6px; height: 6px; border-radius: 50%; background: var(--k-marca); }
 .obl-rec__b { align-self: flex-start; min-height: 40px; }
 @media (prefers-reduced-motion: reduce) { .obl-rec { transition: none; } }
+
+/* 27/10 · fuente(s) de financiación de la orden: en el teléfono el nombre es largo, va debajo del rótulo */
+@media (max-width: 899px) {
+  .seg-dato--fuentes { flex-direction: column; gap: 3px; }
+  .seg-dato--fuentes dd { text-align: left; }
+}
