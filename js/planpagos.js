@@ -35,7 +35,8 @@
     return { k: k, t: t, archivo: archivo, carpeta: carpeta || '', aplica: !!aplica, nota: nota || '', va: va !== false };
   }
   var FABRICA = [
-    d('actaCumplimiento', 'Acta de cumplimiento', 'ACT_C', '', true, 'Última cuenta'),
+    /* 26/10 noche · el acta de cumplimiento la hace el supervisor DESPUÉS del plan de pagos: no va */
+    d('actaCumplimiento', 'Acta de cumplimiento', 'ACT_C', '', false, '', false),
     d('otroR', 'Otro documento requerido', 'Otro Requerido', 'NOVEDADES', true, 'Si aplica'),
     d('actaInicio', 'Acta de inicio', 'Acta de Inicio', 'NOVEDADES', false, ''),
     d('cdp', 'CDP', 'CDP', 'NOVEDADES', false, ''),
@@ -107,6 +108,19 @@
       if (p && nb.indexOf(p) === 0 && p.length > largo) { mejor = { e: e, i: i }; largo = p.length; }
     });
     return mejor;
+  }
+
+  /* 26/10 noche · una lista anterior a la regla (o la fábrica de un CORE sin
+     desplegar) traía el acta de cumplimiento como «va»: se apaga. Si ADMIN la
+     vuelve a encender después del corte, se respeta. */
+  var CORTE_ACTA = 1793069100000;
+  function sinActa(plan) {
+    var nueva = plan.fabrica || Number(plan.version || 0) < CORTE_ACTA;
+    return plan.lista.map(function (x) {
+      var esActa = x && (x.k === 'actaCumplimiento' || String(x.archivo || '').trim().toUpperCase() === 'ACT_C');
+      if (!nueva || !esActa) return x;
+      return { k: x.k, t: x.t, archivo: x.archivo, carpeta: x.carpeta, aplica: false, nota: '', va: false };
+    });
   }
 
   function claseDe(mime) {
@@ -221,7 +235,7 @@
       ST.vigencia = vigenciaDe(c);
       ST.estado = c ? c.estado : '';
       cab.querySelector('.pp-nombre__t').textContent = nombreFinal();
-      var lista = (r.plan && Array.isArray(r.plan.lista) && r.plan.lista.length) ? r.plan.lista : FABRICA;
+      var lista = (r.plan && Array.isArray(r.plan.lista) && r.plan.lista.length) ? sinActa(r.plan) : FABRICA;
       if (!r.carpeta) { ST.ol.innerHTML = '<li class="seg-nada">Esta cuenta todavía no tiene carpeta de documentos.</li>'; return; }
       ST.items = aplicarRecuerdo(armar(lista, r.grupos));
       if (!ST.items.length) { ST.ol.innerHTML = '<li class="seg-nada">No encontramos documentos del plan de pagos en tu carpeta.</li>'; return; }
