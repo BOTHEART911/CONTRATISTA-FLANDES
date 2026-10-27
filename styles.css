@@ -1943,6 +1943,13 @@
   background: linear-gradient(180deg, rgba(var(--k-marca-rgb), .07), transparent 70%), var(--k-papel);
   box-shadow: 0 6px 18px -12px rgba(var(--k-marca-rgb), .55);
 }
+/* 27/10 · candado: un PDF/Word/Excel soltado en imágenes trae a la persona aquí */
+.edi__bloque--lleva { animation: edi-lleva 1.3s ease-in-out 2; }
+@keyframes edi-lleva {
+  0%, 100% { box-shadow: 0 6px 18px -12px rgba(var(--k-marca-rgb), .55); }
+  50% { box-shadow: 0 0 0 4px rgba(var(--k-marca-rgb), .45), 0 10px 26px -10px rgba(var(--k-marca-rgb), .8); }
+}
+@media (prefers-reduced-motion: reduce) { .edi__bloque--lleva { animation: none; outline: 3px solid var(--k-marca); } }
 .edi__bloque::before {
   content: '';
   position: absolute;

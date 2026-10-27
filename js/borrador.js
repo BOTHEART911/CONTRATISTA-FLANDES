@@ -411,7 +411,7 @@
       '  </div>' +
       '  <div class="kit-tarjeta edi__evi edi__bloque">' +
       '    <p class="edi__bt">' + K.icono('imagen', 20) + '<span>IMÁGENES DE EVIDENCIAS DEL CUMPLIMIENTO</span></p>' +
-      '    <p class="edi__bs">Opcional · hasta 3 imágenes</p>' +
+      '    <p class="edi__bs">Opcional · hasta 3 imágenes (JPG o PNG). Los PDF, Word o Excel van en Archivo de evidencia.</p>' +
       '    <div id="edi-zona"></div>' +
       '  </div>' +
       (ARCH_ON
@@ -511,6 +511,7 @@
         varios: true,
         maximo: EVI_TOPE - lista.length,
         maximoMB: 25,
+        alRechazar: function (f) { return aArchivoEvidencia(i, f); },   /* 27/10 */
         alCambiar: function (archivos) {
           if (archivos && archivos.length) subir(destino, i, archivos);
         }
@@ -574,6 +575,7 @@
 
     K.piezas.adjuntos.montar(zona, {
       acepta: 'image/*', varios: false, maximo: 1, maximoMB: 25,
+      alRechazar: function (f) { return aArchivoEvidencia(i, f); },   /* 27/10 */
       alCambiar: function (archivos) {
         if (archivos && archivos.length) subir(destino, i, [archivos[0]], ranura);
       }
@@ -738,6 +740,25 @@
     return t.length > 80 ? t.slice(0, 80).trim() : t;
   }
 
+  /* 27/10 · NOMBRE GENÉRICO: misma regla que el CORE (FC1027_generico_).
+     Un nombre hecho solo de números, fechas, símbolos o palabras que no dicen
+     qué contiene ("3", "_5", "WPS Office", "IMG-2026…", "Documento") no se
+     deja guardar. */
+  var GENERICAS = ('img image imagen imagenes whatsapp scan scanned escaneo escaneado escaneada captura capturas ' +
+    'pantalla screenshot pdf doc docx xls xlsx archivo archivos documento documentos document file files nuevo nueva new ' +
+    'untitled sin titulo copia copy wps office microsoft word excel camscanner adobe libro book hoja hojas calculo anexo ' +
+    'anexos evidencia evidencias soporte soportes prueba pruebas test download descarga descargas foto fotos photo photos ' +
+    'informe del de la las los el y para con por obligacion obligaciones mi tu').split(' ');
+  function nombreGenerico(nombre) {
+    var t = String(nombre || '').replace(RE_NUM, '').replace(/\.(pdf|docx?|xlsx?)$/i, '').toLowerCase()
+      .replace(/[áàä]/g, 'a').replace(/[éèë]/g, 'e').replace(/[íìï]/g, 'i').replace(/[óòö]/g, 'o').replace(/[úùü]/g, 'u')
+      .replace(/\(\d+\)/g, ' ');
+    var pal = t.replace(/[^a-zñ]+/g, ' ').trim().split(' ').filter(function (p) { return p.length >= 3; });
+    if (!pal.length || pal.join('').length < 4) return true;
+    for (var k = 0; k < pal.length; k++) if (GENERICAS.indexOf(pal[k]) < 0) return false;
+    return true;
+  }
+
   /* "1.2." del nombre, o el que le toca por su lugar. */
   function numDe(i, k, a) {
     var m = /^\s*(\d+\.\d+)\./.exec((a && a.nombre) || '');
@@ -751,40 +772,39 @@
     if (d && location.hash === '#/borrador/' + (i + 1)) zonaArchivo(d, i);
   }
 
-  /* Ctrl+V de un PDF, Word o Excel en la obligación abierta: va a los
-     adjuntos aunque la persona no haya tocado la casilla (las imágenes
-     siguen yendo a su casilla, como siempre). Un solo escuchador. */
-  var pegarListo = false;
-  function escucharPegar() {
-    if (pegarListo) return;
-    pegarListo = true;
-    document.addEventListener('paste', function (e) {
-      var m = /^#\/borrador\/(\d+)$/.exec(location.hash);
-      var d = document.getElementById('edi-arch');
-      if (!m || !d || !ARCH_ON || !E) return;
-      var items = (e.clipboardData && e.clipboardData.items) || [];
-      var file = null;
-      for (var k = 0; k < items.length; k++) {
-        if (items[k].kind !== 'file') continue;
-        var f = items[k].getAsFile();
-        if (f && esOficina(f)) { file = f; break; }
-      }
-      if (!file) return;
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      var i = Number(m[1]) - 1;
-      if (subiendoArch[i]) { K.aviso('Espera a que termine de subir el adjunto anterior.', 'aviso', 4000); return; }
-      var rem = d.getAttribute('data-reemplaza') || '';
-      if (!rem && archDe(i).length >= ARCH_TOPE) { K.aviso('Ya tienes ' + ARCH_TOPE + ' adjuntos en esta obligación. Quita o reemplaza uno.', 'aviso', 5000); return; }
-      if (file.size > 10 * 1048576) { K.aviso('El archivo pesa más de 10 MB.', 'malo', 5000); return; }
-      pedirNombre(d, i, file, rem);
-    }, true);
+  /* 27/10 · CANDADO DE EVIDENCIAS (caso ANGELA JIMENEZ 359).
+     Antes había aquí un escuchador de pegado en TODA la página: un PDF
+     pegado con Ctrl+V en cualquier parte —también encima de las imágenes—
+     se iba sin avisar al archivo de evidencia, con el nombre original
+     ("3", "_5", "WPS Office"). Ahora cada casilla recibe solo lo suyo y
+     solo si el puntero está encima (kit/adjuntos.js). Si en la casilla de
+     imágenes llega un PDF, Word o Excel, se avisa y se lleva a la persona
+     al bloque "Archivo de evidencia" de esa misma obligación. */
+  function aArchivoEvidencia(i, f) {
+    if (!esOficina(f)) return false;   /* otro tipo: el aviso de siempre */
+    K.vibrar(30);
+    var d = document.getElementById('edi-arch');
+    if (!ARCH_ON || !d) {
+      K.aviso('«' + (f.name || 'Ese archivo') + '» no es una imagen. Aquí solo van imágenes (JPG o PNG).', 'malo', 7000);
+      return true;
+    }
+    K.aviso('«' + (f.name || 'Ese archivo') + '» no es una imagen. Los PDF, Word o Excel van en ARCHIVO DE EVIDENCIA ' +
+            'de esta obligación: te llevamos ahí. Pon el puntero encima de esa casilla y pégalo (Ctrl+V) o tócala para elegirlo.', 'aviso', 9000);
+    var bloque = d.closest ? d.closest('.edi__bloque') : d;
+    /* si ya hay adjuntos, se abre la casilla de "Agregar otro" para que quede lista */
+    var otro = d.querySelector('.arch-otro');
+    if (otro && !otro.disabled) otro.click();
+    try { bloque.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { bloque.scrollIntoView(); }
+    bloque.classList.remove('edi__bloque--lleva');
+    void bloque.offsetWidth;
+    bloque.classList.add('edi__bloque--lleva');
+    setTimeout(function () { bloque.classList.remove('edi__bloque--lleva'); }, 2600);
+    return true;
   }
 
   function zonaArchivo(destino, i) {
     destino.innerHTML = '';
     destino.removeAttribute('data-reemplaza');
-    escucharPegar();
     var lista = archDe(i), sub = subiendoArch[i];
 
     lista.forEach(function (a, k) {
@@ -911,12 +931,21 @@
       '  </div>' +
       '</form>');
     var inp = f.querySelector('input'), err = f.querySelector('.arch-nombre__err');
-    inp.value = limpiarNombre(file.name);
+    var sugerido = limpiarNombre(file.name);
+    /* 27/10 · si el archivo trae un nombre corto o genérico, el campo sale
+       vacío: el contratista escribe qué es */
+    inp.value = nombreGenerico(sugerido) ? '' : sugerido;
+    if (!inp.value) { err.textContent = 'Escribe qué contiene este archivo (por ejemplo: "Acta de reunión con la comunidad").'; err.hidden = false; }
     f.querySelector('[data-a="no"]').addEventListener('click', function () { zonaArchivo(destino, i); });
     f.addEventListener('submit', function (ev) {
       ev.preventDefault();
       var nombre = limpiarNombre(inp.value);
-      if (!nombre) { err.hidden = false; inp.focus(); return; }
+      if (!nombre) { err.textContent = 'Escribe el nombre del archivo.'; err.hidden = false; inp.focus(); return; }
+      if (nombreGenerico(nombre)) {   /* 27/10 */
+        err.textContent = '«' + nombre + '» es muy corto o genérico. Ponle un nombre que diga qué contiene, ' +
+                          'por ejemplo "Acta de reunión con la comunidad" o "Listado de asistencia de octubre".';
+        err.hidden = false; K.vibrar(30); inp.focus(); inp.select(); return;
+      }
       subirArchivo(i, file, nombre, reemplaza);
     });
     hueco.appendChild(f);
@@ -952,7 +981,9 @@
         return ponerEnDrive(p.sesion, file, p.mime, i).then(function (id) {
           tm.drive = Date.now() - t1;
           var t2 = Date.now();
-          return pedirB('evidenciaArchivoListo', { obligacion: i + 1, id: id, total: E.total || '', reemplaza: reemplaza || '', rid: rid }, { ms: 60000 })
+          /* 27/10 · rid PROPIO: con el de preparar, el CORE devolvía la respuesta
+             de preparar y el archivo quedaba en Drive sin registrar */
+          return pedirB('evidenciaArchivoListo', { obligacion: i + 1, id: id, total: E.total || '', reemplaza: reemplaza || '', rid: rid + 'L' }, { ms: 60000 })
             .then(function (r) { tm.listo = Date.now() - t2; return r; });
         });
       }, function (e) {
