@@ -142,11 +142,11 @@
 
     cuenta: function () {
       var c = contrato();
-      var primera = c && !c.yaDiligenciado;
+      var primera = c && (!c.yaDiligenciado || (c.faltanPersonales || []).length);
       return {
         guia: 'Aquí radicas tu cuenta en **cuatro bloques**: fechas y periodo, relación de pago, relación de planilla y documentos. Entra al que quieras; el índice te dice cuál está listo. ' +
               'Los tres documentos **obligatorios** son la **certificación bancaria**, la **planilla** y su **baucher** de pago.' +
-              (primera ? ' Antes ve a **DATOS DEL CONTRATO**: te faltan datos obligatorios y sin ellos no salen tus formatos.' : ''),
+              (primera ? ' Antes completa tus **DATOS PERSONALES** y tus **DATOS DEL CONTRATO**: sin ellos no puedes radicar ni reportar tu cuenta.' : ''),
         botones: [
           { texto: '¿Qué documentos necesito?', responde: function () {
               return 'Siempre: certificación bancaria, planilla (PDF sin protección: si eliges uno protegido, la app te ofrece quitársela) y el baucher de la planilla (foto o PDF).\n' +
@@ -249,7 +249,7 @@
     proceso: function () {
       var c = contrato();
       var t = 'Aquí está tu contrato completo: plazo, valor, respaldos presupuestales y tus obligaciones. ';
-      if (!c.yaDiligenciado) t += '**Te faltan datos obligatorios**: toca el botón de abajo y llénalos con tu clausulado y tu acta de inicio. Sin ellos no salen los formatos de tu primera cuenta.';
+      if (!c.yaDiligenciado) t += '**Te faltan datos obligatorios**: toca el botón de abajo y llénalos con tu clausulado y tu acta de inicio. Sin ellos no puedes radicar ni reportar tus cuentas.';
       else t += 'Si algo no coincide con tu acta de inicio, corrígelo con el botón de abajo.';
       return {
         guia: t,

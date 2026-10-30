@@ -459,11 +459,17 @@
     var zona = caja.querySelector('.seg-accion__botones');
     var reporta = a.botones.some(function (b) { return b.accion === 'reportarCuenta' || b.accion === 'reportarPlan'; });
     var habil = S.habil && S.habil.ok !== false;
+    /* 30/10 · CANDADO DE DATOS: sin datos personales y del contrato completos no
+       se reporta la cuenta (el CORE también lo frena). Sale del arranque: sin viaje. */
+    var cand = null;
+    try { cand = window.CONTRATISTA_CANDADO && window.CONTRATISTA_CANDADO.estado && window.CONTRATISTA_CANDADO.estado(); } catch (x) {}
+    var frenaCuenta = !!cand && a.botones.some(function (b) { return b.accion === 'reportarCuenta'; });
     a.botones.forEach(function (b, k) {
       var esReporte = b.accion === 'reportarCuenta' || b.accion === 'reportarPlan';
       var boton = K.nodo('<button type="button" class="kit-btn ' + (k === 0 ? 'kit-btn--marca' : '') + '">' +
         K.esc(BOTON[b.texto] || b.texto) + '</button>');
       if (esReporte && !habil) boton.disabled = true;
+      if (b.accion === 'reportarCuenta' && cand) boton.disabled = true;
       boton.addEventListener('click', function () {
         if (b.accion === 'ir') { location.hash = '#/' + b.destino; return; }
         reportar(b.accion, b.tipo, a.informe);
@@ -472,6 +478,19 @@
     });
     if (reporta && !habil) {
       caja.appendChild(K.nodo('<p class="seg-accion__horario">' + K.icono('reloj', 15) + ' ' + K.esc(S.habil.motivo || '') + '</p>'));
+    }
+    if (frenaCuenta) {
+      var p = [];
+      if ((cand.personales || []).length) p.push('de tus datos personales: <b>' + cand.personales.map(K.esc).join(', ') + '</b>');
+      if ((cand.faltan || []).length) p.push('del contrato: <b>' + cand.faltan.map(K.esc).join(', ') + '</b>');
+      var aviso = K.nodo('<div class="seg-accion__candado">' + K.icono('candado', 16) +
+        '<div><span>Para reportar tu cuenta completa primero lo que falta ' + p.join('; y ') + '.</span><br></div></div>');
+      var ir = (cand.personales || []).length ? '#/personales/completar' : (cand.deContratacion ? '#/contratacion' : '#/proceso/completar');
+      var bi = K.nodo('<button type="button" class="kit-btn kit-btn--marca">' + K.icono('lapiz', 16) + ' ' +
+        ((cand.personales || []).length ? 'Completar DATOS PERSONALES' : (cand.deContratacion ? 'Ir a SOLICITUD CONTRATACIÓN' : 'Completar DATOS DEL CONTRATO')) + '</button>');
+      bi.addEventListener('click', function () { K.vibrar(8); location.hash = ir; });
+      aviso.querySelector('div').appendChild(bi);
+      caja.appendChild(aviso);
     }
     return caja;
   }

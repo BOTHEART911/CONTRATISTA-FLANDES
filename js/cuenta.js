@@ -158,7 +158,7 @@
        candado (puerta 'contrato'), así que esto solo ahorra la espera. */
     var cand = candado();
     if (cand) {
-      E = { puerta: 'contrato', informe: 1, faltanContrato: cand.faltan, faltanDeContratacion: cand.deContratacion };
+      E = { puerta: 'contrato', informe: 1, faltanContrato: cand.faltan, faltanPersonales: cand.personales || [], faltanDeContratacion: cand.deContratacion };
       D = {};
       BLOQUE = null;
       if (K.piezas.banner) K.piezas.banner.vista('INGRESAR CUENTA');
@@ -269,31 +269,42 @@
   /* 01/10 · la puerta del contrato: qué falta y el botón que lleva a llenarlo.
      Los textos se arman aquí también, para el caso en que se pinta sin haber
      preguntado al CORE. */
+  /* 30/10 · CANDADO DE DATOS: la misma puerta para todas las cuentas, con lo
+     que falta de los DATOS PERSONALES y de la INFORMACIÓN DEL CONTRATO, cada
+     uno con su botón. */
   function puertaContrato() {
     var faltan = E.faltanContrato || [];
+    var personales = E.faltanPersonales || [];
     var deContr = !!E.faltanDeContratacion;
     var s = K.nodo('<section class="kit-tarjeta cta-cerrada cta-candado"></section>');
     s.appendChild(K.nodo('<p class="cta-candado__ico" aria-hidden="true">' + K.icono('candado', 30) + '</p>'));
-    s.appendChild(K.nodo('<h3 class="grupo__t">Primero completa los datos de tu contrato</h3>'));
-    s.appendChild(K.nodo('<p class="cta-cerrada__p">Para ingresar tu primera cuenta tienen que estar todos los datos ' +
-      'del contrato: van impresos en los formatos de tus cuentas.' +
-      (deContr ? ' Algunos los registra Contratación: pídeselos.' : '') + '</p>'));
-    if (faltan.length) {
-      var l = K.nodo('<div class="cta-candado__faltan" aria-label="Lo que falta"></div>');
-      l.appendChild(K.nodo('<span class="cta-candado__rot">' + (faltan.length === 1 ? 'Te falta' : 'Te faltan') + '</span>'));
-      faltan.forEach(function (f) {
+    s.appendChild(K.nodo('<h3 class="grupo__t">Primero completa tus datos</h3>'));
+    s.appendChild(K.nodo('<p class="cta-cerrada__p">Para radicar o reportar tu cuenta tienen que estar completos tus datos ' +
+      'personales y los de tu contrato: van impresos en los formatos y en el pago.' +
+      (deContr ? ' Algunos datos del contrato los registra Contratación: pídeselos.' : '') + '</p>'));
+    function lista(rot, items) {
+      if (!items.length) return;
+      var l = K.nodo('<div class="cta-candado__faltan" aria-label="' + K.esc(rot) + '"></div>');
+      l.appendChild(K.nodo('<span class="cta-candado__rot">' + K.esc(rot) + '</span>'));
+      items.forEach(function (f) {
         l.appendChild(K.nodo('<span class="kit-pastilla kit-pastilla--aviso">' + K.esc(f) + '</span>'));
       });
       s.appendChild(l);
     }
-    var b = K.nodo('<button type="button" class="kit-btn kit-btn--marca">' +
-      K.icono(deContr ? 'enviar' : 'lapiz', 17) + ' ' +
-      (deContr ? 'Ir a SOLICITUD CONTRATACIÓN' : 'Completar DATOS DEL CONTRATO') + '</button>');
-    b.addEventListener('click', function () {
-      K.vibrar(8);
-      location.hash = deContr ? '#/contratacion' : '#/proceso/completar';
-    });
-    s.appendChild(b);
+    lista(personales.length === 1 ? 'De tus datos personales te falta' : 'De tus datos personales te faltan', personales);
+    lista(faltan.length === 1 ? 'Del contrato te falta' : 'Del contrato te faltan', faltan);
+    var zona = K.nodo('<div class="cta-candado__botones"></div>');
+    function boton(ico, txt, destino, marca) {
+      var b = K.nodo('<button type="button" class="kit-btn' + (marca ? ' kit-btn--marca' : '') + '">' + K.icono(ico, 17) + ' ' + K.esc(txt) + '</button>');
+      b.addEventListener('click', function () { K.vibrar(8); location.hash = destino; });
+      zona.appendChild(b);
+    }
+    if (personales.length) boton('persona', 'Completar DATOS PERSONALES', '#/personales/completar', true);
+    if (faltan.length) {
+      if (deContr) boton('enviar', 'Ir a SOLICITUD CONTRATACIÓN', '#/contratacion', !personales.length);
+      else boton('lapiz', 'Completar DATOS DEL CONTRATO', '#/proceso/completar', !personales.length);
+    }
+    s.appendChild(zona);
     return s;
   }
 

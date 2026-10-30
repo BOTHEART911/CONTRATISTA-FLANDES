@@ -166,7 +166,9 @@
     }
     var cand = window.CONTRATISTA_CANDADO && window.CONTRATISTA_CANDADO.estado && window.CONTRATISTA_CANDADO.estado();
     if (cand) {
-      return { texto: 'Antes de tu primera cuenta **completa los datos de tu contrato**: van impresos en tus formatos' +
+      /* 30/10 · candado de datos: personales y contrato, en todas las cuentas */
+      if ((cand.personales || []).length) return { texto: 'Antes de radicar o reportar tu cuenta **completa tus datos personales**: te falta ' + cand.personales.join(', ') + '.', accion: 'ir:personales' };
+      return { texto: 'Antes de radicar o reportar tu cuenta **completa los datos de tu contrato**: van impresos en tus formatos' +
         (cand.deContratacion ? ' (algunos los pone Contratación).' : '.'), accion: 'ir:proceso' };
     }
     var S = seg();
@@ -240,7 +242,8 @@
     }
     if (id === 'cuenta') {
       var cand = window.CONTRATISTA_CANDADO && window.CONTRATISTA_CANDADO.estado && window.CONTRATISTA_CANDADO.estado();
-      if (cand && !porCorregir()) return { texto: 'Para tu primera cuenta primero **completa los datos de tu contrato**: sin ellos no salen tus formatos.', accion: 'ir:proceso' };
+      if (cand && (cand.personales || []).length) return { texto: 'Para radicar o reportar tu cuenta primero **completa tus datos personales**: sin ellos no salen tus formatos ni tu pago.', accion: 'ir:personales' };
+      if (cand) return { texto: 'Para radicar o reportar tu cuenta primero **completa los datos de tu contrato**: sin ellos no salen tus formatos.', accion: 'ir:proceso' };
     }
     if (id === 'borrador') {
       var pc = porCorregir();

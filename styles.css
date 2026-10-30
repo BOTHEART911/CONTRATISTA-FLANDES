@@ -903,6 +903,11 @@
 }
 .cta-candado__rot { width: 100%; font-size: .8rem; font-weight: 700; color: var(--k-apagado); }
 .cta-candado .kit-btn { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+/* 30/10 · candado de datos: un botón por lo que falta (personales y contrato) */
+.cta-candado__botones { display: grid; gap: 8px; }
+/* 30/10 · reportar frenado por el candado de datos (ESTADO DE CUENTA) */
+.seg-accion__candado { margin: 10px 0 0; padding: 10px 12px; border-radius: var(--k-r-sm); background: var(--k-aviso-fondo); font-size: .86rem; display: flex; gap: 8px; align-items: flex-start; }
+.seg-accion__candado .kit-btn { margin-top: 8px; }
 .cta-exito__docs { font-size: .86rem; }
 .cta-exito__aviso {
   padding: 10px 12px;

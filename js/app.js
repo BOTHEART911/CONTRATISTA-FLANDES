@@ -636,11 +636,19 @@
    * CORE, que tiene el mismo candado. Con un CORE viejo no llegan esos dos
    * datos y cuenta.js lo deduce de cuentaEstado y de yaDiligenciado.
    */
+  /* 30/10 · CANDADO DE DATOS (Oss): el mismo candado, ampliado a TODAS las
+     cuentas y a REPORTAR, y con los DATOS PERSONALES. Sale del arranque
+     (contrato.faltanContrato y contrato.faltanPersonales): cero viajes.
+     Con un CORE que aún no manda faltanPersonales, se queda en la regla del
+     01/10 (solo contrato y solo la primera cuenta), que es la que ese CORE cumple. */
   function candadoContrato() {
     var c = CONTRATO;
-    if (!c || !FRESCO || !ARRANQUE || ARRANQUE.primeraCuenta !== true) return null;
-    if (!c.faltanContrato || !c.faltanContrato.length) return null;
-    return { faltan: c.faltanContrato, deContratacion: !!c.faltanDeContratacion };
+    if (!c || !FRESCO || !ARRANQUE) return null;
+    var nuevo = Array.isArray(c.faltanPersonales);
+    if (!nuevo && ARRANQUE.primeraCuenta !== true) return null;
+    var fc = c.faltanContrato || [], fp = nuevo ? c.faltanPersonales : [];
+    if (!fc.length && !fp.length) return null;
+    return { faltan: fc, personales: fp, deContratacion: fc.length ? !!c.faltanDeContratacion : false };
   }
   /* 24/10 · lo que el asistente (js/asistente-app.js) lee de la app, sin viajar */
   window.CONTRATISTA_APP = {
@@ -660,7 +668,7 @@
   function tarjetaCuenta() {
     var pc = porCorregir();
     if (!pc && candadoContrato()) {
-      var tc = acceso('INGRESAR CUENTA', 'Primero completa los datos de tu contrato',
+      var tc = acceso('INGRESAR CUENTA', 'Primero completa tus datos: sin ellos no radicas ni reportas',
         'img/datos_de_procesos.webp', function () { irA('cuenta'); });
       tc.classList.add('acceso--alerta');
       tc.appendChild(K.nodo('<span class="acceso__burbuja" aria-hidden="true">!</span>'));
@@ -964,7 +972,7 @@
       var faltan = c.faltanContrato || [];
       s.appendChild(K.nodo(
         '<p class="formulario__nota formulario__nota--fuerte">Todavía te faltan datos ' +
-        'obligatorios del contrato. Sin ellos no puedes ingresar tu primera cuenta' +
+        'obligatorios del contrato. Sin ellos no puedes radicar ni reportar tus cuentas' +
         (faltan.length ? ': <b>' + faltan.map(K.esc).join(', ') + '</b>.' : '.') + '</p>'
       ));
     }
@@ -1235,8 +1243,10 @@
             if (K.recuerdo) K.recuerdo.guardar(ligero(ARRANQUE));
           }
           var completo = !!(CONTRATO && CONTRATO.yaDiligenciado);
+          /* 30/10 · si aún faltan datos personales, la cuenta lo dice al llegar */
+          var faltaP = !!(CONTRATO && (CONTRATO.faltanPersonales || []).length);
           K.piezas.guardado.listo({ sub: completo && DESDE_CANDADO
-            ? 'Tu contrato quedó completo. Ya puedes ingresar tu primera cuenta.'
+            ? (faltaP ? 'Tu contrato quedó completo. Ahora completa tus datos personales.' : 'Tu contrato quedó completo. Ya puedes radicar tu cuenta.')
             : 'Tu contrato quedó al día.' });
           if (completo && DESDE_CANDADO) { DESDE_CANDADO = false; irA('cuenta'); return; }
           pintarContrato(caja);
@@ -1309,7 +1319,12 @@
     return K.pedir('listasDatos').then(function (l) { LISTAS = l; return l; });
   }
 
-  function vistaPersonales() {
+  /* 30/10 · #/personales/completar llega desde el candado de datos: al quedar
+     completos, vuelve a la cuenta sola, como #/proceso/completar. */
+  var DESDE_CANDADO_P = false;
+
+  function vistaPersonales(sub) {
+    DESDE_CANDADO_P = sub === 'completar';
     var caja = K.nodo('<div class="kit-ancho vista"></div>');
     app.appendChild(caja);
 
@@ -1319,12 +1334,30 @@
       ['catch'](function (e) { caja.appendChild(errorCaja(e)); });
   }
 
+  /* 30/10 · lo que falta, con la respuesta de misDatos / guardarMisDatos:
+     se parcha el arranque (y su recuerdo) para que el candado se abra sin viajar */
+  function parcharPersonales(d) {
+    if (!d || !Array.isArray(d.faltanPersonales) || !CONTRATO) return;
+    CONTRATO.faltanPersonales = d.faltanPersonales.slice();
+    if (ARRANQUE) {
+      ARRANQUE.contrato = CONTRATO;
+      if (K.recuerdo) K.recuerdo.guardar(ligero(ARRANQUE));
+    }
+  }
+
   function pintarFormulario(caja, d) {
     caja.innerHTML = '';
+    parcharPersonales(d);
     var D = {};
     var f = K.nodo('<form class="kit-tarjeta formulario" novalidate></form>');
 
     f.appendChild(K.nodo('<h3 class="grupo__t">DATOS PERSONALES</h3>'));
+    /* 30/10 · candado de datos: lo que falta, arriba y en una línea */
+    var faltanP = Array.isArray(d.faltanPersonales) ? d.faltanPersonales : [];
+    if (faltanP.length) {
+      f.appendChild(K.nodo('<p class="formulario__nota formulario__nota--fuerte">Te faltan datos obligatorios. ' +
+        'Sin ellos no puedes radicar ni reportar tus cuentas: <b>' + faltanP.map(K.esc).join(', ') + '</b>.</p>'));
+    }
     f.appendChild(K.nodo(
       '<p class="formulario__nota">El nombre y el documento los cambia Contratación, no la app. ' +
       'Todo lo demás lo puedes corregir tú, y queda al día en todos tus contratos a la vez.</p>'
@@ -1423,8 +1456,11 @@
       K.pedir('guardarMisDatos', { campos: campos })
         .then(function (r) {
           if (YO && campos.telefono) YO.telefono = campos.telefono;
-          K.piezas.guardado.listo({ sub: 'Tus datos quedaron al día.' });
-          pintarFormulario(caja, r.datos || d);
+          var dd = r.datos || d;
+          var quedan = Array.isArray(dd.faltanPersonales) ? dd.faltanPersonales.length : -1;
+          K.piezas.guardado.listo({ sub: quedan === 0 && DESDE_CANDADO_P ? 'Tus datos quedaron completos. Ya puedes seguir con tu cuenta.' : 'Tus datos quedaron al día.' });
+          if (quedan === 0 && DESDE_CANDADO_P) { parcharPersonales(dd); DESDE_CANDADO_P = false; irA('cuenta'); return; }
+          pintarFormulario(caja, dd);
         })
         ['catch'](function (e) {
           /* fallo() solo cierra el cohete; el porqué se dice con un aviso,
