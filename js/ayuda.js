@@ -127,7 +127,7 @@
 
     borradorObligacion: function () {
       return {
-        guia: 'Escribe **qué hiciste, cuánto y dónde**, en pasado. Abajo sube hasta 3 imágenes y, si lo tienes, hasta **5 archivos de evidencia** (PDF, Word o Excel) con su nombre: el primero en la casilla y los demás con **Agregar otro adjunto** (también arrastrándolos o con Ctrl+V). Con **Siguiente** pasas a la próxima obligación sin perder lo escrito.',
+        guia: 'Escribe **qué hiciste, cuánto y dónde**, en pasado. Abajo sube hasta 3 imágenes y, si lo tienes, hasta **5 archivos de evidencia** (PDF, Word o Excel) con su nombre: el primero en la casilla y los demás con **Agregar otro adjunto** (también arrastrándolos o con Ctrl+V). Con **Siguiente** pasas a la próxima obligación sin perder lo escrito. Desde tu segunda cuenta, **Traer de la cuenta anterior** copia lo que escribiste y el medidor te dice cuánto se repite: cuenta lo que hiciste **distinto** en este periodo.',
         alto: true,
         botones: [
           { texto: 'Dame un ejemplo', responde: function () {
