@@ -1323,15 +1323,62 @@
      completos, vuelve a la cuenta sola, como #/proceso/completar. */
   var DESDE_CANDADO_P = false;
 
+  /* 30/10 · DATOS PERSONALES AL INSTANTE.
+     Lo último que se vio de esta vista queda en la MEMORIA de la sesión (no
+     en el disco: trae la cuenta bancaria y la dirección), atado al token. Al
+     volver se pinta YA con eso y la lectura va de fondo; si llega algo
+     distinto y la persona no ha tocado nada, se repinta solo. La primera vez
+     se pinta la cabecera con lo que ya se sabe (nombre, documento y lo que
+     falta) mientras llegan los datos. Al guardar se parcha la memoria. */
+  var MISDATOS = null;
+  function huellaSesion() { var t = K.token ? K.token() : ''; return t ? String(t).slice(-24) : ''; }
+  function misDatosRecordados() {
+    var h = huellaSesion();
+    return (MISDATOS && h && MISDATOS.h === h) ? MISDATOS.d : null;
+  }
+  function recordarMisDatos(d) { if (d) MISDATOS = { h: huellaSesion(), d: d }; }
+
   function vistaPersonales(sub) {
     DESDE_CANDADO_P = sub === 'completar';
     var caja = K.nodo('<div class="kit-ancho vista"></div>');
     app.appendChild(caja);
 
+    var rec = misDatosRecordados();
+    if (rec && LISTAS) {
+      pintarFormulario(caja, rec);
+      K.pedir('misDatos', {}, { fondo: true })
+        .then(function (d) {
+          recordarMisDatos(d);
+          if (!caja.isConnected || !caja.__md) return;
+          if (caja.__md.tocado) { caja.__md.d = d; parcharPersonales(d); return; }
+          if (JSON.stringify(d) !== JSON.stringify(caja.__md.d)) pintarFormulario(caja, d);
+          else parcharPersonales(d);
+        })
+        ['catch'](function () { /* se queda lo recordado; guardar sigue validando en el CORE */ });
+      return;
+    }
+
+    pintarCabecera(caja);
+    var cuerpo = K.nodo('<div></div>');
+    caja.appendChild(cuerpo);
     var todo = Promise.all([K.pedir('misDatos'), listas()]);
-    K.piezas.esqueletos.mientras(caja, todo, { forma: 'texto', cuantos: 6 })
-      .then(function (r) { pintarFormulario(caja, r[0]); })
+    K.piezas.esqueletos.mientras(cuerpo, todo, { forma: 'texto', cuantos: 6 })
+      .then(function (r) { recordarMisDatos(r[0]); pintarFormulario(caja, r[0]); })
       ['catch'](function (e) { caja.appendChild(errorCaja(e)); });
+  }
+
+  /* La cabecera con lo que ya se sabe del arranque, antes de que llegue misDatos */
+  function pintarCabecera(caja) {
+    var y = YO || {}, faltan = (CONTRATO && Array.isArray(CONTRATO.faltanPersonales)) ? CONTRATO.faltanPersonales : [];
+    var c = K.nodo('<div class="kit-tarjeta formulario formulario--cabecera"></div>');
+    c.appendChild(K.nodo('<h3 class="grupo__t">DATOS PERSONALES</h3>'));
+    if (faltan.length) {
+      c.appendChild(K.nodo('<p class="formulario__nota formulario__nota--fuerte">Te faltan datos obligatorios. ' +
+        'Sin ellos no puedes radicar ni reportar tus cuentas: <b>' + faltan.map(K.esc).join(', ') + '</b>.</p>'));
+    }
+    if (y.nombre) c.appendChild(K.nodo('<div class="dato"><span class="dato__e">Nombre</span><span class="dato__v">' + K.esc(y.nombre) + '</span></div>'));
+    if (y.documento) c.appendChild(K.nodo('<div class="dato"><span class="dato__e">Documento</span><span class="dato__v">' + K.esc(y.documento) + '</span></div>'));
+    caja.appendChild(c);
   }
 
   /* 30/10 · lo que falta, con la respuesta de misDatos / guardarMisDatos:
@@ -1350,6 +1397,16 @@
     parcharPersonales(d);
     var D = {};
     var f = K.nodo('<form class="kit-tarjeta formulario" novalidate></form>');
+    /* 30/10 · estado de la vista: la base contra la que se compara (la
+       refresca la lectura de fondo) y si la persona ya tocó algo */
+    caja.__md = { d: d, D: D, tocado: false, ocupado: false };
+    var tocar = function (ev) {
+      caja.__md.tocado = true;
+      var c = ev && ev.target && ev.target.closest ? ev.target.closest('.campo') : null;
+      if (c) quitarError(c);
+    };
+    f.addEventListener('input', tocar);
+    f.addEventListener('change', tocar);
 
     f.appendChild(K.nodo('<h3 class="grupo__t">DATOS PERSONALES</h3>'));
     /* 30/10 · candado de datos: lo que falta, arriba y en una línea */
@@ -1367,23 +1424,24 @@
     f.appendChild(K.nodo('<div class="dato"><span class="dato__e">Documento</span>' +
       '<span class="dato__v">' + K.esc(d.documento || '') + '</span></div>'));
 
-    campoMunicipio(f, D, 'expedida', 'Municipio de expedición del documento',
+    var R = caja.__md.R = {};
+    R.expedida = campoMunicipio(f, D, 'expedida', 'Municipio de expedición del documento',
       'Escribe y elige de la lista. No aplica para personas jurídicas.', d.expedida);
-    campoTexto(f, D, 'telefono', 'Teléfono (línea de WhatsApp)',
+    R.telefono = campoTexto(f, D, 'telefono', 'Teléfono (línea de WhatsApp)',
       'Diez dígitos. Por aquí te llegan los avisos de tus cuentas.',
       { valor: d.telefono || '', numerico: 10, marcador: '3XXXXXXXXX' });
     campoTexto(f, D, 'direccion', 'Dirección de residencia',
       'Usa abreviaciones y no escribas el municipio. Ejemplo: Mz 5 Casa 16 B/ Orquídeas II',
       { valor: d.direccion || '', area: true });
-    campoMunicipio(f, D, 'municipio', 'Municipio de residencia',
+    R.municipio = campoMunicipio(f, D, 'municipio', 'Municipio de residencia',
       'Escribe y elige de la lista.', d.municipio);
-    campoTexto(f, D, 'correo', 'Correo personal',
+    R.correo = campoTexto(f, D, 'correo', 'Correo personal',
       'Uno que sea tuyo, no el institucional. Aquí llegan la orden de pago y el pago.',
       { valor: d.correo || '', marcador: 'tucorreo@gmail.com' });
 
     f.appendChild(K.nodo('<h3 class="grupo__t grupo__t--sub">Para el pago</h3>'));
     campoLista(f, D, 'tipoCuenta', 'Tipo de cuenta', '', LISTAS.tiposCuenta, d.tipoCuenta);
-    campoTexto(f, D, 'numeroCuenta', 'Número de cuenta',
+    R.numeroCuenta = campoTexto(f, D, 'numeroCuenta', 'Número de cuenta',
       'Sin puntos ni guiones. Si empieza por cero, escríbelo: hace falta.',
       { valor: d.numeroCuenta || '', numerico: 16 });
     campoLista(f, D, 'banco', 'Banco', '', LISTAS.bancos, d.banco);
@@ -1398,7 +1456,7 @@
 
     f.appendChild(K.nodo('<h3 class="grupo__t grupo__t--sub">Firma y nacimiento</h3>'));
     campoFirma(f, D, d);
-    campoFecha(f, D, 'nacimiento', 'Fecha de nacimiento',
+    R.nacimiento = campoFecha(f, D, 'nacimiento', 'Fecha de nacimiento',
       'No aplica para personas jurídicas.', d.nacimiento, { desde: 1930, hastaHoy: true });
 
     var botones = K.nodo('<div class="campo-fila campo-fila--botones"></div>');
@@ -1408,7 +1466,7 @@
 
     f.addEventListener('submit', function (ev) {
       ev.preventDefault();
-      mandarMisDatos(caja, d, D);
+      mandarMisDatos(caja, guardar);
     });
 
     caja.appendChild(f);
@@ -1416,7 +1474,65 @@
     K.piezas.creditos.montar(caja);
   }
 
-  function mandarMisDatos(caja, d, D) {
+  /* 30/10 · VALIDAR EN EL TELÉFONO ANTES DE VIAJAR. Las mismas reglas del CORE
+     (FC_guardarMisDatos), solo sobre lo que cambió: así el error se ve en el
+     campo, al instante, y no tras 3 segundos de viaje. El CORE sigue validando. */
+  var CORREO_OK = /^[^@\s,;]+@[^@\s,;]+\.[^@\s,;]{2,}$/;
+  function validarMisDatos(campos) {
+    var mal = [];
+    if (campos.telefono !== undefined && !/^3\d{9}$/.test(campos.telefono)) {
+      mal.push(['telefono', 'Son 10 dígitos y empieza por 3.']);
+    }
+    if (campos.correo !== undefined && !CORREO_OK.test(campos.correo)) {
+      mal.push(['correo', 'Ese correo no está bien escrito. Ejemplo: tucorreo@gmail.com']);
+    }
+    if (campos.numeroCuenta !== undefined && (campos.numeroCuenta.length < 7 || campos.numeroCuenta.length > 16)) {
+      mal.push(['numeroCuenta', 'El número de cuenta tiene entre 7 y 16 dígitos.']);
+    }
+    ['expedida', 'municipio'].forEach(function (k) {
+      if (campos[k] === undefined) return;
+      if (!municipioEnLista(campos[k])) mal.push([k, 'Ese municipio no está en la lista oficial. Elige el departamento y el municipio.']);
+    });
+    if (campos.nacimiento !== undefined) {
+      var m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(campos.nacimiento);
+      var f = m ? new Date(+m[3], +m[2] - 1, +m[1]) : null;
+      var anios = f ? (Date.now() - f.getTime()) / 31557600000 : -1;
+      if (!f || anios < 18 || anios > 100) mal.push(['nacimiento', 'Revisa la fecha de nacimiento.']);
+    }
+    return mal;
+  }
+
+  /* Sin catálogo (arranque viejo) no se puede saber aquí: decide el CORE. */
+  function municipioEnLista(nombre) {
+    var cat = catalogoMunicipios();
+    if (!cat || !cat.mapa) return true;
+    var n = K.norm(nombre);
+    for (var dp in cat.mapa) {
+      if (!Object.prototype.hasOwnProperty.call(cat.mapa, dp)) continue;
+      var l = cat.mapa[dp] || [];
+      for (var i = 0; i < l.length; i++) if (K.norm(l[i]) === n) return true;
+    }
+    return false;
+  }
+
+  function marcarError(nodo, msg) {
+    var c = nodo && nodo.closest ? nodo.closest('.campo') : null;
+    if (!c) return;
+    quitarError(c);
+    c.classList.add('campo--mal');
+    c.appendChild(K.nodo('<p class="campo__error">' + K.esc(msg) + '</p>'));
+  }
+  function quitarError(c) {
+    if (!c || !c.classList.contains('campo--mal')) return;
+    c.classList.remove('campo--mal');
+    var e = c.querySelector('.campo__error');
+    if (e) e.parentNode.removeChild(e);
+  }
+
+  function mandarMisDatos(caja, boton) {
+    var md = caja.__md;
+    if (!md || md.ocupado) return;              /* ya hay un guardado en marcha */
+    var d = md.d, D = md.D;
     var ROTULOS = {
       expedida: 'Municipio de expedición', telefono: 'Teléfono',
       direccion: 'Dirección', municipio: 'Municipio de residencia',
@@ -1442,33 +1558,54 @@
       return;
     }
 
+    var mal = validarMisDatos(campos);
+    if (mal.length) {
+      mal.forEach(function (x) { marcarError(md.R && md.R[x[0]], x[1]); });
+      var primero = md.R && md.R[mal[0][0]];
+      /* el foco solo a un campo de escribir: en la fecha abriría la rueda */
+      if (primero && primero.focus && !primero.readOnly && primero.tagName !== 'SELECT') { try { primero.focus({ preventScroll: true }); } catch (e0) {} }
+      if (primero && primero.scrollIntoView) { try { primero.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e1) {} }
+      K.aviso(mal.length === 1 ? 'Revisa el campo marcado en rojo.' : 'Revisa los ' + mal.length + ' campos marcados en rojo.', 'malo', 5000);
+      return;
+    }
+
+    /* botón ocupado desde el primer toque: nada de doble envío */
+    md.ocupado = true;
+    if (boton) boton.disabled = true;
+    var soltar = function () { md.ocupado = false; if (boton) boton.disabled = false; };
+
     K.piezas.confirmar.abrir({
       titulo: 'Resumen de cambios',
       lista: lista,
       nota: 'Estos datos salen impresos en los formatos de tus cuentas.',
       si: 'Confirmar', no: 'Editar'
     }).then(function (ok) {
-      if (!ok) return;
+      if (!ok) { soltar(); return; }
+      var finEscudo = (K.piezas.antidoble && K.piezas.antidoble.escudo) ? K.piezas.antidoble.escudo() : function () {};
       K.piezas.guardado.abrir({
         titulo: 'Guardando tus datos',
         sub: 'No cierres esta ventana hasta que termine.'
       });
+      /* el kit le pone su 'rid': un reintento por red no repite el guardado */
       K.pedir('guardarMisDatos', { campos: campos })
         .then(function (r) {
+          finEscudo(); soltar();
           if (YO && campos.telefono) YO.telefono = campos.telefono;
           var dd = r.datos || d;
+          recordarMisDatos(dd);                 /* la memoria de la vista queda con lo guardado */
           var quedan = Array.isArray(dd.faltanPersonales) ? dd.faltanPersonales.length : -1;
           K.piezas.guardado.listo({ sub: quedan === 0 && DESDE_CANDADO_P ? 'Tus datos quedaron completos. Ya puedes seguir con tu cuenta.' : 'Tus datos quedaron al día.' });
           if (quedan === 0 && DESDE_CANDADO_P) { parcharPersonales(dd); DESDE_CANDADO_P = false; irA('cuenta'); return; }
-          pintarFormulario(caja, dd);
+          if (caja.isConnected) pintarFormulario(caja, dd); else parcharPersonales(dd);
         })
         ['catch'](function (e) {
+          finEscudo(); soltar();
           /* fallo() solo cierra el cohete; el porqué se dice con un aviso,
              que es donde el usuario está mirando. */
           K.piezas.guardado.fallo();
           K.aviso(e && e.message ? e.message : 'No se pudo guardar', 'malo', 7000);
         });
-    });
+    }, function () { soltar(); });
   }
 
   /* ══════════════ piezas de formulario ══════════════ */

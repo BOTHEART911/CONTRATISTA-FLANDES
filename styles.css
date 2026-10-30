@@ -2234,3 +2234,10 @@
   .seg-dato--fuentes { flex-direction: column; gap: 3px; }
   .seg-dato--fuentes dd { text-align: left; }
 }
+
+/* 30/10 · datos personales: el campo que no pasa la validación del teléfono */
+.campo--mal input, .campo--mal select, .campo--mal textarea {
+  border-color: var(--k-malo) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--k-malo) 16%, transparent) !important;
+}
+.formulario--cabecera { margin-bottom: 14px; }

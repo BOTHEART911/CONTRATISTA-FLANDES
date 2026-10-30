@@ -273,6 +273,8 @@
         botones: [
           { texto: '¿Por qué importa el correo?', responde: function () {
               return 'A tu correo personal llegan la **orden de pago** y el **comprobante de pago**. Usa uno tuyo, no el institucional.'; } },
+          { texto: '¿Por qué sale un campo en rojo?', responde: function () {
+              return 'La app revisa antes de guardar: el **teléfono** son 10 dígitos y empieza por 3, el **correo** tiene que estar bien escrito, el **número de cuenta** tiene de 7 a 16 dígitos, el **municipio** se elige de la lista y la **fecha de nacimiento** es de mayor de edad. Corrige lo marcado en rojo y vuelve a tocar **Guardar cambios**.'; } },
           { texto: 'Mi cuenta empieza por cero', responde: function () {
               return 'Escríbelo con el cero: el campo lo respeta. Sin ese cero el banco rechaza la transferencia.'; } },
           { texto: '¿Cómo cambio mi foto?', responde: function () {
