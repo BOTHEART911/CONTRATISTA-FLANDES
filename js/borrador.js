@@ -127,7 +127,7 @@
     var a0 = anclaDeCuenta();
     var cambia = a0 ? !ANCLA0 || ANCLA0.t !== a0.t : !!ANCLA0;
     if (cambia) { ANCLA0 = a0; E = null; }
-    if (E) { pintar(caja, sub); return; }
+    if (E) { pintar(caja, sub); precargarAnteriores(); return; }
 
     K.piezas.esqueletos.mientras(caja, K.pedir('borradorEstado', ANCLA0 ? { ancla: ANCLA0 } : {}), { forma: 'tarjetas', cuantos: 4 })
       .then(function (d) {
@@ -142,6 +142,7 @@
           K.aviso('Recuperamos lo que estabas escribiendo la última vez.', 'info', 5000);
         }
         pintar(caja, sub);
+        precargarAnteriores();
       })
       ['catch'](function (e) { caja.appendChild(errorCaja(e)); });
   }
@@ -378,6 +379,83 @@
     return t.length > n ? (t.slice(0, n - 1) + '…') : t;
   }
 
+  /* ══════════════ 30/10 · VARIACIÓN DE LA REDACCIÓN ══════════════
+     Trae la actividad de la cuenta anterior y mide EN VIVO cuánto se repite,
+     con la misma regla del informe gerencial (kit/variacion.js). No genera
+     texto: lo que se escribe es lo que la persona hizo. Las actividades
+     anteriores viajan de FONDO al abrir el borrador: la vista no espera. */
+  function claveAnt() { return E ? 'act:' + E.idContrato + ':' + E.informe : ''; }
+  function precargarAnteriores() {
+    var V = K.piezas.variacion;
+    if (!V || !E || !(Number(E.informe) > 1)) return null;
+    return V.anteriores('actividadesAnteriores', { informe: E.informe }, claveAnt());
+  }
+
+  function tarjetaVariacion(donde, o, i, area, cuenta) {
+    var V = K.piezas.variacion;
+    if (!V || !donde || !(Number(E.informe) > 1)) return;
+    var t = K.nodo('<div class="var-bor" aria-live="polite">' +
+      '<div class="var-bor__cab"><p class="var-bor__t">' + K.icono('grafica', 16) + ' Variación frente a tus cuentas anteriores</p></div>' +
+      '<div class="var-bor__res"><span class="var-pas var-pas--gen">Cargando tus cuentas anteriores…</span></div>' +
+      '</div>');
+    donde.appendChild(t);
+    var res = t.querySelector('.var-bor__res');
+    var p = precargarAnteriores();
+    if (K.vista && K.vista.adoptar && p) K.vista.adoptar(p);
+    Promise.all([p, V.ic()]).then(function (r) {
+      if (!t.isConnected) return;
+      var d = r[0], I = r[1];
+      var prev = V.previosDe(d, o.n);
+      res.innerHTML = '';
+      if (!prev.length) { res.appendChild(K.nodo('<p class="var-nada">Tus cuentas anteriores no tienen actividad en esta obligación: no hay con qué comparar.</p>')); return; }
+      var ultima = prev[prev.length - 1];
+      var pas = K.nodo('<div class="var-bor__cab"></div>');
+      var consejo = K.nodo('<p class="var-bor__consejo" hidden></p>');
+      var btns = K.nodo('<div class="var-bor__btns"></div>');
+      var traer = K.nodo('<button type="button" class="kit-btn">' + K.icono('copiar', 16) + ' Traer de la cuenta ' + ultima.informe + '</button>');
+      var verRep = K.nodo('<button type="button" class="kit-btn kit-btn--plano">' + K.icono('buscar', 16) + ' Ver qué se repite</button>');
+      btns.appendChild(traer); btns.appendChild(verRep);
+      var ver = K.nodo('<div class="var-bor__ver" hidden></div>');
+      var guia = K.nodo('<details><summary>Cómo variar tu redacción (sin inventar)</summary><ul class="var-bor__tips"></ul></details>');
+      V.preguntas.forEach(function (q) { guia.querySelector('ul').appendChild(K.nodo('<li>' + K.esc(q) + '</li>')); });
+      guia.querySelector('ul').appendChild(K.nodo('<li>Escribe solo lo que hiciste y puedes demostrar con tus evidencias.</li>'));
+      res.appendChild(pas); res.appendChild(consejo); res.appendChild(btns); res.appendChild(ver); res.appendChild(guia);
+
+      var reloj = null;
+      function medirYa() {
+        var m = V.medir(I, area.value, prev, d.contrato, o.texto);
+        pas.innerHTML = String(area.value || '').trim() ? V.pastilla(m) : '<span class="var-pas var-pas--gen">Escribe la actividad de este periodo para medirla</span>';
+        var c = String(area.value || '').trim() ? V.consejos(m) : [];
+        consejo.hidden = !c.length; consejo.textContent = c.join(' ');
+        if (!ver.hidden) ver.innerHTML = V.marcar(I, area.value, prev) || '<i>Sin texto.</i>';
+      }
+      area.addEventListener('input', function () { clearTimeout(reloj); reloj = setTimeout(medirYa, 250); });
+      verRep.addEventListener('click', function () {
+        ver.hidden = !ver.hidden;
+        verRep.innerHTML = K.icono('buscar', 16) + (ver.hidden ? ' Ver qué se repite' : ' Ocultar');
+        medirYa();
+      });
+      traer.addEventListener('click', function () {
+        K.vibrar(8);
+        var poner = function () {
+          area.value = ultima.texto;
+          textos[i] = area.value; cuenta.textContent = area.value.length; sucio = true; respaldar();
+          medirYa();
+          K.aviso('Listo. Ahora cambia lo que hiciste distinto en este periodo: el medidor te dice cuánto repites.', 'info', 6000);
+          area.focus();
+        };
+        if (!String(area.value || '').trim()) { poner(); return; }
+        K.piezas.confirmar.abrir({ titulo: 'Traer la actividad de la cuenta ' + ultima.informe,
+          lista: [['Reemplaza', 'lo que escribiste en esta obligación']], si: 'Reemplazar', no: 'Cancelar' })
+          .then(function (ok) { if (ok) poner(); });
+      });
+      medirYa();
+    })['catch'](function () {
+      /* CORE sin la ruta o sin red: la tarjeta se va sin estorbar */
+      if (t.isConnected) t.remove();
+    });
+  }
+
   /* ══════════════ editor de una obligación ══════════════ */
 
   function editor(caja, n) {
@@ -441,6 +519,7 @@
       respaldar();
     });
 
+    tarjetaVariacion(v.querySelector('.edi__campo'), o, i, area, cuenta);
     zonaEvidencia(v.querySelector('#edi-zona'), i);
     if (ARCH_ON) zonaArchivo(v.querySelector('#edi-arch'), i);
 
