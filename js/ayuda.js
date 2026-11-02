@@ -127,11 +127,13 @@
 
     borradorObligacion: function () {
       return {
-        guia: 'Escribe **qué hiciste, cuánto y dónde**, en pasado. Abajo sube hasta 3 imágenes y, si lo tienes, hasta **5 archivos de evidencia** (PDF, Word o Excel) con su nombre: el primero en la casilla y los demás con **Agregar otro adjunto** (también arrastrándolos o con Ctrl+V). Con **Siguiente** pasas a la próxima obligación sin perder lo escrito. Desde tu segunda cuenta, **Traer de la cuenta anterior** copia lo que escribiste y el medidor te dice cuánto se repite: cuenta lo que hiciste **distinto** en este periodo.',
+        guia: 'Escribe **qué hiciste, cuánto y dónde**, en pasado. Abajo sube hasta 3 imágenes y, si lo tienes, hasta **5 archivos de evidencia** (PDF, Word o Excel) con su nombre: el primero en la casilla y los demás con **Agregar otro adjunto** (también arrastrándolos o con Ctrl+V). Con **Siguiente** pasas a la próxima obligación sin perder lo escrito. Mientras escribes se encienden **6 bombillos**: qué hiciste distinto, **cuántos**, **para quién**, qué **resultado** quedó, **cuándo** y si tiene **soporte** (verde = está, rojo = falta, gris = no aplica). Toca uno y se resalta el fragmento que lo cumple. Los términos de tu obligación los puedes repetir: se mide la **forma** de escribir, no las palabras. Desde tu segunda cuenta, **Traer de la cuenta anterior** copia lo que escribiste: cambia lo que hiciste **distinto** y enriquécelo. Es una guía: no te impide radicar.',
         alto: true,
         botones: [
           { texto: 'Dame un ejemplo', responde: function () {
               return '«**Elaboré 4 informes** técnicos de interventoría y **asistí a 6 comités** de obra en el barrio Villa Magdalena.»'; } },
+          { texto: '¿Qué son los bombillos?', responde: function () {
+              return 'Seis preguntas que hace un buen revisor: **¿Qué hiciste en ESTE periodo que no hiciste en el anterior?** (rojo si la forma de escribir es igual a tu cuenta anterior o si solo cambiaste cifras y fechas) · **¿Cuántos?** (una cifra junto a lo que contaste: «18 visitas técnicas»; una fecha o el número de un anexo no cuentan) · **¿Para quién o con quién?** · **¿Qué quedó?** (se entregó, se radicó, quedó el acta…) · **¿Cuándo?** (amarillo si la fecha cae fuera del periodo) · **Soporte** (evidencias o adjuntos cargados). Si repites una cantidad de la cuenta anterior te lo avisa, pero es válido si es verdad y tus evidencias lo soportan.'; } },
           { texto: '¿Qué foto sirve como evidencia?', responde: function () {
               return 'Una que muestre la actividad: la reunión con su lista de asistencia, el sitio intervenido, la pantalla del informe entregado. Nada de fotos personales ni capturas borrosas.'; } },
           { texto: '¿Qué va en el archivo de evidencia?', responde: function () {

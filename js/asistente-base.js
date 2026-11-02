@@ -5,6 +5,31 @@
    Generado desde la semilla: no se edita a mano. */
 window.ASISTENTE_BASE = [
 {
+"id": "C-BOMBILLOS",
+"app": "CONTRATISTA",
+"vista": "borrador,borradorObligacion",
+"titulo": "¿Qué son los bombillos de mi actividad?",
+"frases": [
+"que son los bombillos",
+"bombillo rojo",
+"bombillos de la actividad",
+"por que sale en rojo",
+"como apago el rojo",
+"como varío la redacción",
+"me dice que repito",
+"forma de escribir igual",
+"plantilla rellenada",
+"como mejorar mi actividad",
+"que le falta a mi actividad",
+"misma cantidad que la cuenta anterior"
+],
+"respuesta": "Mientras escribes una actividad se encienden **6 bombillos**: **¿qué hiciste distinto?** (rojo si la forma de escribir es igual a tu cuenta anterior o si solo cambiaste cifras y fechas), **¿cuántos?** (la cifra junto a lo que contaste: «18 visitas técnicas»), **¿para quién o con quién?**, **¿qué quedó?** (se entregó, se radicó, quedó el acta), **¿cuándo?** (amarillo si la fecha cae fuera del periodo) y **soporte** (evidencias o adjuntos cargados). Toca uno y se resalta lo que lo cumple. Los términos de tu obligación sí los puedes repetir: se mide la **forma**, no las palabras. Es una guía: no te impide radicar.",
+"accion": "ir:borrador",
+"estado": "",
+"activo": true,
+"orden": 70
+},
+{
 "id": "C-INICIO",
 "app": "CONTRATISTA",
 "vista": "",

@@ -380,68 +380,104 @@
   }
 
   /* ══════════════ 30/10 · VARIACIÓN DE LA REDACCIÓN ══════════════
-     Trae la actividad de la cuenta anterior y mide EN VIVO cuánto se repite,
-     con la misma regla del informe gerencial (kit/variacion.js). No genera
-     texto: lo que se escribe es lo que la persona hizo. Las actividades
+     02/11 · LOS 6 BOMBILLOS EN VIVO. Mientras escribe (300 ms después de la
+     última tecla), el mismo motor del informe gerencial (kit/variacion.js)
+     mide la FORMA de escribir frente a sus cuentas anteriores y enciende 6
+     bombillos: qué hizo distinto, cuántos, para quién, resultado, cuándo y
+     soporte. Cada uno dice qué detectó y, al tocarlo, resalta el fragmento.
+     No genera texto ni bloquea radicar: es una guía. Las actividades
      anteriores viajan de FONDO al abrir el borrador: la vista no espera. */
   function claveAnt() { return E ? 'act:' + E.idContrato + ':' + E.informe : ''; }
   function precargarAnteriores() {
     var V = K.piezas.variacion;
-    if (!V || !E || !(Number(E.informe) > 1)) return null;
+    if (!V || !E) return null;
+    if (!(Number(E.informe) > 1)) return Promise.resolve({ v: 2, obligaciones: [], cuentas: [], actual: null });
     return V.anteriores('actividadesAnteriores', { informe: E.informe }, claveAnt());
+  }
+  /** Un adjunto o una evidencia cambió: los bombillos de esa obligación se vuelven a medir. */
+  function cambioSoporte(i) {
+    try { document.dispatchEvent(new CustomEvent('var:soporte', { detail: i })); } catch (e) {}
   }
 
   function tarjetaVariacion(donde, o, i, area, cuenta) {
     var V = K.piezas.variacion;
-    if (!V || !donde || !(Number(E.informe) > 1)) return;
+    if (!V || !donde) return;
+    var primera = !(Number(E.informe) > 1);
     var t = K.nodo('<div class="var-bor" aria-live="polite">' +
-      '<div class="var-bor__cab"><p class="var-bor__t">' + K.icono('grafica', 16) + ' Variación frente a tus cuentas anteriores</p></div>' +
-      '<div class="var-bor__res"><span class="var-pas var-pas--gen">Cargando tus cuentas anteriores…</span></div>' +
+      '<div class="var-bor__cab"><p class="var-bor__t">' + K.icono('grafica', 16) + ' Así va tu actividad</p></div>' +
+      '<div class="var-bor__res"><span class="var-pas var-pas--gen">Preparando tus bombillos…</span></div>' +
       '</div>');
     donde.appendChild(t);
     var res = t.querySelector('.var-bor__res');
     var p = precargarAnteriores();
-    if (K.vista && K.vista.adoptar && p) K.vista.adoptar(p);
+    if (K.vista && K.vista.adoptar && p && !primera) K.vista.adoptar(p);
     Promise.all([p, V.ic()]).then(function (r) {
       if (!t.isConnected) return;
-      var d = r[0], I = r[1];
-      var prev = V.previosDe(d, o.n);
-      res.innerHTML = '';
-      if (!prev.length) { res.appendChild(K.nodo('<p class="var-nada">Tus cuentas anteriores no tienen actividad en esta obligación: no hay con qué comparar.</p>')); return; }
+      var d = r[0] || {}, I = r[1];
+      var prev = primera ? [] : V.previosDe(d, o.n);
+      var P = V.preparar(I, o.texto, prev, d.contrato || E.contrato || '');
+      var per = V.periodo(d);
       var ultima = prev[prev.length - 1];
+      res.innerHTML = '';
       var pas = K.nodo('<div class="var-bor__cab"></div>');
       var consejo = K.nodo('<p class="var-bor__consejo" hidden></p>');
-      var btns = K.nodo('<div class="var-bor__btns"></div>');
-      var traer = K.nodo('<button type="button" class="kit-btn">' + K.icono('copiar', 16) + ' Traer de la cuenta ' + ultima.informe + '</button>');
-      var verRep = K.nodo('<button type="button" class="kit-btn kit-btn--plano">' + K.icono('buscar', 16) + ' Ver qué se repite</button>');
-      btns.appendChild(traer); btns.appendChild(verRep);
+      var luces = K.nodo('<div class="var-bor__luces"></div>');
       var ver = K.nodo('<div class="var-bor__ver" hidden></div>');
+      var btns = K.nodo('<div class="var-bor__btns"></div>');
+      var traer = null, verRep = null;
+      if (ultima) {
+        traer = K.nodo('<button type="button" class="kit-btn">' + K.icono('copiar', 16) + ' Traer de la cuenta ' + ultima.informe + '</button>');
+        verRep = K.nodo('<button type="button" class="kit-btn kit-btn--plano">' + K.icono('buscar', 16) + ' Ver qué se repite</button>');
+        btns.appendChild(traer); btns.appendChild(verRep);
+      }
       var guia = K.nodo('<details><summary>Cómo variar tu redacción (sin inventar)</summary><ul class="var-bor__tips"></ul></details>');
       V.preguntas.forEach(function (q) { guia.querySelector('ul').appendChild(K.nodo('<li>' + K.esc(q) + '</li>')); });
+      guia.querySelector('ul').appendChild(K.nodo('<li>Los términos propios de tu obligación (visitas, expedientes, procesos…) puedes repetirlos: lo que se mide es la forma de escribir, no las palabras.</li>'));
       guia.querySelector('ul').appendChild(K.nodo('<li>Escribe solo lo que hiciste y puedes demostrar con tus evidencias.</li>'));
-      res.appendChild(pas); res.appendChild(consejo); res.appendChild(btns); res.appendChild(ver); res.appendChild(guia);
+      res.appendChild(pas); res.appendChild(consejo); res.appendChild(luces); res.appendChild(ver);
+      if (ultima) res.appendChild(btns);
+      res.appendChild(guia);
+      if (!ultima && !primera) res.appendChild(K.nodo('<p class="var-nada">Tus cuentas anteriores no tienen actividad en esta obligación: el primer bombillo no aplica.</p>'));
 
-      var reloj = null;
-      function medirYa() {
-        var m = V.medir(I, area.value, prev, d.contrato, o.texto);
-        pas.innerHTML = String(area.value || '').trim() ? V.pastilla(m) : '<span class="var-pas var-pas--gen">Escribe la actividad de este periodo para medirla</span>';
-        var c = String(area.value || '').trim() ? V.consejos(m) : [];
-        consejo.hidden = !c.length; consejo.textContent = c.join(' ');
-        if (!ver.hidden) ver.innerHTML = V.marcar(I, area.value, prev) || '<i>Sin texto.</i>';
+      var reloj = null, ultimo = null, modoVer = '';
+      function soporte() { return ((evidencias[i] || []).length) + ((archivos[i] || []).length); }
+      function pintarVer(rangos, clase) {
+        if (!String(area.value || '').trim()) { ver.innerHTML = '<i>Sin texto.</i>'; return; }
+        ver.innerHTML = V.resaltar(area.value, rangos, clase);
       }
-      area.addEventListener('input', function () { clearTimeout(reloj); reloj = setTimeout(medirYa, 250); });
-      verRep.addEventListener('click', function () {
-        ver.hidden = !ver.hidden;
-        verRep.innerHTML = K.icono('buscar', 16) + (ver.hidden ? ' Ver qué se repite' : ' Ocultar');
-        medirYa();
+      function medirYa() {
+        var t0 = performance.now();
+        var R = V.medir(I, area.value, P, { obl: o.texto, desde: per.desde, hasta: per.hasta, soporte: soporte(), nContrato: d.contrato || '' });
+        ultimo = R;
+        var vacio = !String(area.value || '').trim();
+        pas.innerHTML = vacio ? '<span class="var-pas var-pas--gen">Escribe la actividad de este periodo y se encienden tus bombillos</span>' : V.pastilla(R);
+        var c = vacio ? '' : V.consejo(R);
+        consejo.hidden = !c; consejo.textContent = c;
+        luces.innerHTML = '';
+        if (!vacio) luces.appendChild(V.bombillos(R, 'contratista', function (k, rangos) {
+          if (k < 0) { ver.hidden = modoVer !== 'rep'; if (!ver.hidden) pintarVer(R.rep, 'var-rep'); return; }
+          modoVer = 'b'; ver.hidden = false; pintarVer(rangos, k === 0 ? 'var-rep' : 'var-hit');
+        }));
+        if (modoVer === 'rep' && !ver.hidden) pintarVer(R.rep, 'var-rep');
+        else if (modoVer === 'b') { ver.hidden = true; modoVer = ''; }
+        if (window.KIT_MED) window.KIT_MED.push(performance.now() - t0);
+      }
+      area.addEventListener('input', function () { clearTimeout(reloj); reloj = setTimeout(medirYa, V.ESPERA || 300); });
+      var alSoporte = function (ev) { if (!t.isConnected) { document.removeEventListener('var:soporte', alSoporte); return; } if (ev.detail === i) medirYa(); };
+      document.addEventListener('var:soporte', alSoporte);
+      if (verRep) verRep.addEventListener('click', function () {
+        var abrir = !(modoVer === 'rep' && !ver.hidden);
+        modoVer = abrir ? 'rep' : ''; ver.hidden = !abrir;
+        verRep.innerHTML = K.icono('buscar', 16) + (abrir ? ' Ocultar' : ' Ver qué se repite');
+        if (abrir) pintarVer(ultimo ? ultimo.rep : [], 'var-rep');
       });
-      traer.addEventListener('click', function () {
+      if (traer) traer.addEventListener('click', function () {
         K.vibrar(8);
         var poner = function () {
           area.value = ultima.texto;
           textos[i] = area.value; cuenta.textContent = area.value.length; sucio = true; respaldar();
           medirYa();
-          K.aviso('Listo. Ahora cambia lo que hiciste distinto en este periodo: el medidor te dice cuánto repites.', 'info', 6000);
+          K.aviso('Listo. Ahora cuenta lo que hiciste distinto en este periodo y enciende los bombillos: cuántos, para quién, qué quedó y cuándo.', 'info', 7000);
           area.focus();
         };
         if (!String(area.value || '').trim()) { poner(); return; }
@@ -706,6 +742,7 @@
         })
         .then(function (r) {
           evidencias[i] = listaEvi(r.urls && r.urls.length ? r.urls : r.url);
+          cambioSoporte(i);
           if (r.informe) E.informe = r.informe;
           if (r.fila && !E.fila) E.fila = r.fila;   /* 23/10 · la fila nueva viaja en el ancla */
           puestas++;
@@ -737,6 +774,7 @@
       pedirB('evidenciaQuitar', { obligacion: i + 1, ranura: ranura })
         .then(function (r) {
           evidencias[i] = listaEvi(r && r.urls);
+          cambioSoporte(i);
           K.piezas.guardado.listo({ sub: 'Ya la quitamos.' });
           zonaEvidencia(destino, i);
         })
@@ -1091,6 +1129,7 @@
   /* La lista que manda el CORE manda (trae los números al día); con un CORE
      de antes se arma aquí. */
   function aplicarLista(i, r, reemplaza) {
+    setTimeout(function () { cambioSoporte(i); }, 0);   /* 02/11 · los bombillos se vuelven a medir */
     if (r && Object.prototype.toString.call(r.todos) === '[object Array]') { archivos[i] = r.todos.slice(); return; }
     var lista = archDe(i), hecho = false;
     lista.forEach(function (x, j) { if (reemplaza && x.id === reemplaza) { lista[j] = r.archivo; hecho = true; } });
@@ -1219,6 +1258,7 @@
         .then(function (r) {
           if (r && Object.prototype.toString.call(r.todos) === '[object Array]') archivos[i] = r.todos.slice();
           else archivos[i] = archDe(i).filter(function (x) { return x.id !== a.id; });
+          cambioSoporte(i);
           delete localArch[a.id];
           K.piezas.guardado.listo({ sub: 'Ya lo quitamos.' });
           zonaArchivo(destino, i);
