@@ -447,7 +447,7 @@
       }
       function medirYa() {
         var t0 = performance.now();
-        var R = V.medir(I, area.value, P, { obl: o.texto, desde: per.desde, hasta: per.hasta, soporte: soporte(), nContrato: d.contrato || '' });
+        var R = V.medir(I, area.value, P, { obl: o.texto, desde: per.desde, hasta: per.hasta, soporte: soporte(), nContrato: d.contrato || '', avisarPeriodo: true });
         ultimo = R;
         var vacio = !String(area.value || '').trim();
         pas.innerHTML = vacio ? '<span class="var-pas var-pas--gen">Escribe la actividad de este periodo y se encienden tus bombillos</span>' : V.pastilla(R);

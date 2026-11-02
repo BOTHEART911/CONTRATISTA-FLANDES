@@ -23,7 +23,7 @@ window.ASISTENTE_BASE = [
 "que le falta a mi actividad",
 "misma cantidad que la cuenta anterior"
 ],
-"respuesta": "Mientras escribes una actividad se encienden **6 bombillos**: **¿qué hiciste distinto?** (rojo si la forma de escribir es igual a tu cuenta anterior o si solo cambiaste cifras y fechas), **¿cuántos?** (la cifra junto a lo que contaste: «18 visitas técnicas»), **¿para quién o con quién?**, **¿qué quedó?** (se entregó, se radicó, quedó el acta), **¿cuándo?** (amarillo si la fecha cae fuera del periodo) y **soporte** (evidencias o adjuntos cargados). Toca uno y se resalta lo que lo cumple. Los términos de tu obligación sí los puedes repetir: se mide la **forma**, no las palabras. Es una guía: no te impide radicar.",
+"respuesta": "Mientras escribes una actividad se encienden **6 bombillos**: **¿qué hiciste distinto?** (rojo si la forma de escribir es igual a tu cuenta anterior o si solo cambiaste cifras y fechas), **¿cuántos?** (la cifra junto a lo que contaste: «18 visitas técnicas»), **¿para quién o con quién?**, **¿qué quedó?** (se entregó, se radicó, quedó el acta), **¿cuándo?** (naranja si la fecha cae fuera del periodo; si aún no ingresas el periodo, se determina al ingresarlo) y **¿lo puedes demostrar o tu supervisor lo puede verificar?** (verde con evidencias o adjuntos cargados, o si escribes que no requiere adjunto; naranja si solo dices dónde verificarlo, como «en la carpeta física 12»). Toca uno y se resalta lo que lo cumple. Los términos de tu obligación sí los puedes repetir: se mide la **forma**, no las palabras. Es una guía: no te impide radicar.",
 "accion": "ir:borrador",
 "estado": "",
 "activo": true,
