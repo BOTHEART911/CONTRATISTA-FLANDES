@@ -5,6 +5,29 @@
    Generado desde la semilla: no se edita a mano. */
 window.ASISTENTE_BASE = [
 {
+"id": "C-TEAYUDO",
+"app": "CONTRATISTA",
+"vista": "borrador,borradorObligacion",
+"titulo": "¿Qué hace el botón «Te ayudo»?",
+"frases": [
+"te ayudo",
+"boton te ayudo",
+"que hace te ayudo",
+"como mejoro mi texto",
+"version mejorada",
+"que son los corchetes",
+"corchetes en mi actividad",
+"usar esta version",
+"no me deja ingresar por corchetes",
+"ayudame a redactar"
+],
+"respuesta": "Cuando algún bombillo de tu actividad está en rojo sale el botón **Te ayudo**. Al tocarlo te dice **qué le falta** a tu texto (por ejemplo «falta cuántos: [número] estudiantes» o «falta qué quedó: listados de asistencia o registro fotográfico») y, en unos segundos, te propone una **versión mejorada de tu propio texto**. Nunca inventa cifras, nombres, fechas ni entregables: lo que falte va entre **[corchetes]** para que lo llenes con tus datos reales, y mientras siga entre corchetes ese bombillo queda en rojo. **Usar esta versión** la pega en el campo para que la edites; **No, gracias** la descarta. Nada se guarda solo: guarda tú cuando termines. No se puede ingresar la cuenta con datos entre [corchetes] sin llenar.",
+"accion": "ir:borrador",
+"estado": "",
+"activo": true,
+"orden": 71
+},
+{
 "id": "C-BOMBILLOS",
 "app": "CONTRATISTA",
 "vista": "borrador,borradorObligacion",
