@@ -827,7 +827,7 @@
         if (!ses || ses.length < listas.length) {
           var e = p && p.error;
           /* un error de la regla (ya tiene sus 3, cuenta cerrada…) se dice; lo demás va por el camino de antes */
-          if (e && e.message && e.codigo !== 'VIA_VIEJA' && !/no tiene la accion/i.test(e.message) &&
+          if (e && e.message && e.codigo !== 'VIA_VIEJA' && e.codigo !== 'GOOGLE_OCUPADO' && !/no tiene la accion/i.test(e.message) &&
               ['SIN_RED', 'SERVIDOR', 'TIEMPO', 'RESPUESTA_NO_JSON', 'RED_LENTA'].indexOf(e.codigo) < 0) {
             K.piezas.guardado.fallo();
             K.aviso(e.message, 'malo', 6000);
@@ -1268,8 +1268,8 @@
             .then(function (r) { tm.listo = Date.now() - t2; return r; });
         });
       }, function (e) {
-        /* CORE sin la ruta nueva: el camino de antes */
-        if (e && /no tiene la accion/i.test(e.message || '')) return subirPorCore(i, file, nombre, reemplaza);
+        /* CORE sin la ruta nueva, o Google sin cupo para abrir la subida directa (03/11): el camino de antes */
+        if (e && (/no tiene la accion/i.test(e.message || '') || e.codigo === 'GOOGLE_OCUPADO' || e.codigo === 'VIA_VIEJA')) return subirPorCore(i, file, nombre, reemplaza);
         throw e;
       })
       .then(function (r) {
