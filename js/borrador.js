@@ -785,6 +785,18 @@
       return;
     }
 
+    /* 03/11 · SUBIDA DIRECTA A DRIVE. Medido en producción: cada foto viajaba
+       entera por Apps Script (evidenciaSubir, mediana 9-10 s de servidor POR
+       FOTO). Ahora UN viaje abre las subidas de todas las fotos — y sale ya,
+       mientras el teléfono las comprime y revisa —, el teléfono las sube
+       directo a Drive en paralelo y OTRO viaje las registra todas. Con un CORE
+       sin las rutas nuevas (o sin cuota de Google) se sube como antes. */
+    var t0 = Date.now(), tm = {};
+    var vuelo = pedirB('evidenciaPreparar', {
+      obligacion: i + 1, cantidad: tanda.length, ranura: ranuraFija || '', total: E.total || ''
+    }, { ms: 60000 }).then(function (p) { tm.preparar = Date.now() - t0; return p; },
+      function (e) { tm.preparar = Date.now() - t0; return { error: e }; });
+
     /* 02/11 · primero se preparan (y se miran contra las cuentas anteriores):
        si una ya la usó, se le avisa ANTES de subir y decide. */
     var listas = [];
@@ -810,7 +822,63 @@
         sub: 'No cierres esta ventana hasta que termine.',
         pasos: ['Preparando la imagen…', 'Subiéndola a tu carpeta…', 'Dejándola guardada…']
       });
-      siguiente(0);
+      vuelo.then(function (p) {
+        var ses = p && !p.error && p.sesiones;
+        if (!ses || ses.length < listas.length) {
+          var e = p && p.error;
+          /* un error de la regla (ya tiene sus 3, cuenta cerrada…) se dice; lo demás va por el camino de antes */
+          if (e && e.message && e.codigo !== 'VIA_VIEJA' && !/no tiene la accion/i.test(e.message) &&
+              ['SIN_RED', 'SERVIDOR', 'TIEMPO', 'RESPUESTA_NO_JSON', 'RED_LENTA'].indexOf(e.codigo) < 0) {
+            K.piezas.guardado.fallo();
+            K.aviso(e.message, 'malo', 6000);
+            zonaEvidencia(destino, i);
+            return;
+          }
+          siguiente(0);
+          return;
+        }
+        if (p.informe) E.informe = p.informe;
+        if (p.fila && !E.fila) E.fila = p.fila;
+        directo(ses);
+      });
+    }
+
+    /* Los bytes directo a Drive (todas a la vez) y un solo registro al final.
+       Si alguna no sube, las que sí quedan registradas y la que falta va por
+       el camino de antes. */
+    function directo(ses) {
+      var t1 = Date.now(), bytes = 0;
+      Promise.all(listas.map(function (img, k) {
+        return fetch(img.dataUrl).then(function (x) { return x.blob(); }).then(function (b) {
+          bytes += b.size;
+          return ponerEnDrive(ses[k].sesion, b, 'image/jpeg', -1);
+        }).then(function (id) { return { id: id, ranura: ses[k].ranura, huella: img.huella || '', _local: img.dataUrl }; },
+          function () { return null; });
+      })).then(function (subidas) {
+        tm.drive = Date.now() - t1;
+        var ok = subidas.filter(function (x) { return !!x; });
+        var faltan = listas.filter(function (img, k) { return !subidas[k]; });
+        if (!ok.length) { siguiente(0); return; }
+        var t2 = Date.now();
+        var items = ok.map(function (x) { return { id: x.id, ranura: x.ranura, huella: x.huella }; });
+        return pedirB('evidenciaListo', { obligacion: i + 1, items: items, total: E.total || '' }, { ms: 60000 })
+          .then(function (r) {
+            tm.listo = Date.now() - t2;
+            ok.forEach(function (x) { eviLocal[x.id] = x._local; });
+            evidencias[i] = listaEvi(r.urls);
+            cambioSoporte(i);
+            if (r.informe) E.informe = r.informe;
+            if (r.fila && !E.fila) E.fila = r.fila;
+            puestas += r.puestas || ok.length;
+            medir('evidenciasDirecto', t0, bytes, tm);
+            if (faltan.length) { listas = faltan; siguiente(0); return; }
+            siguiente(listas.length);
+          });
+      })['catch'](function (e) {
+        K.piezas.guardado.fallo();
+        K.aviso(e && e.message ? e.message : 'No se pudo guardar la foto.', 'malo', 6000);
+        zonaEvidencia(destino, i);
+      });
     }
 
     function siguiente(k) {
@@ -877,13 +945,19 @@
 
   /* Drive entrega el enlace /view, que dentro de un <img> no pinta nada.
      La miniatura tiene su propia dirección y la vista grande, otra. */
+  /* 03/11 · las fotos recién subidas directo se ven con su copia del teléfono:
+     su permiso por enlace lo pone el reloj del CORE en unos minutos. */
+  var eviLocal = {};
+
   function miniatura(url) {
     var id = idDrive(url);
+    if (id && eviLocal[id]) return eviLocal[id];
     return id ? ('https://drive.google.com/thumbnail?id=' + id + '&sz=w320') : url;
   }
 
   function verEnGrande(url) {
     var id = idDrive(url);
+    if (id && eviLocal[id]) return eviLocal[id];
     return id ? ('https://drive.google.com/thumbnail?id=' + id + '&sz=w1600') : url;
   }
 
