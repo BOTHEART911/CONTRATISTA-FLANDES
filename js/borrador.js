@@ -489,7 +489,22 @@
       V.preguntas.forEach(function (q) { guia.querySelector('ul').appendChild(K.nodo('<li>' + K.esc(q) + '</li>')); });
       guia.querySelector('ul').appendChild(K.nodo('<li>Los términos propios de tu obligación (visitas, expedientes, procesos…) puedes repetirlos: lo que se mide es la forma de escribir, no las palabras.</li>'));
       guia.querySelector('ul').appendChild(K.nodo('<li>Escribe solo lo que hiciste y puedes demostrar con tus evidencias.</li>'));
-      res.appendChild(pas); res.appendChild(consejo); res.appendChild(luces); res.appendChild(ver);
+      /* 02/11 · «Te ayudo»: pistas al instante y una versión mejorada de SU texto (kit/teayudo.js) */
+      var TA = K.piezas.teayudo, ayuda = null;
+      if (TA) ayuda = TA.crear({
+        app: 'CONTRATISTA', n: o.n, informe: E.informe, obligacion: o.texto, area: area,
+        medir: function (txt) { return V.medir(I, txt, P, { obl: o.texto, desde: per.desde, hasta: per.hasta, soporte: soporte(), nContrato: d.contrato || '' }); },
+        alUsar: function (txt) {
+          area.value = txt;
+          try { area.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { textos[i] = area.value; cuenta.textContent = area.value.length; sucio = true; respaldar(); }
+          clearTimeout(reloj); medirYa();
+          TA.irAlHueco(area);
+          K.aviso(/\[/.test(txt) ? 'Listo. Llena lo que está entre [corchetes] con tus datos reales y guarda cuando termines.' : 'Listo. Revísala y guarda cuando termines.', 'info', 7000);
+        }
+      });
+      res.appendChild(pas); res.appendChild(consejo); res.appendChild(luces);
+      if (ayuda) res.appendChild(ayuda.nodo);
+      res.appendChild(ver);
       if (ultima) res.appendChild(btns);
       res.appendChild(guia);
       if (!ultima && !primera) res.appendChild(K.nodo('<p class="var-nada">Tus cuentas anteriores no tienen actividad en esta obligación: el primer bombillo no aplica.</p>'));
@@ -515,6 +530,7 @@
         }));
         if (modoVer === 'rep' && !ver.hidden) pintarVer(R.rep, 'var-rep');
         else if (modoVer === 'b') { ver.hidden = true; modoVer = ''; }
+        if (ayuda) ayuda.actualizar(R);
         if (window.KIT_MED) window.KIT_MED.push(performance.now() - t0);
       }
       area.addEventListener('input', function () { clearTimeout(reloj); reloj = setTimeout(medirYa, V.ESPERA || 300); });
@@ -1381,6 +1397,10 @@
         olvidarRespaldo();
         if (r && r.informe) E.informe = r.informe;
         if (r && r.fila && !E.fila) E.fila = r.fila;   /* 23/10 */
+        /* 02/11 · «Te ayudo»: quedó algún dato por llenar entre [corchetes] */
+        var huecos = [];
+        textos.forEach(function (t, j) { if (/\[[^\[\]\n]{1,80}\]/.test(t || '')) huecos.push(j + 1); });
+        if (huecos.length) setTimeout(function () { K.aviso('Guardado, pero en ' + (huecos.length === 1 ? 'la obligación ' : 'las obligaciones ') + huecos.join(', ') + ' quedan datos entre [corchetes] por llenar. Llénalos antes de ingresar la cuenta.', 'aviso', 9000); }, conAviso ? 1800 : 0);
         if (conAviso) {
           K.piezas.guardado.listo({
             titulo: '¡Guardado!',
