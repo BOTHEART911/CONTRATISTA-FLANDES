@@ -392,8 +392,63 @@
     var V = K.piezas.variacion;
     if (!V || !E) return null;
     if (!(Number(E.informe) > 1)) return Promise.resolve({ v: 2, obligaciones: [], cuentas: [], actual: null });
-    return V.anteriores('actividadesAnteriores', { informe: E.informe }, claveAnt());
+    return V.anteriores('actividadesAnteriores', { informe: E.informe, ev: 1 }, claveAnt());   /* 02/11 · ev: con las huellas de las evidencias anteriores */
   }
+  /* ══════════ 02/11 · EVIDENCIAS YA USADAS EN UNA CUENTA ANTERIOR ══════════
+     Al subir una imagen o un adjunto se compara (en el teléfono, sin viajes)
+     con las evidencias de TODAS sus cuentas anteriores, que llegan de fondo
+     con las actividades anteriores. Si ya la usó, se le AVISA y decide: no se
+     bloquea. Imagen: su forma (kit/huella.js); adjunto: su huella exacta (md5). */
+  function anterioresEv(ms) {
+    var p = precargarAnteriores();
+    if (!p || !K.piezas.huella) return Promise.resolve(null);
+    return Promise.race([
+      p.then(function (d) { return d; }, function () { return null; }),
+      new Promise(function (r) { setTimeout(function () { r(null); }, ms || 2500); })   /* si no ha llegado, no se frena la subida */
+    ]);
+  }
+  function yaUsada(q) {
+    var H = K.piezas.huella;
+    if (!H || !q || !E || !(Number(E.informe) > 1)) return Promise.resolve(null);
+    return anterioresEv().then(function (d) {
+      if (!d || !d.evid) return null;
+      if (!d._hix) d._hix = H.indice(d);
+      var m = H.buscar(d._hix, q)[0];
+      return m ? { m: m, umbral: d.evid.umbral } : null;
+    })['catch'](function () { return null; });
+  }
+  /** Con la imagen ya preparada: ¿es la MISMA (archivo contra archivo) o solo muy parecida? Como mucho 6 s. */
+  function confirmarImagen(dataUrl, r) {
+    var H = K.piezas.huella;
+    var p = fetch(dataUrl).then(function (x) { return x.blob(); }).then(function (b) { return createImageBitmap(b); })
+      .then(function (bm) { return H.confirmar(bm, r.m.id, r.umbral); });
+    return Promise.race([p, new Promise(function (ok) { setTimeout(function () { ok(null); }, 6000); })])['catch'](function () { return null; });
+  }
+  /** true = sigue con la subida; false = elige otra. */
+  function revisarRepetido(q, tipo, dataUrl) {
+    return yaUsada(q).then(function (r) {
+      if (!r) return true;
+      var adj = tipo === 'adj';
+      return (adj || !dataUrl ? Promise.resolve({ igual: adj }) : confirmarImagen(dataUrl, r)).then(function (f) {
+        var igual = !!(f && f.igual);
+        K.vibrar(20);
+        return K.piezas.confirmar.preguntar({
+          titulo: adj ? 'Este archivo ya lo usaste' : (igual ? 'Esta imagen ya la usaste' : 'Esta imagen se parece mucho a una anterior'),
+          texto: adj ? 'Este archivo ya lo usaste en tu cuenta ' + r.m.informe + '. Sube la evidencia de este periodo.'
+            : igual ? 'Esta imagen ya la usaste en tu cuenta ' + r.m.informe + '. Sube la evidencia de este periodo.'
+            : 'Se parece mucho a una de tu cuenta ' + r.m.informe + '. Si es de este periodo, súbela; si no, sube la evidencia de este periodo.',
+          si: adj ? 'Subirlo de todas formas' : 'Subirla de todas formas',
+          no: adj ? 'Elegir otro archivo' : 'Elegir otra imagen'
+        });
+      });
+    });
+  }
+  function revisarArchivoRepetido(file) {
+    var H = K.piezas.huella;
+    if (!H || !E || !(Number(E.informe) > 1)) return Promise.resolve(true);
+    return H.md5(file).then(function (md5) { return revisarRepetido({ md5: md5 }, 'adj'); }, function () { return true; });
+  }
+
   /** Un adjunto o una evidencia cambió: los bombillos de esa obligación se vuelven a medir. */
   function cambioSoporte(i) {
     try { document.dispatchEvent(new CustomEvent('var:soporte', { detail: i })); } catch (e) {}
@@ -714,16 +769,36 @@
       return;
     }
 
-    K.piezas.guardado.abrir({
-      titulo: tanda.length > 1 ? 'Subiendo tus evidencias' : 'Subiendo tu evidencia',
-      sub: 'No cierres esta ventana hasta que termine.',
-      pasos: ['Preparando la imagen…', 'Subiéndola a tu carpeta…', 'Dejándola guardada…']
+    /* 02/11 · primero se preparan (y se miran contra las cuentas anteriores):
+       si una ya la usó, se le avisa ANTES de subir y decide. */
+    var listas = [];
+    function prepararTodas(k) {
+      if (k >= tanda.length) return Promise.resolve();
+      return K.piezas.imagenes.preparar(tanda[k]).then(function (img) {
+        return revisarRepetido(img.huella, 'img', img.dataUrl).then(function (ok) { if (ok) listas.push(img); });
+      }).then(function () { return prepararTodas(k + 1); });
+    }
+    prepararTodas(0).then(function () {
+      if (!listas.length) { zonaEvidencia(destino, i); return; }
+      empezar();
+    }, function (e) {
+      K.aviso(e && e.message ? e.message : 'No se pudo leer la foto.', 'malo', 6000);
+      zonaEvidencia(destino, i);
     });
 
     var puestas = 0;
 
+    function empezar() {
+      K.piezas.guardado.abrir({
+        titulo: listas.length > 1 ? 'Subiendo tus evidencias' : 'Subiendo tu evidencia',
+        sub: 'No cierres esta ventana hasta que termine.',
+        pasos: ['Preparando la imagen…', 'Subiéndola a tu carpeta…', 'Dejándola guardada…']
+      });
+      siguiente(0);
+    }
+
     function siguiente(k) {
-      if (k >= tanda.length) {
+      if (k >= listas.length) {
         K.piezas.guardado.listo({
           sub: puestas > 1 ? 'Las ' + puestas + ' evidencias quedaron guardadas.'
                            : 'La evidencia quedó guardada.'
@@ -731,11 +806,12 @@
         zonaEvidencia(destino, i);
         return;
       }
-      K.piezas.imagenes.preparar(tanda[k])
+      Promise.resolve(listas[k])
         .then(function (img) {
           return pedirB('evidenciaSubir', {
             obligacion: i + 1,
             imagen: img.dataUrl,
+            huella: img.huella || '',   /* 02/11 · la guarda el CORE (Huellas1102.gs) */
             ranura: ranuraFija || (evisDe(i).length + 1),
             total: E.total || ''
           });
@@ -754,8 +830,6 @@
           zonaEvidencia(destino, i);
         });
     }
-
-    siguiente(0);
   }
 
   function quitar(destino, i, ranura) {
@@ -1006,11 +1080,11 @@
         if (window.PDFSEGURO) {
           window.PDFSEGURO.revisar(file, { campo: 'El adjunto de la obligación ' + (i + 1), maxMB: 10 }).then(function (f) {
             if (!f) { adj.limpiar(); return; }
-            pedirNombre(hueco, i, f, reemplaza, destino);
+            revisarArchivoRepetido(f).then(function (ok) { if (ok) pedirNombre(hueco, i, f, reemplaza, destino); else adj.limpiar(); });   /* 02/11 */
           });
           return;
         }
-        pedirNombre(hueco, i, file, reemplaza, destino);
+        revisarArchivoRepetido(file).then(function (ok) { if (ok) pedirNombre(hueco, i, file, reemplaza, destino); else adj.limpiar(); });   /* 02/11 */
       }
     });
     hueco.appendChild(K.nodo('<p class="evi-nota">' + (reemplaza
