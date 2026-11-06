@@ -884,9 +884,11 @@ window.ASISTENTE_BASE = [
 "por que importa el correo",
 "correo institucional",
 "no me llega la orden de pago al correo",
-"que correo pongo"
+"que correo pongo",
+"cambie mi correo",
+"mis carpetas de drive"
 ],
-"respuesta": "A tu **correo personal** llegan la orden de pago y el comprobante de pago. Usa uno tuyo, no el institucional.",
+"respuesta": "A tu **correo personal** llegan la orden de pago y el comprobante de pago. Usa uno tuyo, no el institucional. Si lo cambias, en unos minutos tus carpetas de Drive pasan al correo nuevo (las de cuentas que aún no reportan el plan de pagos) y el anterior deja de verlas.",
 "accion": "ir:personales",
 "estado": "",
 "activo": true,

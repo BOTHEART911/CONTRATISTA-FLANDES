@@ -1436,7 +1436,7 @@
     R.municipio = campoMunicipio(f, D, 'municipio', 'Municipio de residencia',
       'Escribe y elige de la lista.', d.municipio);
     R.correo = campoTexto(f, D, 'correo', 'Correo personal',
-      'Uno que sea tuyo, no el institucional. Aquí llegan la orden de pago y el pago.',
+      'Uno que sea tuyo, no el institucional. Aquí llegan la orden de pago y el pago. Si lo cambias, tus carpetas de Drive pasan solas al correo nuevo.',
       { valor: d.correo || '', marcador: 'tucorreo@gmail.com' });
 
     f.appendChild(K.nodo('<h3 class="grupo__t grupo__t--sub">Para el pago</h3>'));
@@ -1594,7 +1594,10 @@
           var dd = r.datos || d;
           recordarMisDatos(dd);                 /* la memoria de la vista queda con lo guardado */
           var quedan = Array.isArray(dd.faltanPersonales) ? dd.faltanPersonales.length : -1;
-          K.piezas.guardado.listo({ sub: quedan === 0 && DESDE_CANDADO_P ? 'Tus datos quedaron completos. Ya puedes seguir con tu cuenta.' : 'Tus datos quedaron al día.' });
+          /* 05/11 · Drive1105: el CORE pasa sus carpetas al correo nuevo en la cola del reloj */
+          var subOk = quedan === 0 && DESDE_CANDADO_P ? 'Tus datos quedaron completos. Ya puedes seguir con tu cuenta.' : 'Tus datos quedaron al día.';
+          if (campos.correo !== undefined) subOk += ' En unos minutos tus carpetas de Drive quedan con el correo nuevo.';
+          K.piezas.guardado.listo({ sub: subOk });
           if (quedan === 0 && DESDE_CANDADO_P) { parcharPersonales(dd); DESDE_CANDADO_P = false; irA('cuenta'); return; }
           if (caja.isConnected) pintarFormulario(caja, dd); else parcharPersonales(dd);
         })
