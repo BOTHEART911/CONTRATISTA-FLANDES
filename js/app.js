@@ -1436,8 +1436,10 @@
     R.municipio = campoMunicipio(f, D, 'municipio', 'Municipio de residencia',
       'Escribe y elige de la lista.', d.municipio);
     R.correo = campoTexto(f, D, 'correo', 'Correo personal',
-      'Uno que sea tuyo, no el institucional. Aquí llegan la orden de pago y el pago.',
+      'Tiene que ser Gmail y tuyo, no el institucional. Aquí llegan la orden de pago y el pago, y por él se comparten tus carpetas.',
       { valor: d.correo || '', marcador: 'tucorreo@gmail.com' });
+    /* 06/11 · el que ya tiene un correo que no es Gmail lo ve en rojo desde que abre */
+    if (d.correo && !GMAIL_OK.test(String(d.correo).trim())) marcarError(R.correo, GMAIL_MSG);
 
     f.appendChild(K.nodo('<h3 class="grupo__t grupo__t--sub">Para el pago</h3>'));
     campoLista(f, D, 'tipoCuenta', 'Tipo de cuenta', '', LISTAS.tiposCuenta, d.tipoCuenta);
@@ -1478,6 +1480,10 @@
      (FC_guardarMisDatos), solo sobre lo que cambió: así el error se ve en el
      campo, al instante, y no tras 3 segundos de viaje. El CORE sigue validando. */
   var CORREO_OK = /^[^@\s,;]+@[^@\s,;]+\.[^@\s,;]{2,}$/;
+  /* 06/11 · SOLO GMAIL: las carpetas y las cuentas se comparten por Drive.
+     Misma regla y mismo texto que el CORE (FC_correoGmail_, Candado1030.gs). */
+  var GMAIL_OK = /^[^@\s,;]+@gmail\.com$/i;
+  var GMAIL_MSG = 'Para garantizar que las carpetas y las cuentas se compartan correctamente, se requiere un correo Gmail.';
   function validarMisDatos(campos) {
     var mal = [];
     if (campos.telefono !== undefined && !/^3\d{9}$/.test(campos.telefono)) {
@@ -1485,6 +1491,8 @@
     }
     if (campos.correo !== undefined && !CORREO_OK.test(campos.correo)) {
       mal.push(['correo', 'Ese correo no está bien escrito. Ejemplo: tucorreo@gmail.com']);
+    } else if (campos.correo !== undefined && !GMAIL_OK.test(campos.correo)) {
+      mal.push(['correo', GMAIL_MSG]);
     }
     if (campos.numeroCuenta !== undefined && (campos.numeroCuenta.length < 7 || campos.numeroCuenta.length > 16)) {
       mal.push(['numeroCuenta', 'El número de cuenta tiene entre 7 y 16 dígitos.']);

@@ -884,9 +884,13 @@ window.ASISTENTE_BASE = [
 "por que importa el correo",
 "correo institucional",
 "no me llega la orden de pago al correo",
-"que correo pongo"
+"que correo pongo",
+"correo gmail",
+"correo yahoo",
+"correo hotmail",
+"por que gmail"
 ],
-"respuesta": "A tu **correo personal** llegan la orden de pago y el comprobante de pago. Usa uno tuyo, no el institucional.",
+"respuesta": "A tu **correo personal** llegan la orden de pago y el comprobante de pago, y por él se comparten tus carpetas y tus cuentas en Drive. Por eso **tiene que ser Gmail** (termina en @gmail.com) y tuyo, no el institucional. Si el que tienes no es Gmail, no puedes radicar ni reportar hasta cambiarlo en **DATOS PERSONALES**.",
 "accion": "ir:personales",
 "estado": "",
 "activo": true,

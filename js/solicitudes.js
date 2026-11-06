@@ -181,7 +181,7 @@
       '<div class="campo-fila">' +
       '  <label class="campo"><span>Celular (WhatsApp) <i class="tr-oblig" aria-hidden="true">*</i></span>' +
       '    <input name="cel" type="tel" inputmode="numeric" maxlength="10" placeholder="3001234567" autocomplete="tel"></label>' +
-      '  <label class="campo"><span>Correo</span><input name="correo" type="email" autocomplete="email" placeholder="Opcional"></label>' +
+      '  <label class="campo"><span>Correo Gmail</span><input name="correo" type="email" autocomplete="email" placeholder="tucorreo@gmail.com (opcional)"></label>' +
       '</div>' +
       '<label class="campo"><span>Secretaría de tu contrato <i class="tr-oblig" aria-hidden="true">*</i></span>' +
       '  <select name="sec"><option value="">Escoge la secretaría</option>' + secs + '</select></label>' +
@@ -206,6 +206,8 @@
       var falta = D.nombre.split(' ').length < 2 || D.nombre.length < 6 ? 'Escribe tu nombre completo (nombres y apellidos).'
         : !/^3\d{9}$/.test(D.telefono) ? 'El celular tiene 10 dígitos y empieza por 3.'
         : (D.correo && !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(D.correo)) ? 'El correo no está bien escrito.'
+        /* 06/11 · solo Gmail (mismo texto que el CORE) */
+        : (D.correo && !/^[^@\s,;]+@gmail\.com$/i.test(D.correo)) ? 'Para garantizar que las carpetas y las cuentas se compartan correctamente, se requiere un correo Gmail.'
         : !D.secretaria ? 'Escoge la secretaría de tu contrato.' : '';
       if (falta) { K.aviso(falta, 'aviso', 4500); return; }
       h.cerrar(true);
