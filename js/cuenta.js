@@ -293,10 +293,6 @@
     }
     lista(personales.length === 1 ? 'De tus datos personales te falta' : 'De tus datos personales te faltan', personales);
     lista(faltan.length === 1 ? 'Del contrato te falta' : 'Del contrato te faltan', faltan);
-    /* 06/11 · el correo que no es Gmail entra al candado con su propio texto (Candado1030.gs) */
-    if (personales.indexOf('Correo Gmail') >= 0) {
-      s.appendChild(K.nodo('<p class="cta-cerrada__p">Para garantizar que las carpetas y las cuentas se compartan correctamente, se requiere un correo Gmail.</p>'));
-    }
     var zona = K.nodo('<div class="cta-candado__botones"></div>');
     function boton(ico, txt, destino, marca) {
       var b = K.nodo('<button type="button" class="kit-btn' + (marca ? ' kit-btn--marca' : '') + '">' + K.icono(ico, 17) + ' ' + K.esc(txt) + '</button>');
