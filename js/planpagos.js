@@ -378,7 +378,12 @@
     var e = li.querySelector('.pp-estado');
     if (e) e.innerHTML = estadoTxt(it);
     var r = li.querySelector('.pp-reintentar');
-    if (r) r.addEventListener('click', function () { it.estado = 'espera'; it.err = ''; repintarFila(it); cargarTodo(); });
+    if (r) r.addEventListener('click', function () {
+      /* 06/11 · Reintentar sale de nuevo a la red (antes Drive quedaba vetado
+         para ese archivo y el mapa de Word/Excel quedaba guardado) */
+      if (K.drive && K.drive.reintentar) { K.drive.reintentar(it.pdfId || it.id); if (it.pdfId) K.drive.reintentar(it.id); }
+      it.estado = 'espera'; it.err = ''; repintarFila(it); cargarTodo();
+    });
     if (it.estado === 'clave') { var c = li.querySelector('input'); if (c) { c.checked = false; c.disabled = true; } li.classList.add('pp-item--fuera'); }
     resumen();
   }
@@ -463,7 +468,23 @@
     return K.pedir('seguimientoDocumento', { informe: ST.informe, id: it.id }, { ms: 120000, fondo: true }).then(function (r) {
       var bin = atob(String(r.base64 || '')), b = new Uint8Array(bin.length);
       for (var i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i);
+      it.via = 'core';
       return { bytes: b, mime: r.mime || it.mime };
+    });
+  }
+
+  /* 06/11 · RESPALDO del Word/Excel: si Drive no le entrega al teléfono el PDF
+     convertido, el CORE lo trae (caso MARIO LOZANO 336: en su equipo Drive
+     directo no entregó nada; los PDF se salvaban por el CORE y los Excel no
+     tenían ese camino). Solo se usa cuando Drive falla. */
+  function oficinaDeCore(it) {
+    var hz = it.clase === 'excel' && !!it.hz;
+    return K.pedir('planPagosPdf', { informe: ST.informe, traer: it.id, h: hz }, { ms: 120000, fondo: true }).then(function (r) {
+      var bin = atob(String(r.base64 || '')), b = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i);
+      if (!b.length) throw new Error('No llegó el PDF del Excel.');
+      it.via = 'core';
+      return { bytes: b, mime: 'application/pdf' };
     });
   }
 
@@ -471,9 +492,17 @@
     if (it.clase === 'word' || it.clase === 'excel') {
       return pdfsOficina().then(function (m) {
         var p = m[it.id];
-        if (!p) throw new Error('Todavía no está en PDF. Intenta en unos minutos.');
+        if (!p) { ST.oficina = null; throw new Error('Todavía no está en PDF. Intenta en unos minutos.'); }
         var id = it.clase === 'excel' && it.hz ? (p.h || p.v) : p.v;
-        return K.drive.bytes({ id: id, mime: 'application/pdf', nombre: it.nombre });
+        it.pdfId = id;
+        if (!K.drive || !K.drive.listo()) return oficinaDeCore(it);
+        return K.drive.bytes({ id: id, mime: 'application/pdf', nombre: it.nombre }).then(null, function (e) {
+          if (e && e.cortado) throw e;
+          return oficinaDeCore(it);
+        });
+      }, function (e) {
+        if (e && (e.cortado || e.codigo === 'CANCELADA')) throw e;
+        return oficinaDeCore(it);   /* el mapa no llegó: el CORE convierte y trae ese solo */
       });
     }
     var ref = { id: it.id, google: it.clase === 'google', mime: it.mime, nombre: it.nombre };
@@ -531,7 +560,7 @@
       return paso.then(function () { if (it.estado === 'listo' && gen === GEN) encolarMini(it, x.bytes); });
     }).then(function () {
       if (gen !== GEN) return;
-      MED.push({ paso: 'doc', id: it.id.slice(0, 6), clase: it.clase, kb: it.kbReal, ms: Date.now() - t0 });
+      MED.push({ paso: 'doc', id: it.id.slice(0, 6), clase: it.clase, kb: it.kbReal, ms: Date.now() - t0, via: it.via || 'drive' });
       repintarFila(it);
     }, function (e) {
       if (gen !== GEN || (e && (e.cortado || e.codigo === 'CANCELADA'))) return;
