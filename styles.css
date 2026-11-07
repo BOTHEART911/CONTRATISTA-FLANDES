@@ -2242,16 +2242,3 @@
 }
 .formulario--cabecera { margin-bottom: 14px; }
 
-/* 03/11 · Traer de la cuenta anterior lado a lado, sin perder lo escrito */
-.trae { margin: 10px 0; padding: 12px; border: 1px solid var(--k-linea); border-radius: 12px; background: var(--k-fondo); }
-.trae__t { margin: 0 0 10px; font-size: .86rem; color: var(--k-apagado); }
-.trae__cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.trae__col { min-width: 0; border: 1px solid var(--k-linea); border-radius: 10px; background: var(--k-papel); padding: 10px; }
-.trae__col h4 { margin: 0 0 6px; font-size: .78rem; text-transform: uppercase; letter-spacing: .03em; color: var(--k-apagado); }
-.trae__col--mia h4 { color: var(--k-marca); }
-.trae__txt { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .9rem; line-height: 1.45; max-height: 260px; overflow: auto; }
-.trae__btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-.trae__btns .kit-btn, .trae-des .kit-btn { display: inline-flex; align-items: center; gap: 6px; }
-.trae-des { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0; padding: 8px 10px; border-radius: 10px; background: var(--k-ok-fondo); font-size: .86rem; }
-.trae-des[hidden], .trae[hidden] { display: none; }
-@media (max-width: 640px) { .trae__cols { grid-template-columns: 1fr; } }

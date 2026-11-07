@@ -479,11 +479,12 @@
       var luces = K.nodo('<div class="var-bor__luces"></div>');
       var ver = K.nodo('<div class="var-bor__ver" hidden></div>');
       var btns = K.nodo('<div class="var-bor__btns"></div>');
-      var traer = null, verRep = null;
+      /* 07/11 · Sin «Traer de la cuenta N» (reunión con supervisores: copiar la
+         cuenta anterior es lo que se combate). Queda Ver qué se repite. */
+      var verRep = null;
       if (ultima) {
-        traer = K.nodo('<button type="button" class="kit-btn">' + K.icono('copiar', 16) + ' Traer de la cuenta ' + ultima.informe + '</button>');
         verRep = K.nodo('<button type="button" class="kit-btn kit-btn--plano">' + K.icono('buscar', 16) + ' Ver qué se repite</button>');
-        btns.appendChild(traer); btns.appendChild(verRep);
+        btns.appendChild(verRep);
       }
       var guia = K.nodo('<details><summary>Cómo variar tu redacción (sin inventar)</summary><ul class="var-bor__tips"></ul></details>');
       V.preguntas.forEach(function (q) { guia.querySelector('ul').appendChild(K.nodo('<li>' + K.esc(q) + '</li>')); });
@@ -542,75 +543,6 @@
         verRep.innerHTML = K.icono('buscar', 16) + (abrir ? ' Ocultar' : ' Ver qué se repite');
         if (abrir) pintarVer(ultimo ? ultimo.rep : [], 'var-rep');
       });
-      /* 03/11 · TRAER DE LA CUENTA ANTERIOR SIN PERDER LO ESCRITO (pedido de un
-         contratista). Campo vacío: se copia directo. Con texto: se abre lado a
-         lado (la anterior | lo que llevas, con lo repetido resaltado) y la
-         persona elige reemplazar, agregar al final o cerrar. Cualquier cambio
-         se puede DESHACER. */
-      var lado = K.nodo('<div class="trae" hidden></div>');
-      var deshacer = K.nodo('<div class="trae-des" hidden><span></span><button type="button" class="kit-btn kit-btn--plano">' + K.icono('atras', 16) + ' Deshacer el cambio</button></div>');
-      var antesDeTraer = null;
-      if (ultima) { res.insertBefore(lado, guia); res.insertBefore(deshacer, guia); }
-      function escribir(txt) {
-        area.value = txt;
-        textos[i] = area.value; cuenta.textContent = area.value.length; sucio = true; respaldar();
-        medirYa();
-      }
-      function cambiar(txt, msg) {
-        antesDeTraer = area.value;
-        escribir(txt);
-        lado.hidden = true; lado.innerHTML = '';
-        deshacer.querySelector('span').textContent = msg;
-        deshacer.hidden = false;
-        area.focus();
-      }
-      deshacer.querySelector('button').addEventListener('click', function () {
-        if (antesDeTraer === null) return;
-        K.vibrar(8);
-        escribir(antesDeTraer);
-        antesDeTraer = null; deshacer.hidden = true;
-        K.aviso('Listo, volvió lo que tenías escrito.', 'info', 4000);
-        area.focus();
-      });
-      function abrirLado() {
-        var actual = String(area.value || '');
-        lado.innerHTML =
-          '<p class="trae__t">Compara antes de traer: la cuenta ' + ultima.informe + ' y lo que llevas escrito. ' +
-          'En amarillo, lo que ya se parece a tus cuentas anteriores.</p>' +
-          '<div class="trae__cols">' +
-          '  <section class="trae__col"><h4>Cuenta ' + ultima.informe + ' (anterior)</h4><div class="trae__txt">' + K.esc(ultima.texto) + '</div></section>' +
-          '  <section class="trae__col trae__col--mia"><h4>Lo que llevas escrito</h4><div class="trae__txt trae__mia"></div></section>' +
-          '</div>' +
-          '<div class="trae__btns">' +
-          '  <button type="button" class="kit-btn kit-btn--marca" data-a="reemplazar">' + K.icono('recargar', 16) + ' Reemplazar con la anterior</button>' +
-          '  <button type="button" class="kit-btn" data-a="agregar">' + K.icono('copiar', 16) + ' Agregarla al final</button>' +
-          '  <button type="button" class="kit-btn kit-btn--plano" data-a="cerrar">Cerrar</button>' +
-          '</div>';
-        lado.querySelector('.trae__mia').innerHTML = V.resaltar(actual, ultimo ? ultimo.rep : [], 'var-rep');
-        lado.querySelector('[data-a="reemplazar"]').addEventListener('click', function () {
-          K.vibrar(8);
-          cambiar(ultima.texto, 'Pusiste la actividad de la cuenta ' + ultima.informe + ' en lugar de tu texto.');
-          K.aviso('Listo. Ahora cuenta lo que hiciste distinto en este periodo. Si te arrepientes, toca Deshacer el cambio.', 'info', 7000);
-        });
-        lado.querySelector('[data-a="agregar"]').addEventListener('click', function () {
-          K.vibrar(8);
-          cambiar(actual.replace(/\s+$/, '') + '\n\n' + ultima.texto, 'Agregaste la actividad de la cuenta ' + ultima.informe + ' al final de tu texto.');
-        });
-        lado.querySelector('[data-a="cerrar"]').addEventListener('click', function () { lado.hidden = true; lado.innerHTML = ''; });
-        lado.hidden = false;
-        try { lado.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {}
-      }
-      if (traer) traer.addEventListener('click', function () {
-        K.vibrar(8);
-        if (!String(area.value || '').trim()) {
-          cambiar(ultima.texto, 'Trajiste la actividad de la cuenta ' + ultima.informe + '.');
-          K.aviso('Listo. Ahora cuenta lo que hiciste distinto en este periodo y enciende los bombillos: cuántos, para quién, qué quedó y cuándo.', 'info', 7000);
-          return;
-        }
-        if (!lado.hidden) { lado.hidden = true; lado.innerHTML = ''; return; }
-        abrirLado();
-      });
-      /* el deshacer sigue a la mano mientras esté en esta obligación, aunque ya haya escrito encima */
       medirYa();
     })['catch'](function () {
       /* CORE sin la ruta o sin red: la tarjeta se va sin estorbar */
