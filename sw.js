@@ -90,6 +90,8 @@ var ARMAZON = [
   './js/seguimiento.js',
   './js/planpagos.js',
   './js/misregistros.js', './kit/informe-cuentas.js', './kit/variacion.js', './kit/variacion.css', './kit/huella.js', './kit/teayudo.js', './kit/teayudo.css',
+  /* 10/11 · «Redactemos una actividad juntos» y el dictado */
+  './kit/voz.js', './kit/redactemos.js', './kit/redactemos.css',
   './kit/exportar.js', './kit/exportar.css', './kit/gerencial.js',
   /* 4.8 · trámites (comunicaciones y tesorería) e institucional */
   './kit/pastillas.js',

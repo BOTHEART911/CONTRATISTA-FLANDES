@@ -13,19 +13,40 @@ window.ASISTENTE_BASE = [
 "te ayudo",
 "boton te ayudo",
 "que hace te ayudo",
-"como mejoro mi texto",
-"version mejorada",
 "que son los corchetes",
 "corchetes en mi actividad",
-"usar esta version",
 "no me deja ingresar por corchetes",
-"ayudame a redactar"
+"que le falta a mi actividad"
 ],
-"respuesta": "Cuando algún bombillo de tu actividad está en rojo sale el botón **Te ayudo**. Al tocarlo te dice **qué le falta** a tu texto (por ejemplo «falta cuántos: [número] estudiantes» o «falta qué quedó: listados de asistencia o registro fotográfico») y, en unos segundos, te propone una **versión mejorada de tu propio texto**. Nunca inventa cifras, nombres, fechas ni entregables: lo que falte va entre **[corchetes]** para que lo llenes con tus datos reales, y mientras siga entre corchetes ese bombillo queda en rojo. **Usar esta versión** la pega en el campo para que la edites; **No, gracias** la descarta. Nada se guarda solo: guarda tú cuando termines. No se puede ingresar la cuenta con datos entre [corchetes] sin llenar.",
+"respuesta": "Cuando algún bombillo de tu actividad está en rojo sale **Te ayudo**: te dice **qué le falta** a tu texto (por ejemplo «falta cuántos: [número] estudiantes» o «falta qué quedó: listados de asistencia o registro fotográfico»). Ya no te propone un texto para copiar: lo completas tú con tus datos reales, o tocas el robot **Redactemos una actividad juntos** y lo redactamos con tus respuestas. Lo que esté entre **[corchetes]** sigue en rojo hasta que lo llenes, y no se puede ingresar la cuenta con datos entre [corchetes] sin llenar.",
 "accion": "ir:borrador",
 "estado": "",
 "activo": true,
 "orden": 71
+},
+{
+"id": "C-REDACTEMOS",
+"app": "CONTRATISTA",
+"vista": "borrador,borradorObligacion",
+"titulo": "¿Cómo funciona «Redactemos una actividad juntos»?",
+"frases": [
+"redactemos juntos",
+"redactemos una actividad",
+"robot de redaccion",
+"ayudame a redactar",
+"como escribo mi actividad",
+"dictar mi actividad",
+"hablarle al robot",
+"no me entiende el robot",
+"asistente para redactar",
+"como mejoro mi texto",
+"bombillo naranja de evidencia"
+],
+"respuesta": "Toca el robot **Redactemos una actividad juntos**, debajo de tu actividad. Te pregunta, por voz o por texto: si la **realizaste** en el periodo (si no, por qué no), **cuántas** cosas hiciste, **para quién o con quién**, **qué días** del periodo, si tienes **evidencia** y unos **detalles** de tu trabajo. No avanza si no te entiende: dilo con un número («2 aplicaciones») o una fecha («15 de octubre»); si no te entiende la voz, escríbelo. Con tus respuestas arma el párrafo y lo pone **debajo** de lo que ya tenías, con una línea en blanco. Todo queda sujeto a verificación: no inventes nada. Si dijiste que subes evidencia, el bombillo de soporte queda **naranja** hasta que la subas. Tu supervisor(a) ve que esa actividad se redactó con el asistente. Puedes editar el texto; guardas tú.",
+"accion": "ir:borrador",
+"estado": "",
+"activo": true,
+"orden": 72
 },
 {
 "id": "C-BOMBILLOS",

@@ -454,6 +454,41 @@
     try { document.dispatchEvent(new CustomEvent('var:soporte', { detail: i })); } catch (e) {}
   }
 
+  /* 10/11 · obligaciones donde dijo «Sí, la subo» en «Redactemos juntos» (solo mientras la app está abierta) */
+  var evidPend = {};
+
+  /* 10/11 · «Redactemos una actividad juntos {nombre}»: el diálogo con voz o texto (kit/redactemos.js).
+     Reemplaza la versión sugerida de «Te ayudo»: la app ya no le da un texto para copiar. */
+  function botonRedactemos(donde, o, i, area) {
+    var RD = K.piezas.redactemos, V = K.piezas.variacion;
+    if (!RD || !donde) return;
+    var yo = null;
+    try { yo = K.piezas.sesion && K.piezas.sesion.yo ? K.piezas.sesion.yo() : null; } catch (e) {}
+    var primera = !(Number(E.informe) > 1);
+    var r = RD.crear({
+      app: 'CONTRATISTA', n: o.n, informe: E.informe, obligacion: o.texto, area: area,
+      nombre: (yo && (yo.nombre || yo.nombres)) || '',
+      contexto: function () {
+        var p = precargarAnteriores();
+        if (!V || !p) return Promise.resolve(null);
+        return Promise.all([p, V.ic()]).then(function (x) {
+          var d = x[0] || {}, I = x[1];
+          var prev = primera ? [] : V.previosDe(d, o.n);
+          var P = V.preparar(I, o.texto, prev, d.contrato || E.contrato || '');
+          var per = V.periodo(d);
+          return {
+            periodo: per.sinPeriodo ? null : per,
+            anteriores: prev.map(function (x2) { return x2.texto; }),
+            extra: d.redaccion || null,
+            medir: function (t) { return V.medir(I, t, P, { obl: o.texto, desde: per.desde, hasta: per.hasta, soporte: ((evidencias[i] || []).length) + ((archivos[i] || []).length), nContrato: d.contrato || '' }); }
+          };
+        });
+      },
+      alTerminar: function (f) { if (f && f.evid === 'si') evidPend[i] = 'si'; else delete evidPend[i]; }
+    });
+    donde.appendChild(r.nodo);
+  }
+
   function tarjetaVariacion(donde, o, i, area, cuenta) {
     var V = K.piezas.variacion;
     if (!V || !donde) return;
@@ -529,6 +564,11 @@
           if (k < 0) { ver.hidden = modoVer !== 'rep'; if (!ver.hidden) pintarVer(R.rep, 'var-rep'); return; }
           modoVer = 'b'; ver.hidden = false; pintarVer(rangos, k === 0 ? 'var-rep' : 'var-hit');
         }));
+        /* 10/11 · dijo en «Redactemos juntos» que SÍ sube evidencia: el soporte queda naranja hasta que la suba */
+        if (!vacio && evidPend[i] === 'si' && !soporte()) {
+          var li6 = luces.querySelectorAll('.var-bom__i')[5];
+          if (li6 && /var-bom__i--rojo|var-bom__i--amarillo/.test(li6.className)) { li6.classList.remove('var-bom__i--rojo', 'var-bom__i--amarillo'); li6.classList.add('var-bom__i--naranja'); }
+        }
         if (modoVer === 'rep' && !ver.hidden) pintarVer(R.rep, 'var-rep');
         else if (modoVer === 'b') { ver.hidden = true; modoVer = ''; }
         if (ayuda) ayuda.actualizar(R);
@@ -613,6 +653,7 @@
       respaldar();
     });
 
+    botonRedactemos(v.querySelector('.edi__campo'), o, i, area);
     tarjetaVariacion(v.querySelector('.edi__campo'), o, i, area, cuenta);
     zonaEvidencia(v.querySelector('#edi-zona'), i);
     if (ARCH_ON) zonaArchivo(v.querySelector('#edi-arch'), i);

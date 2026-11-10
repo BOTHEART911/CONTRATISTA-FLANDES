@@ -36,6 +36,10 @@
        alUsar: function (texto) { … }   // pegar en el campo
      });
      caja.appendChild(ta.nodo);  ...  ta.actualizar(R) en cada medida.
+   10/11/2026 · Los puntos 2 y 3 se QUITARON del borrador: la versión
+   sugerida acostumbraba al contratista a pegar lo que daba la app. Ahora
+   el botón del robot (kit/redactemos.js) redacta CON sus respuestas. Aquí
+   quedan las pistas y la medición (registrar sirve a las dos piezas).
    ============================================================ */
 (function () {
   'use strict';
@@ -279,7 +283,7 @@
     function abrir() {
       var R = ultimoR, texto = o.area.value;
       K.vibrar(8);
-      var t0 = Date.now(), mio = ++vuelo;
+      ++vuelo;
       var P = pistas(R, o.obligacion, texto);
       rojosAlTocar = R.b.filter(function (b) { return b.e === 'rojo'; }).map(function (b) { return b.k; });
       ev('toque', { rojos: rojosAlTocar.join(',') });
@@ -293,61 +297,13 @@
           (p.ej ? ' <small>Ejemplo: <mark class="ta-hueco">' + K.esc(p.ej) + '</mark></small>' : '') + '</span></li>'));
       });
       panel.appendChild(ul);
+      /* 10/11 · ya no hay «Tu texto mejorado» ni «Usar esta versión»: acostumbraban a copiar lo que
+         daba la app. Quedan las pistas, y la redacción se hace CON él en «Redactemos una actividad juntos». */
       var zona = K.nodo('<div class="ta__prop"></div>');
       panel.appendChild(zona);
-      var G = K.piezas.gemini;
-      if (!ayudaIA(R) || !G || !G.mejorar || !G.disponible()) {
-        zona.appendChild(K.nodo('<p class="ta__nota">' + (ayudaIA(R) ? 'Usa las pistas para completar tu texto.' : 'Esto se completa contigo (tus evidencias o lo que fue distinto), no con otra redacción.') + '</p>'));
-        zona.appendChild(botones(null));
-        return;
-      }
-      if (G.quedanMejora && !G.quedanMejora()) {
-        zona.appendChild(K.nodo('<p class="ta__nota">Por hoy ya usaste todas las versiones sugeridas. Las pistas de arriba siguen sirviendo.</p>'));
-        zona.appendChild(botones(null));
-        return;
-      }
-      zona.appendChild(K.nodo('<p class="ta__cargando"><span class="ta__punto"></span> Preparando una versión mejorada de tu texto…</p>'));
-      var tope = new Promise(function (ok, no) { setTimeout(function () { no(new Error('TIEMPO')); }, TOPE_MS); });
-      Promise.race([G.mejorar({ obligacion: o.obligacion, actividad: texto, faltan: faltanParaIA(R, o.obligacion, texto), ms: TOPE_MS }), tope])
-        .then(function (sug) {
-          if (mio !== vuelo || !nodo.isConnected) return;
-          var g = guardar_(texto, sug, o.obligacion, o.medir);
-          var ms = Date.now() - t0;
-          if (!g.texto || st(g.texto) === st(texto)) throw new Error('IGUAL');
-          propuesta = g.texto;
-          ev('propuesta', { ms: ms, ok: 1, envueltos: g.envueltos });
-          zona.innerHTML = '';
-          var V = K.piezas.variacion, v = V ? V.verdes(g.R) : null;
-          zona.appendChild(K.nodo('<p class="ta__t">' + K.icono('lapiz', 16) + ' Tu texto, mejorado</p>'));
-          zona.appendChild(K.nodo('<div class="ta__texto">' + resaltarCorchetes(propuesta) + '</div>'));
-          zona.appendChild(K.nodo('<p class="ta__nota">' + (/\[/.test(propuesta) ? 'Llena lo que está entre <mark class="ta-hueco">[corchetes]</mark> con tus datos reales; mientras siga así, su bombillo queda en rojo. ' : '') +
-            'Revísala: solo debe decir lo que hiciste y puedes demostrar.' + (v ? ' Así como está: ' + v.v + ' de ' + v.n + ' en verde.' : '') + '</p>'));
-          zona.appendChild(botones(propuesta));
-        })['catch'](function (e) {
-          if (mio !== vuelo || !nodo.isConnected) return;
-          ev('propuesta', { ms: Date.now() - t0, ok: 0, error: String((e && e.message) || 'ERROR').slice(0, 40) });
-          zona.innerHTML = '';
-          /* 03/11 · si Google no respondió, la versión mejorada se arma aquí mismo con sus
-             [corchetes]: «Te ayudo» siempre entrega una propuesta (Oss: no debe fallar). */
-          if (!(e && e.message === 'IGUAL')) {
-            var gl = guardar_(texto, versionLocal(R, o.obligacion, texto), o.obligacion, o.medir);
-            if (gl.texto && st(gl.texto) !== st(texto)) {
-              propuesta = gl.texto;
-              ev('propuesta', { ms: Date.now() - t0, ok: 1, envueltos: gl.envueltos, error: 'LOCAL' });
-              var V2 = K.piezas.variacion, v2 = V2 ? V2.verdes(gl.R) : null;
-              zona.appendChild(K.nodo('<p class="ta__t">' + K.icono('lapiz', 16) + ' Tu texto, mejorado</p>'));
-              zona.appendChild(K.nodo('<div class="ta__texto">' + resaltarCorchetes(propuesta) + '</div>'));
-              zona.appendChild(K.nodo('<p class="ta__nota">Llena lo que está entre <mark class="ta-hueco">[corchetes]</mark> con tus datos reales y ajusta la redacción a tu gusto; mientras siga así, su bombillo queda en rojo. ' +
-                'Solo debe decir lo que hiciste y puedes demostrar.' + (v2 ? ' Así como está: ' + v2.v + ' de ' + v2.n + ' en verde.' : '') + '</p>'));
-              zona.appendChild(botones(propuesta));
-              return;
-            }
-          }
-          zona.appendChild(K.nodo('<p class="ta__nota">' + (e && e.message === 'IGUAL' ? 'Tu texto ya dice lo que se puede decir sin datos nuevos: completa con las pistas.' : 'No alcancé a preparar la versión mejorada. Las pistas de arriba te dicen qué agregar.') + '</p>'));
-          zona.appendChild(botones(null));
-        });
+      zona.appendChild(K.nodo('<p class="ta__nota">' + (ayudaIA(R) ? 'Completa tu texto con estas pistas, con tus datos reales. Si prefieres, redactemos juntos la actividad con el botón del robot.' : 'Esto se completa contigo (tus evidencias o lo que fue distinto), no con otra redacción.') + '</p>'));
+      zona.appendChild(botones(null));
     }
-
     function botones(texto) {
       var b = K.nodo('<div class="ta__btns"></div>');
       if (texto) {
@@ -380,7 +336,6 @@
       var mostrar = hayRojo(R);
       nodo.hidden = !mostrar;
       /* 03/11 · el primer toque esperaba ~4 s el token de App Check: se pide al aparecer el botón */
-      if (mostrar && !CALIENTE && ayudaIA(R) && K.piezas.gemini && K.piezas.gemini.precalentar) { CALIENTE = true; K.piezas.gemini.precalentar(); }
       if (!mostrar && !panel.hidden) cerrar();
       else if (!panel.hidden && !propuesta) {
         /* las pistas siguen al texto mientras escribe */
@@ -399,9 +354,109 @@
   }
   function corchetesSinLlenar(texto) { return (String(texto || '').match(/\[[^\[\]\n]{1,80}\]/g) || []); }
 
+  /* ══════════════ 5 · 05/11 · EL BOMBILLO ROJO EN LA REVISIÓN ══════════════
+     Supervisión y Contratación tocan un bombillo en rojo (o en ámbar) y ven:
+     qué falta en una línea + la frase sugerida armada con el texto del
+     contratista y [corchetes] donde él debe completar (la misma lógica de
+     «Te ayudo», sin viajes) + «Pasar a la observación para el contratista». */
+  var CORTO = 260;   /* el texto del contratista se muestra completo hasta aquí; más largo, su final */
+  function finalDe(t) {
+    t = String(t || '').replace(/\s+/g, ' ').trim();
+    if (t.length <= CORTO) return t;
+    var c = t.slice(-CORTO), i = c.indexOf(' ');
+    return '… ' + (i > 0 && i < 40 ? c.slice(i + 1) : c);
+  }
+  function conPunto(t) { t = String(t || '').replace(/\s+/g, ' ').trim(); return t && !/[.!?…]$/.test(t) ? t + '.' : t; }
+
+  /**
+   * receta(R, obl, texto, b) -> null | {k, e, falta, agrega, accion, frase, obs}
+   *   falta  : qué le falta, en una línea (lenguaje del revisor)
+   *   agrega : la frase nueva con [corchetes] (si se arregla escribiendo)
+   *   accion : lo que debe hacer (si no se arregla escribiendo: soporte, fecha, corchetes)
+   *   frase  : su texto + la frase nueva (la «frase sugerida armada»)
+   *   obs    : el texto listo para la OBSERVACIÓN PARA EL CONTRATISTA
+   */
+  function receta(R, obl, texto, b) {
+    if (!R || !R.b || !b || b.e === 'verde' || b.e === 'gris') return null;
+    if (R.estado === 'general' || R.estado === 'noreq' || R.estado === 'vacia') return null;
+    var T = tema(obl, texto), qu = /^\[/.test(T.qu) ? T.qu : '[' + T.qu + ']';
+    var ent = '[' + T.ent.join(' o ') + ']', falta = '', agrega = '', accion = '';
+    if (b.corchete) {
+      falta = 'Dejó sin llenar ' + b.corchete.map(function (x) { return '[' + x + ']'; }).join(', ') + '.';
+      accion = 'Reemplace lo que está entre corchetes por sus datos reales.';
+    } else switch (b.k) {
+      case 0:
+        falta = 'Repite la forma de la cuenta ' + (R.con || R.plCon || R.ordenCon || 'anterior') + ': no dice qué fue distinto en este periodo.';
+        agrega = 'En este periodo, a diferencia de la cuenta ' + (R.con || R.plCon || R.ordenCon || 'anterior') + ', [qué fue distinto: lugar, grupo o resultado].';
+        break;
+      case 1: falta = 'No dice cuántos: falta la cifra junto a lo que se contó.'; agrega = 'En total fueron [número] ' + T.cu + '.'; break;
+      case 2: falta = 'No dice para quién ni con quién lo hizo.'; agrega = 'Se benefició ' + qu + '.'; break;
+      case 3: falta = 'No dejó resultado ni entregable verificable.'; agrega = 'Como resultado quedó ' + ent + '.'; break;
+      case 4:
+        if (b.e === 'amarillo') { falta = 'La fecha' + (b.x ? ' «' + b.x + '»' : '') + ' cae fuera del periodo de esta cuenta.'; accion = 'Corrija la fecha por una del periodo: [fecha dentro del periodo].'; }
+        else { falta = 'No dice cuándo lo hizo.'; agrega = 'Lo realicé el [fecha].'; }
+        break;
+      default:
+        if (b.como === 'diceAdjunta') { falta = 'Dice que adjunta un soporte que no está cargado.'; accion = 'Cargue en esta obligación el soporte que menciona.'; }
+        else if (b.como === 'donde') { falta = 'No cargó soporte: solo dice dónde verificarlo.'; accion = 'Cargue el soporte en esta obligación (' + T.ent.join(' o ') + ') o, si no aplica, escriba «no requiere adjunto».'; }
+        else if (b.como === 'oblSinProducto') { falta = 'No tiene soporte ni dice si la actividad lo requiere.'; accion = 'Si no deja documento, escriba «no requiere adjunto»; si lo deja, cárguelo en esta obligación.'; }
+        else { falta = 'La obligación pide un producto y no tiene evidencias ni adjuntos cargados.'; accion = 'Cargue en esta obligación ' + ent + ' o, si no aplica, escriba «no requiere adjunto».'; }
+    }
+    if (!falta) return null;
+    var su = conPunto(texto), frase = agrega ? (su ? su + ' ' : '') + agrega : '';
+    var obs = falta + ' ' + (agrega
+      ? (su.length <= 400 ? 'Puede quedar así (llene lo que está entre corchetes con sus datos reales): «' + frase + '»'
+        : 'Agregue al final de su actividad, con sus datos reales en lugar de los corchetes: «' + agrega + '»')
+      : accion);
+    return { k: b.k, e: b.e, falta: falta, agrega: agrega, accion: accion, frase: frase, obs: obs.trim() };
+  }
+
+  /**
+   * panelRevisor({R, obl, texto, b, app, n, informe, puede, yaPasada(obs), alPasar(obs) -> bool})
+   * -> nodo con la receta y el botón «Pasar a la observación para el contratista».
+   */
+  function panelRevisor(o) {
+    var x = receta(o.R, o.obl, o.texto, o.b);
+    if (!x) return null;
+    var nodo = K.nodo('<div class="ta-rev ta-rev--' + x.e + '" role="region" aria-label="Qué falta y frase sugerida"></div>');
+    nodo.appendChild(K.nodo('<p class="ta-rev__falta"><span class="ta__luz" aria-hidden="true"></span><span><b>Qué falta:</b> ' + K.esc(x.falta) + '</span></p>'));
+    if (x.agrega) {
+      nodo.appendChild(K.nodo('<p class="ta-rev__et">' + K.icono('lapiz', 14) + ' Frase sugerida con su texto</p>'));
+      var su = finalDe(conPunto(o.texto));
+      nodo.appendChild(K.nodo('<div class="ta__texto ta-rev__frase"><span class="ta-rev__suyo">' + K.esc(su) + '</span> <span class="ta-rev__nuevo">' + resaltarCorchetes(x.agrega) + '</span></div>'));
+    } else if (x.accion) {
+      nodo.appendChild(K.nodo('<p class="ta__texto ta-rev__frase">' + resaltarCorchetes(x.accion) + '</p>'));
+    }
+    var base = { app: o.app || '', obl: o.n, informe: o.informe || '', k: x.k };
+    function ev(tipo) { var e = { tipo: tipo }; for (var p in base) e[p] = base[p]; encolar(e); }
+    ev('rojo.toque');
+    var ya = !!(o.yaPasada && o.yaPasada(x.obs));
+    var btn = K.nodo('<button type="button" class="kit-btn ta-rev__pasar">' + K.icono(ya ? 'check' : 'enviar', 15) + ' <span>' + (ya ? 'Ya está en la observación para el contratista' : 'Pasar a la observación para el contratista') + '</span></button>');
+    var pie = K.nodo('<p class="ta__nota ta-rev__pie"></p>');
+    if (ya || o.puede === false) btn.disabled = true;
+    pie.textContent = o.puede === false && !ya ? 'Esta cuenta no está en revisión: no se agregan observaciones.' : 'Queda en la observación de esta obligación; si devuelves la cuenta, sale en el motivo. Puedes editarla antes.';
+    btn.addEventListener('click', function () {
+      if (btn.disabled) return;
+      btn.disabled = true;   /* escudo desde el primer toque: una sola nota por toque */
+      var ok = false;
+      try { ok = o.alPasar ? o.alPasar(x.obs) !== false : false; } catch (e) { ok = false; }
+      if (!ok) { btn.disabled = false; return; }
+      K.vibrar(8);
+      ev('rojo.pasar');
+      btn.innerHTML = K.icono('check', 15) + ' <span>Pasada a la observación para el contratista</span>';
+      btn.classList.add('ta-rev__pasar--hecho');
+    });
+    var acc = K.nodo('<div class="ta__btns"></div>');
+    acc.appendChild(btn);
+    nodo.appendChild(acc);
+    nodo.appendChild(pie);
+    return nodo;
+  }
+
   K.piezas.teayudo = {
     crear: crear, pistas: pistas, hayRojo: hayRojo, ayudaIA: ayudaIA, irAlHueco: irAlHueco,
-    corchetesSinLlenar: corchetesSinLlenar,
+    corchetesSinLlenar: corchetesSinLlenar, receta: receta, panelRevisor: panelRevisor,
+    registrar: encolar,   /* 10/11 · la medición de «Redactemos juntos» va a la misma cola */
     /* para las pruebas */
     _guardar: guardar_, _tema: tema, _faltan: faltanParaIA, _enviar: enviar, COLA_K: COLA_K, ENVIO_K: ENVIO_K
   };
