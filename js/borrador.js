@@ -1540,6 +1540,7 @@
         /* 10/11 · si el CORE conservó casillas guardadas desde otro equipo, las trae */
         if (r && r.actividades && r.actividades.length === textos.length) textos = r.actividades.slice();
         baseTextos = textos.slice();
+        if (r && r.conservadas && r.conservadas.length) setTimeout(function () { K.aviso('La obligación ' + r.conservadas.join(', ') + ' se había guardado desde otro equipo: se conservó esa versión.', 'aviso', 8000); }, conAviso ? 2200 : 0);
         if (r && r.informe) E.informe = r.informe;
         if (r && r.fila && !E.fila) E.fila = r.fila;   /* 23/10 */
         /* 02/11 · «Te ayudo»: quedó algún dato por llenar entre [corchetes] */
