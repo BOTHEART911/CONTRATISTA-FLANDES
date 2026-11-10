@@ -92,24 +92,41 @@
     return 'borrador:' + (E ? E.idContrato : '') + ':' + (E ? E.informe : '');
   }
 
+  /* 10/11 · CELULAR Y COMPUTADOR A LA VEZ. Oss guardó la obligación 3 en el celular y el computador
+     no la mostraba: el computador tenía un respaldo local VIEJO (con esa casilla vacía) y el respaldo
+     le ganaba siempre a lo guardado. Ahora el respaldo recuerda sobre qué versión del servidor se
+     escribió (base) y se recupera CASILLA POR CASILLA solo lo que se cambió en este aparato y que el
+     servidor no cambió desde entonces. Lo guardado desde otro aparato gana; un respaldo vacío nunca
+     tapa un texto guardado. */
+  var baseTextos = [];
+
   function respaldar() {
-    try { K.guardar.escribir(llaveRespaldo(), { textos: textos, cuando: Date.now() }); }
+    try { K.guardar.escribir(llaveRespaldo(), { textos: textos, base: baseTextos, cuando: Date.now(), v: 2 }); }
     catch (e) {}
   }
 
+  /** -> {recuperadas: n, otroEquipo: [obligaciones con lo guardado desde otro aparato]} */
   function recuperarRespaldo() {
+    var out = { recuperadas: 0, otroEquipo: [] };
     try {
       var r = K.guardar.leer(llaveRespaldo(), null);
-      if (!r || !r.textos || r.textos.length !== textos.length) return false;
-      var distinto = false;
+      if (!r || !r.textos || r.textos.length !== textos.length) { olvidarRespaldo(); return out; }
+      var base = r.base && r.base.length === textos.length ? r.base : null;
       for (var i = 0; i < r.textos.length; i++) {
-        if ((r.textos[i] || '') !== (textos[i] || '')) { distinto = true; break; }
+        var L = r.textos[i] || '', S = textos[i] || '', B = base ? (base[i] || '') : null;
+        if (L === S) continue;
+        if (B !== null) {
+          if (L === B) continue;                                      /* aquí no se tocó: vale lo guardado */
+          if (S === B) { textos[i] = L; out.recuperadas++; continue; } /* solo cambió aquí: se recupera */
+          out.otroEquipo.push(i + 1);                                  /* cambió aquí Y en otro aparato: gana lo guardado */
+          continue;
+        }
+        /* respaldo de antes del 10/11 (sin base): solo llena casillas vacías del servidor */
+        if (!S.trim() && L.trim()) { textos[i] = L; out.recuperadas++; }
       }
-      if (!distinto) return false;
-      textos = r.textos.slice();
-      sucio = true;
-      return true;
-    } catch (e) { return false; }
+      if (out.recuperadas) { sucio = true; respaldar(); } else olvidarRespaldo();
+    } catch (e) {}
+    return out;
   }
 
   function olvidarRespaldo() {
@@ -127,20 +144,24 @@
     var a0 = anclaDeCuenta();
     var cambia = a0 ? !ANCLA0 || ANCLA0.t !== a0.t : !!ANCLA0;
     if (cambia) { ANCLA0 = a0; E = null; }
+    /* 10/11 · lo cargado hace más de 1 minuto y sin cambios aquí se vuelve a pedir: así se ve lo que se guardó desde el celular */
+    if (E && !sucio && !guardando && Date.now() - (E._t || 0) > 60000) E = null;
     if (E) { pintar(caja, sub); precargarAnteriores(); return; }
 
     K.piezas.esqueletos.mientras(caja, K.pedir('borradorEstado', ANCLA0 ? { ancla: ANCLA0 } : {}), { forma: 'tarjetas', cuantos: 4 })
       .then(function (d) {
         E = d;
+        E._t = Date.now();
         textos = (d.actividades || []).slice();
+        baseTextos = textos.slice();
         evidencias = (d.evidencias || []).map(listaEvi);
         ARCH_ON = Object.prototype.toString.call(d.archivosEv) === '[object Array]';
         archivos = ARCH_ON ? d.archivosEv.map(listaArch) : [];
         ARCH_MULTI = ARCH_ON && Number(d.adjuntosTope) > 1;
         ARCH_TOPE = ARCH_MULTI ? Number(d.adjuntosTope) : 1;
-        if (recuperarRespaldo()) {
-          K.aviso('Recuperamos lo que estabas escribiendo la última vez.', 'info', 5000);
-        }
+        var rec = recuperarRespaldo();
+        if (rec.recuperadas) K.aviso('Recuperamos lo que estabas escribiendo la última vez en este equipo.', 'info', 5000);
+        if (rec.otroEquipo.length) K.aviso('La obligación ' + rec.otroEquipo.join(', ') + ' se guardó desde otro equipo: dejamos esa versión.', 'aviso', 7000);
         pintar(caja, sub);
         precargarAnteriores();
       })
@@ -489,6 +510,23 @@
     donde.appendChild(r.nodo);
   }
 
+  /** 10/11 · «La subo después»: el pendiente con «Ya la subí» (kit/redactemos.js) */
+  function pendienteEvidencia(donde, o, i, area, vista) {
+    var RD = K.piezas.redactemos;
+    if (!RD || !RD.pendiente || !donde) return;
+    var G = K.piezas.gemini, T = K.piezas.teayudo;
+    var g = G && G.guionGuardado ? G.guionGuardado(o.texto) : null;
+    var sug = (g && g.evidencia && g.evidencia.length ? g.evidencia : (T && T._tema ? T._tema(o.texto, '').ent : [])) || [];
+    var p = RD.pendiente({
+      app: 'CONTRATISTA', n: o.n, informe: E.informe, area: area, evidencias: sug,
+      soporte: function () { return ((evidencias[i] || []).length) + ((archivos[i] || []).length); },
+      alSubir: function () { var z = vista.querySelector('#edi-zona'); if (z) z.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    });
+    donde.appendChild(p.nodo);
+    var alSop = function (ev) { if (!p.nodo.isConnected) { document.removeEventListener('var:soporte', alSop); return; } if (ev.detail === i) p.actualizar(); };
+    document.addEventListener('var:soporte', alSop);
+  }
+
   function tarjetaVariacion(donde, o, i, area, cuenta) {
     var V = K.piezas.variacion;
     if (!V || !donde) return;
@@ -654,6 +692,7 @@
     });
 
     botonRedactemos(v.querySelector('.edi__campo'), o, i, area);
+    pendienteEvidencia(v.querySelector('.edi__campo'), o, i, area, v);
     tarjetaVariacion(v.querySelector('.edi__campo'), o, i, area, cuenta);
     zonaEvidencia(v.querySelector('#edi-zona'), i);
     if (ARCH_ON) zonaArchivo(v.querySelector('#edi-arch'), i);
@@ -1481,6 +1520,7 @@
 
     var paso = pedirB('borradorGuardar', {
       actividades: textos,
+      base: baseTextos,   /* 10/11 · lo que había al abrir: el CORE no pisa lo que otro equipo guardó en las casillas que aquí no se tocaron */
       total: E.total || ''
     });
 
@@ -1497,6 +1537,9 @@
         sucio = false;
         guardando = false;
         olvidarRespaldo();
+        /* 10/11 · si el CORE conservó casillas guardadas desde otro equipo, las trae */
+        if (r && r.actividades && r.actividades.length === textos.length) textos = r.actividades.slice();
+        baseTextos = textos.slice();
         if (r && r.informe) E.informe = r.informe;
         if (r && r.fila && !E.fila) E.fila = r.fila;   /* 23/10 */
         /* 02/11 · «Te ayudo»: quedó algún dato por llenar entre [corchetes] */
