@@ -65,9 +65,13 @@ window.ASISTENTE_BASE = [
 "plantilla rellenada",
 "como mejorar mi actividad",
 "que le falta a mi actividad",
-"misma cantidad que la cuenta anterior"
+"misma cantidad que la cuenta anterior",
+"fecha de una norma",
+"me dice que la fecha esta fuera del periodo",
+"igual a otra obligacion",
+"cuatro actividades"
 ],
-"respuesta": "Mientras escribes una actividad se encienden **6 bombillos**: **¿qué hiciste distinto?** (rojo si la forma de escribir es igual a tu cuenta anterior o si solo cambiaste cifras y fechas), **¿cuántos?** (la cifra junto a lo que contaste: «18 visitas técnicas»), **¿para quién o con quién?**, **¿qué quedó?** (se entregó, se radicó, quedó el acta), **¿cuándo?** (naranja si la fecha cae fuera del periodo; si aún no ingresas el periodo, se determina al ingresarlo) y **¿lo puedes demostrar o tu supervisor lo puede verificar?** (verde con evidencias o adjuntos cargados, o si escribes que no requiere adjunto; naranja si solo dices dónde verificarlo, como «en la carpeta física 12»). Toca uno y se resalta lo que lo cumple. Los términos de tu obligación sí los puedes repetir: se mide la **forma**, no las palabras. Es una guía: no te impide radicar.",
+"respuesta": "Mientras escribes una actividad se encienden **6 bombillos**: **¿qué hiciste distinto?** (rojo si la forma de escribir es igual a tu cuenta anterior o si solo cambiaste cifras y fechas), **¿cuántos?** (la cifra junto a lo que contaste: «18 visitas técnicas»), **¿para quién o con quién?**, **¿qué quedó?** (se entregó, se radicó, quedó el acta), **¿cuándo?** (naranja si la fecha cae fuera del periodo; si aún no ingresas el periodo, se determina al ingresarlo) y **¿lo puedes demostrar o tu supervisor lo puede verificar?** (verde con evidencias o adjuntos cargados, o si escribes que no requiere adjunto; naranja si solo dices dónde verificarlo, como «en la carpeta física 12»). Toca uno y se resalta lo que lo cumple. Los términos de tu obligación sí los puedes repetir: se mide la **forma**, no las palabras. Es una guía: no te impide radicar. **Lo que citas no se juzga**: la fecha y el número de una norma, un contrato, un oficio o algo programado («Decreto 180 del 17 de diciembre de 2015») no cuentan como fecha de lo que hiciste ni como cantidad. Si **no hiciste** la actividad, escribe por qué («Durante el periodo no se realizó… debido a…»): queda gris. «Cuatro (4) actividades» sale naranja hasta que digas **cuáles**; «no requiere adjunto» sale naranja si mencionas un producto que elaboraste (súbelo), y si escribes lo mismo en dos obligaciones, la segunda sale en rojo.",
 "accion": "ir:borrador",
 "estado": "",
 "activo": true,
