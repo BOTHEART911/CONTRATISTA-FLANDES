@@ -501,7 +501,7 @@
             periodo: per.sinPeriodo ? null : per,
             anteriores: prev.map(function (x2) { return x2.texto; }),
             extra: d.redaccion || null,
-            medir: function (t) { return V.medir(I, t, P, { obl: o.texto, desde: per.desde, hasta: per.hasta, soporte: ((evidencias[i] || []).length) + ((archivos[i] || []).length), nContrato: d.contrato || '', n: o.n || i + 1, hermanas: hermanas(i) }); }
+            medir: function (t) { return V.medir(I, t, P, { obl: o.texto, desde: per.desde, hasta: per.hasta, soporte: ((evidencias[i] || []).length) + ((archivos[i] || []).length), nContrato: d.contrato || '', n: o.n || i + 1, hermanas: hermanas(i), informe: E.informe, total: E.total }); }
           };
         });
       },
@@ -573,7 +573,7 @@
       var TA = K.piezas.teayudo, ayuda = null;
       if (TA) ayuda = TA.crear({
         app: 'CONTRATISTA', n: o.n, informe: E.informe, obligacion: o.texto, area: area,
-        medir: function (txt) { return V.medir(I, txt, P, { obl: o.texto, desde: per.desde, hasta: per.hasta, soporte: soporte(), nContrato: d.contrato || '', n: o.n || i + 1, hermanas: hermanas(i) }); },
+        medir: function (txt) { return V.medir(I, txt, P, { obl: o.texto, desde: per.desde, hasta: per.hasta, soporte: soporte(), nContrato: d.contrato || '', n: o.n || i + 1, hermanas: hermanas(i), informe: E.informe, total: E.total }); },
         alUsar: function (txt) {
           area.value = txt;
           try { area.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { textos[i] = area.value; cuenta.textContent = area.value.length; sucio = true; respaldar(); }
@@ -597,7 +597,7 @@
       }
       function medirYa() {
         var t0 = performance.now();
-        var R = V.medir(I, area.value, P, { obl: o.texto, desde: per.desde, hasta: per.hasta, soporte: soporte(), nContrato: d.contrato || '', avisarPeriodo: true, n: o.n || i + 1, hermanas: hermanas(i) });
+        var R = V.medir(I, area.value, P, { obl: o.texto, desde: per.desde, hasta: per.hasta, soporte: soporte(), nContrato: d.contrato || '', avisarPeriodo: true, n: o.n || i + 1, hermanas: hermanas(i), informe: E.informe, total: E.total });
         ultimo = R;
         var vacio = !String(area.value || '').trim();
         pas.innerHTML = vacio ? '<span class="var-pas var-pas--gen">Escribe la actividad de este periodo y se encienden tus bombillos</span>' : V.pastilla(R);
