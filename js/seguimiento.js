@@ -382,7 +382,7 @@
       t.appendChild(ca);
     }
     if (c.observaciones && !c.accion) {
-      t.appendChild(K.nodo('<div class="seg-obs"><b>Lo que te indicaron</b><p>' + K.esc(c.observaciones) + '</p></div>'));
+      t.appendChild(K.nodo('<div class="seg-obs"><b>Lo que te indicaron</b><p>' + K.esc(c.observaciones).replace(/\*([^*\n]{1,200})\*/g, '<b>$1</b>') + '</p></div>'));
     }
     var otras = (S.acciones || []).filter(function (a) { return a.informe !== c.informe && a.botones && a.botones.length; });
     otras.forEach(function (a) {

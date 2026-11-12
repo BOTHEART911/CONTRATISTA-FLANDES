@@ -331,7 +331,7 @@
         '<section class="kit-tarjeta obl-corrige">' +
         '  <h3 class="obl-corrige__t">' + K.esc(E.titulo || ('Corrige tu cuenta ' + E.informe)) + '</h3>' +
         (E.observaciones ? '  <div class="cta-devuelta"><b>' + (E.incompleta ? 'Lo que te pidieron completar' : 'Lo que te pidieron corregir') +
-          '</b><p>' + K.esc(E.observaciones) + '</p></div>' : '') +
+          '</b><p>' + K.esc(E.observaciones).replace(/\*([^*\n]{1,200})\*/g, '<b>$1</b>') + '</p></div>' : '') +
         '  <p class="obl-corrige__p">' + K.esc(E.motivo || '') + '</p>' +
         '  <button type="button" class="kit-btn kit-btn--plano">' + K.esc(E.boton || 'Ir a CORREGIR CUENTA') + '</button>' +
         '</section>'

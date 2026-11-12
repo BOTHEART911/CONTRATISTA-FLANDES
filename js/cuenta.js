@@ -356,7 +356,7 @@
       s.appendChild(K.nodo(
         '<div class="cta-devuelta">' +
         '  <b>' + (E.incompleta ? 'Lo que te pidieron completar' : 'Lo que te pidieron corregir') + '</b>' +
-        '  <p>' + K.esc(E.observaciones) + '</p>' +
+        '  <p>' + K.esc(E.observaciones).replace(/\*([^*\n]{1,200})\*/g, '<b>$1</b>') + '</p>' +   /* 12/11 · motivo agrupado: saltos y *negrita* */
         '</div>'
       ));
     }
