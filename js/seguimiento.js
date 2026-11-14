@@ -867,9 +867,13 @@
       K.pedir(accion, { informe: informe, tipo: tipo || 'inicial' }, { ms: 90000 })
         .then(function (r) {
           K.ocupado = false;
-          K.piezas.guardado.listo({ sub: plan ? (correccion ? 'Tu supervisor(a) ya sabe.' : 'Plan de pagos reportado.') : 'Cuenta reportada.' });
+          K.piezas.guardado.listo({ sub: plan ? (correccion ? 'Le avisamos a tu supervisor(a).' : 'Plan de pagos reportado. Le avisamos a tu supervisor(a).') : 'Cuenta reportada. Le avisamos a tu supervisor(a).' });
           var aviso = r && r.aviso;
-          var fallo = aviso && aviso.ok === false;
+          /* 14/11 · CORE nuevo: el WhatsApp al grupo quedó en cola. Se pide
+             que salga ya, sin esperar ni mostrar nada: si BuilderBot falla,
+             el CORE lo reintenta solo y, si no sale, avisa a DESARROLLO. */
+          if (aviso && aviso.cola) avisarGrupo(aviso.cola);
+          var fallo = aviso && aviso.ok === false && !aviso.enCola;
           setTimeout(function () {
             if (fallo) {
               /* lo mismo que avisarSiFalloElGrupo_ de la app vieja: el reporte
@@ -912,6 +916,16 @@
     });
   }
 
+  /* 14/11 · el aviso al grupo del supervisor que dejó el reporte en cola.
+     Una sola vez, en silencio: el resultado no cambia nada en pantalla (si
+     falla, ya lo tiene el reloj del CORE). */
+  var AVISOS_PEDIDOS = {};
+  function avisarGrupo(cola) {
+    if (!cola || AVISOS_PEDIDOS[cola]) return;
+    AVISOS_PEDIDOS[cola] = 1;
+    try { K.pedir('reportarAviso', { cola: cola }, { ms: 150000 })['catch'](function () {}); } catch (e) {}
+  }
+
   /* ══════════════ auxiliares ══════════════ */
 
   function errorCaja(e) {
@@ -939,6 +953,7 @@
     _accion: textoAccion,
     /* para el banco de pruebas */
     _estado: function () { return S || ULTIMO; },
+    _reportar: reportar,   /* 14/11 · banco del aviso en cola */
     _olvidar: function () { CACHE = null; DOCS = {}; PEDIDOS = {}; CERT = null; S = null; ULTIMO = null; }
   };
 }());
