@@ -497,21 +497,36 @@
     return (E.faltanActividades || []).length;
   }
 
+  /* 17/11 · marcadores que dejó el asistente ([número], <fecha>, [Pendiente: …]) sin completar.
+     El CORE los manda con su obligación y actividad (Ajustes1117.gs); los corchetes propios
+     (normas, siglas) no cuentan. Texto: «obligación 3, actividad 2 ([número])». */
+  function marcadoresTexto() {
+    var g = {}, orden = [];
+    (E.marcadores || []).forEach(function (x) {
+      var k = x.n + '|' + x.actividad;
+      if (!g[k]) { g[k] = { n: x.n, a: x.actividad, m: [] }; orden.push(k); }
+      if (g[k].m.indexOf(x.m) < 0) g[k].m.push(x.m);
+    });
+    return orden.map(function (k) { var x = g[k]; return 'obligación ' + x.n + ', actividad ' + x.a + ' (' + x.m.slice(0, 3).join(', ') + ')'; });
+  }
+
   function renglonActividades() {
     /* 28/09 (2) · al corregir, BORRADOR ACTIVIDADES se abre sobre esta misma
        cuenta devuelta (Oss: las actividades son lo que más se devuelve). */
     var corrige = E.puerta === 'corregir';
     var n = faltanActividades();
+    var marcas = marcadoresTexto();
     var ok = n === 0;
     var li = K.nodo(
-      '<li class="cta-idx cta-idx--' + (ok ? 'ok' : 'falta') + '">' +
+      '<li class="cta-idx cta-idx--' + (ok && !marcas.length ? 'ok' : 'falta') + '">' +
       '  <button type="button" class="cta-idx__btn">' +
       '    <span class="cta-idx__marca" aria-hidden="true">' +
-           (ok ? K.icono('check', 15) : '!') + '</span>' +
+           (ok && !marcas.length ? K.icono('check', 15) : '!') + '</span>' +
       '    <span class="cta-idx__txt">' +
       '      <span class="cta-idx__t">Actividades del informe</span>' +
       '      <span class="cta-idx__p">' +
-           (ok ? (corrige ? 'Toca para revisarlas o corregirlas, con sus evidencias' : 'Todas escritas')
+           (ok && marcas.length ? 'Completa lo que dejó el asistente: ' + K.esc(marcas.join('; ')) :
+            ok ? (corrige ? 'Toca para revisarlas o corregirlas, con sus evidencias' : 'Todas escritas')
                : (n === 1 ? 'Falta 1 obligación por escribir'
                           : 'Faltan ' + n + ' obligaciones por escribir')) +
       '      </span>' +
@@ -539,6 +554,9 @@
     /* Sin las actividades escritas el CORE no deja radicar (lo comprueba
        FC_validarCuenta_), así que aquí se dice antes y no se deja pulsar. */
     if (faltanActividades()) falta.push('escribir tus actividades');
+    /* 17/11 · el CORE no deja radicar con marcadores del asistente: se dice antes y dónde están */
+    var marcas = marcadoresTexto();
+    if (marcas.length) falta.push('completar lo que dejó el asistente en la ' + marcas.join('; '));
     BLOQUES.forEach(function (b) {
       var e = estadoBloque(b);
       if (e.clase !== 'ok') falta.push(b.titulo.toLowerCase());

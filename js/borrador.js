@@ -1550,9 +1550,14 @@
         if (r && r.informe) E.informe = r.informe;
         if (r && r.fila && !E.fila) E.fila = r.fila;   /* 23/10 */
         /* 02/11 · «Te ayudo»: quedó algún dato por llenar entre [corchetes] */
-        var huecos = [];
-        textos.forEach(function (t, j) { if (/\[[^\[\]\n]{1,80}\]/.test(t || '')) huecos.push(j + 1); });
-        if (huecos.length) setTimeout(function () { K.aviso('Guardado, pero en ' + (huecos.length === 1 ? 'la obligación ' : 'las obligaciones ') + huecos.join(', ') + ' quedan datos entre [corchetes] por llenar. Llénalos antes de ingresar la cuenta.', 'aviso', 9000); }, conAviso ? 1800 : 0);
+        /* 17/11 · solo los marcadores del asistente (la regla del motor); dice obligación y actividad */
+        var huecos = [], MK = K.piezas.informeCuentas && K.piezas.informeCuentas._estr && K.piezas.informeCuentas._estr.marcadores;
+        textos.forEach(function (t, j) {
+          if (MK) { var act = []; MK(t || '').forEach(function (x) { if (act.indexOf(x.actividad) < 0) act.push(x.actividad); });
+                    if (act.length) huecos.push((j + 1) + ' (actividad ' + act.join(', ') + ')'); }
+          else if (/\[[^\[\]\n]{1,80}\]/.test(t || '')) huecos.push(j + 1);
+        });
+        if (huecos.length) setTimeout(function () { K.aviso('Guardado, pero en ' + (huecos.length === 1 ? 'la obligación ' : 'las obligaciones ') + huecos.join(', ') + ' quedan datos que dejó el asistente por completar. Complétalos antes de ingresar la cuenta.', 'aviso', 9000); }, conAviso ? 1800 : 0);
         if (conAviso) {
           K.piezas.guardado.listo({
             titulo: '¡Guardado!',

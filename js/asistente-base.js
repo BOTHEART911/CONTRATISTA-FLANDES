@@ -18,7 +18,7 @@ window.ASISTENTE_BASE = [
 "no me deja ingresar por corchetes",
 "que le falta a mi actividad"
 ],
-"respuesta": "Cuando algún bombillo de tu actividad está en rojo sale **Te ayudo**: te dice **qué le falta** a tu texto (por ejemplo «falta cuántos: [número] estudiantes» o «falta qué quedó: listados de asistencia o registro fotográfico»). Ya no te propone un texto para copiar: lo completas tú con tus datos reales, o tocas el robot **Redactemos una actividad juntos** y lo redactamos con tus respuestas. Lo que esté entre **[corchetes]** sigue en rojo hasta que lo llenes, y no se puede ingresar la cuenta con datos entre [corchetes] sin llenar.",
+"respuesta": "Cuando algún bombillo de tu actividad está en rojo sale **Te ayudo**: te dice **qué le falta** a tu texto (por ejemplo «falta cuántos: [número] estudiantes» o «falta qué quedó: listados de asistencia o registro fotográfico»). Ya no te propone un texto para copiar: lo completas tú con tus datos reales, o tocas el robot **Redactemos una actividad juntos** y lo redactamos con tus respuestas. Lo que el asistente deje entre **[corchetes]** o **< >** sigue en rojo hasta que lo completes, y no se puede ingresar la cuenta mientras quede alguno: la app te dice en qué obligación y actividad está. Los corchetes que escribas tú (normas como [Ley 80 de 1993] o siglas como [SECOP II]) no frenan.",
 "accion": "ir:borrador",
 "estado": "",
 "activo": true,
@@ -1047,7 +1047,7 @@ window.ASISTENTE_BASE = [
 "cubrir un evento",
 "solicitud de prensa"
 ],
-"respuesta": "En **SOLICITUD A COMUNICACIONES** pides fotos, video, piezas gráficas, perifoneo o publicaciones para tu secretaría. Se pide con **3 días de antelación**, con el aval de tu supervisor(a) y con tu contrato **activo**. La envías tú desde el formulario.",
+"respuesta": "En **SOLICITUD A COMUNICACIONES** pides fotos, video, piezas gráficas, perifoneo o publicaciones para tu secretaría. Se pide con **7 días de antelación**, con el aval de tu supervisor(a) y con tu contrato **activo**. La envías tú desde el formulario.",
 "accion": "ir:comunicacionesNueva",
 "estado": "",
 "activo": true,

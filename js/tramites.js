@@ -103,7 +103,7 @@
 
   function vistaComunicaciones(sub) {
     var c = caja();
-    var p = K.pedir('comunicacionesEstado', {}, { ms: 60000 }).then(function (r) { COMU = r; return r; });
+    var p = K.pedir('comunicacionesEstado', {}, { ms: 60000 }).then(function (r) { COMU = antelacion7(r); return r; });
     K.piezas.esqueletos.mientras(c, p, { forma: 'ficha', cuantos: 2, espera: 'Trayendo tus solicitudes a Comunicaciones' })
       .then(function () { pintarComunicaciones(c, sub === 'nueva'); })
       ['catch'](function (e) {
@@ -165,6 +165,19 @@
       .replace(/\bterminacion\b/g, 'terminación').replace(/\bdespues\b/g, 'después').replace(/\bmas\b/g, 'más')
       .replace(/\bsecretaria\b/g, 'secretaría').replace(/\blogistica\b/g, 'logística').replace(/\baun\b/g, 'aún')
       .replace(/\bde que\b/g, 'de qué');
+  }
+
+  /* 17/11 · la entrega o publicación va desde hoy + 7 días calendario. El CORE nuevo ya lo manda así;
+     con el CORE anterior (3 días) aquí se sube a 7 igual, para que la regla rija desde ya. */
+  var ANTELACION_MIN = 7;
+  function antelacion7(r) {
+    if (!r) return r;
+    var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(r.hoy || '')), h = m ? new Date(+m[3], +m[2] - 1, +m[1]) : new Date();
+    h.setDate(h.getDate() + ANTELACION_MIN);
+    var d7 = String(h.getDate()).padStart(2, '0') + '/' + String(h.getMonth() + 1).padStart(2, '0') + '/' + h.getFullYear();
+    if (!r.minPublicacion || iso(d7) > iso(r.minPublicacion)) r.minPublicacion = d7;
+    if (!(Number(r.antelacion) >= ANTELACION_MIN)) r.antelacion = ANTELACION_MIN;
+    return r;
   }
 
   function formComunicaciones(c, alCerrar) {
@@ -265,7 +278,11 @@
       }).then(function (ok) { if (ok) enviarComunicaciones(c, D); });
     });
 
-    if (K.piezas.fechas) setTimeout(function () { K.piezas.fechas.montar(f); }, 0);
+    if (K.piezas.fechas) setTimeout(function () {
+      K.piezas.fechas.montar(f);
+      /* 17/11 · día con 5 o más solicitudes PENDIENTE o EN PROCESO: aviso (no bloquea) */
+      if (K.piezas.fechas.vigilarVolumen) K.piezas.fechas.vigilarVolumen(pub, { llenas: function () { return (COMU && COMU.ocupadas) || {}; }, tope: (P && P.tope) || 5 });
+    }, 0);
     return f;
   }
 
