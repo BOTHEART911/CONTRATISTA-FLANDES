@@ -322,6 +322,9 @@
     var conFoto = E.obligaciones.filter(function (o, k) { return (evidencias[k] && evidencias[k].length) || (archivos[k] && archivos[k].length); }).length;
     var total = E.obligaciones.length;
     var pct = total ? Math.round(escritas * 100 / total) : 0;
+    /* 18/11 · el inicio muestra este avance en la tarjeta de la cuenta en
+       curso. Se deja en el teléfono al pintar la cabecera: cero viajes. */
+    try { K.guardar.escribir('inicio.progreso', { id: E.idContrato, informe: E.informe, escritas: escritas, conFoto: conFoto, total: total, cuando: Date.now() }); } catch (e) {}
 
     /* 28/09 (2) · corrigiendo la cuenta devuelta: se dice qué cuenta es, qué
        pidieron y que se termina en CORREGIR CUENTA (rehace los formatos). */

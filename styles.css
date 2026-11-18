@@ -1759,10 +1759,6 @@
   position: relative; border: 1px solid var(--k-linea); border-radius: var(--k-r-md);
   background: var(--k-papel); padding: 12px 14px 12px 18px; overflow: hidden;
 }
-.tr-sol::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--k-aviso); }
-.tr-sol--ok::before { background: var(--k-ok); }
-.tr-sol--info::before { background: var(--k-marca-clara); }
-.tr-sol--malo::before { background: var(--k-malo); }
 .tr-sol summary { list-style: none; cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
 .tr-sol summary::-webkit-details-marker { display: none; }
 .tr-sol__cab { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
@@ -2256,3 +2252,190 @@
 .nc-p { margin: 0; font: 500 .9rem/1.45 var(--k-fuente); color: var(--k-tinta); }
 .nc-pie { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 12px; }
 .nc-nota { display: flex; gap: 6px; align-items: center; margin: 10px 0 0; font: 600 .85rem/1.4 var(--k-fuente); color: var(--k-aviso); }
+
+/* ════════════════════════════════════════════════════════════
+   18/11/2026 · NUEVO INICIO (maqueta aprobada por Oss)
+   Sigue DESIGN.md del kit: la cuenta en curso arriba y grande, sin
+   franjas laterales, íconos propios por acción, títulos en frase.
+   En PC: columna principal (cuenta y accesos) + columna lateral.
+   ════════════════════════════════════════════════════════════ */
+
+.ini { --ini-hero: var(--k-marca); --ini-hero-sub: #b9d7c9; }
+:root[data-tema="oscuro"] .ini { --ini-hero: #134a35; --ini-hero-sub: #b9d7c9; }
+
+.ini-hola { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 6px 2px 0; }
+.ini-hola__txt { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.ini-hola__t { margin: 0; font: 600 1.6rem/1.2 var(--k-fuente-titulo); color: var(--k-tinta); }
+.ini-hola__meta { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: .9rem; color: var(--k-apagado); }
+.ini-hola__meta .kit-pastilla { padding: 2px 10px; font-size: .75rem; }
+.ini-hola .kit-perfil-cara { flex: 0 0 auto; }
+
+.ini-rejilla { display: flex; flex-direction: column; gap: 14px; }
+.ini-col { display: contents; }
+.ini-hero { order: 1; } .ini-reciente-sitio { order: 2; } .ini-rapidos { order: 3; } .ini-avisos { order: 4; } .ini-listas { order: 5; }
+
+/* ── la cuenta en curso ── */
+.ini-hero {
+  background: var(--ini-hero); color: #fff;
+  border-radius: 22px; padding: 20px;
+  display: flex; flex-direction: column; gap: 16px;
+  min-height: 220px;
+}
+.ini-hero__cab { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.ini-hero__eti { font: 600 .75rem/1 var(--k-fuente); letter-spacing: .08em; color: var(--ini-hero-sub); }
+.ini-hero__chip { font: 600 .75rem/1 var(--k-fuente); padding: 6px 11px; border-radius: var(--k-r-pill); white-space: nowrap; }
+.ini-hero__chip--curso  { background: #fde68a; color: #06402B; }
+.ini-hero__chip--espera { background: rgba(255, 255, 255, .16); color: #fff; }
+.ini-hero__chip--ok     { background: #dcfce7; color: #14532d; }
+.ini-hero__chip--malo   { background: #fee2e2; color: #991b1b; }
+.ini-hero__t { margin: 0; font: 600 1.35rem/1.25 var(--k-fuente-titulo); text-wrap: balance; }
+.ini-hero__avance { display: flex; flex-direction: column; gap: 12px; }
+.ini-hero__avance:empty { display: none; }
+.ini-hero__p { margin: 0; font-size: .92rem; color: #dcebe3; }
+.ini-hero__alerta { margin: 0; display: flex; gap: 8px; align-items: flex-start; font-size: .88rem; background: rgba(0, 0, 0, .18); border-radius: 12px; padding: 10px 12px; }
+.ini-hero__alerta svg { flex: 0 0 auto; color: #fde68a; margin-top: 1px; }
+
+.ini-barra { display: flex; flex-direction: column; gap: 6px; }
+.ini-barra__t { display: flex; justify-content: space-between; font-size: .9rem; }
+.ini-barra__b { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, .16); overflow: hidden; }
+.ini-barra__b i { display: block; height: 100%; border-radius: 4px; background: #86efac; transition: width .25s cubic-bezier(.2, .8, .2, 1); }
+
+.ini-pasos { margin: 0; padding: 0; list-style: none; display: flex; justify-content: space-between; gap: 4px; }
+.ini-paso { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: .68rem; color: var(--ini-hero-sub); text-align: center; white-space: nowrap; }
+.ini-paso__n {
+  width: 26px; height: 26px; border-radius: 50%; box-sizing: border-box;
+  border: 1.5px solid rgba(255, 255, 255, .35);
+  display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: .75rem;
+}
+.ini-paso--hecho .ini-paso__n { background: rgba(255, 255, 255, .2); border-color: transparent; color: #fff; }
+.ini-paso--ahora { color: #fff; font-weight: 600; }
+.ini-paso--ahora .ini-paso__n { background: #fde68a; border-color: transparent; color: #06402B; }
+
+.ini-hero__botones { display: flex; flex-direction: column; gap: 10px; }
+.ini-btn {
+  appearance: none; border: 0; cursor: pointer;
+  min-height: 52px; border-radius: 14px; padding: 0 22px;
+  background: #fff; color: #06402B;
+  font: 600 1rem/1 var(--k-fuente);
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  transition: transform .15s ease, background-color .15s ease;
+}
+.ini-btn:hover { background: #eef7f2; }
+.ini-btn:active { transform: scale(.98); }
+.ini-btn:focus-visible { outline: 2px solid #fde68a; outline-offset: 2px; }
+.ini-btn--sec { min-height: 48px; background: transparent; color: #fff; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .4); }
+.ini-btn--sec:hover { background: rgba(255, 255, 255, .08); }
+
+/* ── lo último, avisos, accesos y listas ── */
+.ini-reciente, .ini-aviso, .ini-rapido, .ini-fila {
+  appearance: none; cursor: pointer; text-align: left; font: inherit; color: var(--k-tinta);
+  -webkit-tap-highlight-color: transparent;
+}
+.ini-reciente:focus-visible, .ini-aviso:focus-visible, .ini-rapido:focus-visible, .ini-fila:focus-visible { outline: 2px solid var(--k-marca); outline-offset: 2px; }
+.ini-reciente-sitio:empty, .ini-avisos:empty { display: none; }
+
+.ini-reciente {
+  width: 100%; display: flex; align-items: center; gap: 14px;
+  background: var(--k-papel); border: 1px solid var(--k-linea); border-radius: 18px; padding: 14px 16px;
+}
+.ini-reciente__ico { width: 44px; height: 44px; border-radius: 50%; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; }
+.ini-reciente__ico--ok { background: var(--k-ok-fondo); color: var(--k-ok); }
+.ini-reciente__ico--espera { background: var(--k-aviso-fondo); color: var(--k-aviso); }
+.ini-reciente__txt, .ini-aviso__txt, .ini-fila__txt { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-width: 0; }
+.ini-reciente__t, .ini-fila__t { font-weight: 600; font-size: .95rem; }
+.ini-reciente__p, .ini-fila__p { font-size: .82rem; color: var(--k-apagado); }
+.ini-flecha { flex: 0 0 auto; color: var(--k-apagado); display: inline-flex; order: 3; }
+
+.ini-aviso {
+  width: 100%; display: flex; align-items: center; gap: 12px;
+  background: var(--k-papel); border: 1px solid var(--k-linea); border-radius: 18px; padding: 14px 16px;
+}
+.ini-aviso > span:first-child { color: var(--k-marca); display: inline-flex; }
+.ini-aviso--atencion { background: var(--k-aviso-fondo); border-color: color-mix(in srgb, var(--k-aviso) 35%, transparent); }
+.ini-aviso--atencion > span:first-child, .ini-aviso--atencion .ini-aviso__t { color: var(--k-aviso); }
+.ini-aviso__t { font-weight: 600; font-size: .9rem; }
+.ini-aviso__p { font-size: .82rem; color: var(--k-tinta-2); }
+
+.ini-rapidos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.ini-rapido {
+  position: relative; display: flex; flex-direction: column; gap: 6px; min-height: 112px;
+  background: var(--k-papel); border: 1px solid var(--k-linea); border-radius: 18px; padding: 16px;
+  transition: transform .15s ease, border-color .15s ease;
+}
+.ini-rapido:hover { border-color: rgba(var(--k-marca-rgb), .35); }
+.ini-rapido:active { transform: scale(.98); }
+.ini-rapido__ico { color: var(--k-marca); display: inline-flex; margin-bottom: 4px; }
+.ini-rapido__t { font-weight: 600; font-size: .95rem; }
+.ini-rapido__p { font-size: .78rem; color: var(--k-apagado); }
+.ini-rapido .acceso__burbuja { top: 12px; right: 12px; box-shadow: none; }
+
+.ini-listas { display: flex; flex-direction: column; gap: 20px; }
+.ini-lista { display: flex; flex-direction: column; gap: 8px; }
+.ini-lista__t { margin: 6px 4px 0; font: 600 .92rem/1.2 var(--k-fuente-titulo); color: var(--k-tinta-2); }
+.ini-lista__caja { background: var(--k-papel); border: 1px solid var(--k-linea); border-radius: 18px; overflow: hidden; }
+.ini-fila {
+  width: 100%; display: flex; align-items: center; gap: 12px; min-height: 60px;
+  background: transparent; border: 0; border-top: 1px solid var(--k-linea); padding: 12px 16px;
+}
+.ini-fila:first-child { border-top: 0; }
+.ini-fila[hidden] { display: none; }
+.ini-fila:hover { background: rgba(var(--k-marca-rgb), .04); }
+.ini-fila__ico { width: 38px; height: 38px; border-radius: 12px; flex: 0 0 auto; background: rgba(var(--k-marca-rgb), .09); color: var(--k-marca); display: inline-flex; align-items: center; justify-content: center; }
+.ini-fila .acceso__burbuja { position: static; order: 2; box-shadow: none; flex: 0 0 auto; }
+
+@media (min-width: 900px) {
+  .ini-hola__t { font-size: 1.9rem; }
+  .ini-hero { padding: 26px 30px; }
+  .ini-hero__t { font-size: 1.6rem; }
+  .ini-hero__botones { flex-direction: row; flex-wrap: wrap; }
+  .ini-paso { flex-direction: row; justify-content: flex-start; text-align: left; font-size: .8rem; gap: 8px; }
+  .ini-paso__n { flex: 0 0 auto; width: 30px; height: 30px; }
+  .ini-rejilla { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr); align-items: start; gap: 22px; }
+  .ini-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+  .ini-rapidos { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ini-btn, .ini-rapido, .ini-barra__b i { transition: none; }
+}
+
+/* ════════════════════════════════════════════════════════════
+   18/11/2026 · SIN FRANJAS LATERALES (DESIGN.md del kit, punto 8)
+   Las franjas de color a un lado eran la marca más visible de diseño
+   genérico. El estado se sigue diciendo, pero con el borde completo
+   tenue y, donde ayuda, un fondo suave. Va en un solo bloque al final
+   para que se lea qué cambió; las reglas de arriba quedan como estaban.
+   ════════════════════════════════════════════════════════════ */
+.acceso::before, .grupo__t::before, .seg-estado::before,
+.tr-sol::before, .edi__bloque::before, .acceso--alerta::before { content: none; }
+.grupo__t { padding-left: 0; }
+.tr-sol { padding-left: 14px; }
+
+.obl, .cta-doc--obliga, .obl-corrige, .mrc-fila, .nc-tarjeta { border-left-width: 1px; }
+.cta-devuelta, .notif-fin, .cta-aviso--planilla { border-left: 0; }
+
+.obl--lista     { border-color: color-mix(in srgb, var(--k-ok) 45%, transparent); }
+.obl--escrita   { border-color: color-mix(in srgb, var(--k-aviso) 45%, transparent); }
+.obl--pendiente { border-color: var(--k-linea); }
+
+.seg-estado       { border-color: color-mix(in srgb, var(--k-aviso) 40%, transparent); }
+.seg-estado--ok   { border-color: color-mix(in srgb, var(--k-ok) 40%, transparent); }
+.seg-estado--malo { border-color: color-mix(in srgb, var(--k-malo) 40%, transparent); }
+.seg-estado--nada { border-color: var(--k-linea); }
+
+.tr-sol         { border-color: color-mix(in srgb, var(--k-aviso) 40%, transparent); }
+.tr-sol--ok     { border-color: color-mix(in srgb, var(--k-ok) 40%, transparent); }
+.tr-sol--info   { border-color: color-mix(in srgb, var(--k-marca-clara) 40%, transparent); }
+.tr-sol--malo   { border-color: color-mix(in srgb, var(--k-malo) 40%, transparent); }
+
+.mrc-fila       { border-color: var(--k-linea); }
+.mrc-fila--ok   { border-color: color-mix(in srgb, var(--k-ok) 40%, transparent); }
+.mrc-fila--malo { border-color: color-mix(in srgb, var(--k-malo) 40%, transparent); }
+.mrc-fila--aviso { border-color: color-mix(in srgb, var(--k-aviso) 40%, transparent); }
+
+.cta-doc--obliga { border-color: rgba(var(--k-marca-rgb), .35); background: rgba(var(--k-marca-rgb), .04); }
+.obl-corrige    { border-color: color-mix(in srgb, var(--k-malo) 40%, transparent); background: var(--k-malo-fondo); }
+.cta-devuelta, .notif-fin { border: 1px solid color-mix(in srgb, var(--k-aviso) 35%, transparent); }
+.cta-aviso--planilla { border: 1px solid rgba(var(--k-marca-rgb), .3); }
+.nc-tarjeta     { border-color: rgba(var(--k-marca-rgb), .35); }
+.nc-tarjeta--espera { border-color: color-mix(in srgb, var(--k-aviso) 40%, transparent); }
+.nc-tarjeta--ok { border-color: color-mix(in srgb, var(--k-ok) 40%, transparent); }

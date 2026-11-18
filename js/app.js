@@ -450,22 +450,23 @@
   /* ---------- inicio ---------- */
 
   function vistaInicio() {
-    var caja = K.nodo('<div class="kit-ancho vista"></div>');
+    /* 18/11/2026 · NUEVO INICIO (maqueta aprobada por Oss).
+       Arriba la cuenta en curso, con su paso y el botón para seguir; luego
+       lo último que pasó, cuatro accesos rápidos, los avisos que piden algo
+       y el resto en listas cortas. Todo sale del arranque que ya viaja con
+       el inicio (cuentasResumen, contrato.informes, avisos): CERO viajes
+       nuevos. El avance del borrador lo deja borrador.js en el teléfono. */
+    var caja = K.nodo('<div class="kit-ancho vista ini"></div>');
     var saludo = K.nodo(
-      '<section class="saludo">' +
-      '  <div class="saludo__txt">' +
-      '    <p class="saludo__hola">Hola,</p>' +
-      '    <h2 class="saludo__nombre">' + K.esc(nombreCorto(YO.nombre)) + '</h2>' +
-      '    <p class="saludo__doc">Documento ' + K.esc(YO.documento || '') + '</p>' +
+      '<section class="ini-hola">' +
+      '  <div class="ini-hola__txt">' +
+      '    <h2 class="ini-hola__t">Hola, ' + K.esc(nombreCapital(nombreCorto(YO.nombre))) + '</h2>' +
+      '    <p class="ini-hola__meta">Documento ' + K.esc(YO.documento || '') + '</p>' +
       '  </div>' +
       '</section>'
     );
-    /* 4.9 · la cara, tocable: abre la foto de perfil para subirla o cambiarla */
+    /* la cara, tocable: abre la foto de perfil para subirla o cambiarla */
     if (K.piezas.perfil && K.piezas.personas) saludo.appendChild(caraPerfil());
-    /* 4.6.1 · la franja verde deja de ser un degradado quieto: lleva el
-       mismo cielo de la portada de bienvenida (aurora y burbujas). Es la
-       pieza del kit, no una copia: se arregla en un sitio. */
-    if (K.piezas.cielo) K.piezas.cielo.poner(saludo, { burbujas: 3 });
     caja.appendChild(saludo);
 
     /* 10.3 · NOTIFICADO: un solo aviso y la certificación, nada más */
@@ -475,104 +476,269 @@
     var tNuevo = tarjetaNuevoContrato();
     if (tNuevo) caja.appendChild(tNuevo);
 
-    /* 4.8 · EL INICIO POR BLOQUES, COMO EL MENÚ DE SIEMPRE
-       Con los trámites e institucional eran quince tarjetas seguidas, una
-       lista que hay que leer entera para encontrar algo. Van en los bloques
-       del menú viejo (Procesos de cuenta, Trámites y solicitudes,
-       Institucional...), que es como la gente ya los busca. Soporte no se
-       repite aquí: vive en el menú del perfil, arriba a la derecha. */
-    var primero = null;
-    function bloque(titulo, tarjetas) {
-      var s = K.nodo('<section class="bloque" aria-label="' + K.esc(titulo) + '">' +
-        '<h3 class="bloque__t">' + K.esc(titulo) + '</h3></section>');
-      var r = K.nodo('<div class="kit-rejilla kit-rejilla--auto accesos"></div>');
-      tarjetas.forEach(function (t) { r.appendChild(t); });
-      s.appendChild(r);
-      caja.appendChild(s);
-      if (!primero) primero = s;
-      return s;
-    }
+    /* dos columnas en PC (principal y lado); en el celular se intercalan
+       con 'order' para que lo último pagado quede bajo la cuenta en curso */
+    var rejilla = K.nodo('<div class="ini-rejilla"><div class="ini-col ini-col--principal"></div><div class="ini-col ini-col--lado"></div></div>');
+    var colP = rejilla.firstChild, colL = rejilla.lastChild;
+    var hero = K.nodo('<section class="ini-hero" aria-label="Tu cuenta en curso"></section>');
+    var reciente = K.nodo('<div class="ini-reciente-sitio"></div>');
+    var avisosSitio = K.nodo('<div class="ini-avisos"></div>');
+    colP.appendChild(hero);
+    colL.appendChild(reciente);
 
-    bloque('PROCESOS DE CUENTA', [
-      acceso('BORRADOR ACTIVIDADES', porCorregir()
-        ? 'Corrige aquí las actividades y evidencias de tu cuenta ' + porCorregir().informe
-        : 'Escribe tus actividades y sube las evidencias', 'img/datos_de_procesos.webp', function () { irA('borrador'); }),
-      tarjetaCuenta(),
-      /* 4.7 · el seguimiento: lo que en la app vieja eran seis botones
-         sueltos del menú (estado de cuenta, plan de pagos, mi cuenta Drive,
-         reportar cuenta, recibir egresos y certificación) es UNA vista. */
-      acceso('ESTADO DE CUENTA', 'Dónde va tu cuenta, reportar, tus documentos, pagos y egresos', 'img/procesos_de_cuenta.webp', function () { irA('seguimiento'); }),
-      /* 06/10 · dónde descargo lo que hice: todas mis cuentas en PDF o Excel */
-      accesoIcono('MIS REGISTROS', 'Todas tus cuentas con su estado, la orden de pago y el egreso. Descárgalas en PDF o Excel', 'descargar', function () { irA('misregistros'); })
-    ]);
-
-    bloque('TRÁMITES Y SOLICITUDES', [
-      acceso('CERTIFICACIÓN CONTRATO', 'Genera el certificado de tu contrato en PDF', 'img/datos_de_procesos.webp', function () { irA('seguimiento/certificacion'); }),
-      acceso('SOLICITUD A COMUNICACIONES', 'Fotos, video, piezas gráficas o publicaciones para tu secretaría', 'img/comunicaciones.webp', function () { irA('comunicaciones'); }),
-      acceso('SOLICITUD TESORERÍA', 'Pregunta por el pago de una cuenta y ve la respuesta aquí', 'img/tramites_y_solicitudes.webp', function () { irA('tesoreria'); }),
-      /* 26/09 · adición, cesión, modificación o corrección y suspensión, con la respuesta y las gestiones */
-      acceso('SOLICITUD CONTRATACIÓN', 'Adición, cesión, modificación o suspensión: pide o recuerda el trámite y ve la respuesta', 'img/tramites_y_solicitudes.webp', function () { irA('contratacion'); })
-    ]);
-
-    /* La burbuja de los comunicados sale del arranque: ver pintarBurbuja. */
-    var tarjetaCom = acceso('COMUNICADOS', 'Lo que te informan la Alcaldía y las oficinas', 'img/chat.webp', function () { irA('comunicados'); });
-    bloque('INSTITUCIONAL', [
-      tarjetaCom,
-      acceso('DIRECTORIO INSTITUCIONAL', 'Dónde queda cada dependencia, sus correos y teléfonos', 'img/institucional.webp', function () { irA('directorio'); })
-    ]);
+    /* cuatro accesos rápidos, cada uno con su ícono */
+    var rapidos = K.nodo('<section class="ini-rapidos" aria-label="Accesos rápidos"></section>');
+    rapidos.appendChild(rapido('Estado de cuenta', 'Dónde va y tus pagos', 'reloj', function () { irA('seguimiento'); }));
+    rapidos.appendChild(rapido('Mis registros', 'Tus cuentas en PDF o Excel', 'descargar', function () { irA('misregistros'); }));
+    rapidos.appendChild(rapido('Certificación', 'De tu contrato, en PDF', 'documento', function () { irA('seguimiento/certificacion'); }));
+    var tarjetaCom = rapido('Comunicados', 'De la Alcaldía y las oficinas', 'megafono', function () { irA('comunicados'); });
+    rapidos.appendChild(tarjetaCom);
+    colP.appendChild(rapidos);
     pintarBurbujaComunicados(tarjetaCom);
 
-    /* ajuste 4 · la tarjeta de tutoriales solo se ve si ADMIN los encendió
-       (se vuelve a mirar cuando llega el arranque, abajo) */
-    var tarjetaTut = acceso('TUTORIALES DE USO', 'Videos cortos de cada paso de la app', 'img/manual_de_uso.webp', function () { irA('tutoriales'); });
-    tarjetaTut.hidden = !tutorialesActivos();
-    bloque('AYUDA Y SITIOS WEB', [
-      tarjetaTut,
-      acceso('SITIOS WEB', 'SECOP II, SIA Observa, la Alcaldía, Small PDF y la DIAN', 'img/sitios_web.webp', function () { irA('sitios'); })
-    ]);
+    colL.appendChild(avisosSitio);
+    pintarAvisoTelefono(avisosSitio);
 
-    /* La burbuja de sin leer va aquí y no en una campana aparte: es donde
-       la persona mira al entrar, y así el aviso guardado se ve aunque el
-       push se haya perdido. El número lo trae la misma llamada del inicio. */
-    var tarjetaAvisos = acceso('MIS NOTIFICACIONES', 'Todo lo que te hemos avisado', 'img/notificacion.webp', function () { irA('avisos'); });
-    bloque('TU CONTRATO Y TUS AVISOS', [
-      tarjetaAvisos,
-      acceso('DATOS DEL CONTRATO', 'Tu contrato, su valor y quién lo supervisa', 'img/datos_de_procesos.webp', function () { irA('proceso'); }),
-      /* 4.5 · punto 8 · DATOS PERSONALES estaba DOS veces: aquí y en el menú
-         del banner, arriba a la derecha. Se queda el de arriba. */
-      acceso('AVISOS AL TELÉFONO', textoAvisos(), 'img/notificacion.webp', tocarAvisos)
-    ]);
-    pintarBurbuja(tarjetaAvisos);
+    /* lo demás, en listas cortas por sección */
+    var listas = K.nodo('<div class="ini-listas"></div>');
+    listas.appendChild(lista('Trámites y solicitudes', [
+      fila('Comunicaciones', 'Fotos, video y piezas gráficas', 'camara', function () { irA('comunicaciones'); }),
+      fila('Tesorería', 'Pregunta por el pago de una cuenta', 'moneda', function () { irA('tesoreria'); }),
+      fila('Contratación', 'Adición, cesión, modificación o suspensión', 'intercambiar', function () { irA('contratacion'); })
+    ]));
+    var filaAvisos = fila('Mis notificaciones', 'Todo lo que te hemos avisado', 'campana', function () { irA('avisos'); });
+    var filaTut = fila('Tutoriales de uso', 'Videos cortos de cada paso de la app', 'play', function () { irA('tutoriales'); });
+    filaTut.hidden = !tutorialesActivos();
+    listas.appendChild(lista('Tu contrato y la Alcaldía', [
+      fila('Datos del contrato', 'Valor, plazo y quién lo supervisa', 'hoja', function () { irA('proceso'); }),
+      filaAvisos,
+      fila('Directorio institucional', 'Dependencias, correos y teléfonos', 'ubicacion', function () { irA('directorio'); }),
+      fila('Sitios web', 'SECOP II, SIA Observa, la DIAN y más', 'globo', function () { irA('sitios'); }),
+      filaTut
+    ]));
+    colL.appendChild(listas);
+    pintarBurbuja(filaAvisos);
 
+    caja.appendChild(rejilla);
     app.appendChild(caja);
     K.piezas.creditos.montar(caja);
 
-    /* El resumen del contrato se trae en una sola llamada. */
-    var destino = K.nodo('<section class="resumen"></section>');
-    caja.insertBefore(destino, primero);
-
-    K.piezas.esqueletos.mientras(destino, cargarInicio(), { forma: 'ficha', cuantos: 1 })
-      .then(function () {
-        /* 10.3 · si el contrato llegó NOTIFICADO después de pintar, se repinta con su aviso */
-        if (esNotificado()) { enrutar(); return; }
-        /* 18/11 · si el inicio llegó después de pintar, la tarjeta del nuevo contrato entra ahora */
-        if (!tNuevo) { tNuevo = tarjetaNuevoContrato(); if (tNuevo) caja.insertBefore(tNuevo, destino); }
-        tarjetaTut.hidden = !tutorialesActivos();
-        pintarResumen(destino);
-        /* 4.7 · el estado de cuenta cuesta de 3 a 4 s de servidor y otros
-           2 a 3 de viaje (medido). Se pide por detrás en cuanto el inicio
-           está pintado: cuando la persona toque la tarjeta, ya está. */
-        /* 29/09 · con el temporizador de la VISTA: si la persona ya se fue
-           del inicio, la precarga ni se pide (kit.js, K.vista). */
-        /* 30/09 · SE QUITA la precarga. Medido en producción: eran las dos
-           ejecuciones más pesadas del ecosistema (seguimiento + historia, ~5 s
-           de servidor juntas) y salían en CADA apertura de cada contratista:
-           384 el 29/09, más que los propios inicios. Todos los usuarios
-           comparten la misma fila de Apps Script, así que esa precarga
-           frenaba a todos. El ESTADO DE CUENTA las pide al entrar. */
-      })
-      ['catch'](function (e) { destino.appendChild(errorCaja(e)); });
+    /* La cabecera con lo que ya se sabe (recordado o fresco); si el
+       contrato aún no llegó, esqueleto con la forma de la tarjeta. */
+    if (CONTRATO && ARRANQUE) { pintarHolaContrato(saludo); pintarHero(hero, reciente); }
+    else {
+      K.piezas.esqueletos.mientras(hero, cargarInicio(), { forma: 'ficha', cuantos: 1 })
+        .then(function () {
+          if (esNotificado()) { enrutar(); return; }
+          if (!tNuevo) { tNuevo = tarjetaNuevoContrato(); if (tNuevo) caja.insertBefore(tNuevo, rejilla); }
+          filaTut.hidden = !tutorialesActivos();
+          pintarHolaContrato(saludo);
+          pintarHero(hero, reciente);
+        })
+        ['catch'](function (e) { hero.appendChild(errorCaja(e)); });
+    }
   }
+
+  /* "OSCAR MAURICIO" → "Oscar Mauricio" (los títulos van en frase normal) */
+  function nombreCapital(n) {
+    var chicas = { de: 1, del: 1, la: 1, las: 1, los: 1, y: 1, e: 1, a: 1, en: 1, por: 1 };
+    return String(n || '').toLowerCase().split(/(\s+)/).map(function (w, i) {
+      return (i && chicas[w]) ? w : w.charAt(0).toUpperCase() + w.slice(1);
+    }).join('');
+  }
+
+  function pintarHolaContrato(saludo) {
+    var c = CONTRATO || {};
+    var meta = saludo.querySelector('.ini-hola__meta');
+    meta.innerHTML = 'Contrato ' + K.esc(c.contrato || '—') + ' · ' + K.esc(nombreCapital(c.secretaria || '')) + ' ' + pastillaEstado(c.estado);
+  }
+
+  /* ---------- la cuenta en curso ---------- */
+
+  var PASOS = ['Borrador', 'Radicar', 'Supervisión', 'Contratación', 'Pago'];
+  var PASO_DE = {
+    'NUEVA': 0, 'BORRADOR': 0, 'EN PROCESO': 0,
+    'INGRESADA': 1, 'DEVUELTA': 1, 'INCOMPLETA': 1,
+    'REPORTADA': 2,
+    'REVISADA POR SUPERVISOR': 3,
+    'APROBADA': 4, 'PLAN DE PAGOS': 4, 'CERRADA': 4, 'ORDEN DE PAGO': 4, 'EGRESO': 4,
+    'PAGADA': 5
+  };
+
+  function cuentasDelArranque() {
+    var l = (ARRANQUE && ARRANQUE.cuentasResumen) || [];
+    return l.map(function (c) { return { n: Number(c.informe) || 0, e: K.norm(c.estado || '') }; })
+      .filter(function (c) { return c.n > 0; })
+      .sort(function (a, b) { return a.n - b.n; });
+  }
+
+  /** -> { n, e, total } la cuenta que hoy pide algo de la persona */
+  function cuentaEnCurso() {
+    var l = cuentasDelArranque();
+    var inf = CONTRATO && CONTRATO.informes;
+    var total = Number(inf && inf.total) || 0;
+    var pc = porCorregir();
+    if (pc) return { n: Number(pc.informe) || 0, e: K.norm(pc.estado || 'DEVUELTA'), total: total, corregir: true };
+    var u = l.length ? l[l.length - 1] : null;
+    if (!u) return { n: 1, e: 'NUEVA', total: total };
+    if (u.e === 'PAGADA') return (!total || u.n < total) ? { n: u.n + 1, e: 'NUEVA', total: total } : { n: u.n, e: 'PAGADA', total: total, alDia: true };
+    return { n: u.n, e: u.e, total: total };
+  }
+
+  function textoHero(c) {
+    var n = c.n;
+    if (c.alDia) return { t: 'Todas tus cuentas están pagadas', chip: 'Al día', tono: 'ok',
+      b1: ['Ver mis registros', 'descargar', 'misregistros'] };
+    if (c.corregir) return { t: (c.e === 'INCOMPLETA' ? 'Completa tu cuenta ' : 'Corrige tu cuenta ') + n,
+      chip: c.e === 'INCOMPLETA' ? 'Incompleta' : 'Devuelta', tono: 'malo',
+      b1: ['Corregir cuenta', 'lapiz', 'cuenta'], b2: ['Ver qué te pidieron', 'info', 'seguimiento'] };
+    switch (c.e) {
+      case 'NUEVA': return { t: 'Empieza las actividades de tu cuenta ' + n, chip: 'Por empezar', tono: 'curso',
+        b1: ['Empezar el borrador', 'lapiz', 'borrador'] };
+      case 'BORRADOR': return { t: 'Escribe las actividades de tu cuenta ' + n, chip: 'En borrador', tono: 'curso',
+        b1: ['Seguir con el borrador', 'lapiz', 'borrador'], b2: ['Ingresar cuenta', 'enviar', 'cuenta'] };
+      case 'EN PROCESO': return { t: 'Termina de ingresar tu cuenta ' + n, chip: 'A medio ingresar', tono: 'curso',
+        b1: ['Seguir ingresando', 'enviar', 'cuenta'], b2: ['Ver el borrador', 'lapiz', 'borrador'] };
+      case 'INGRESADA': return { t: 'Reporta tu cuenta ' + n + ' a tu supervisor(a)', chip: 'Ingresada', tono: 'curso',
+        b1: ['Ir a reportar', 'enviar', 'seguimiento'] };
+      case 'REPORTADA': return { t: 'Tu supervisor(a) está revisando tu cuenta ' + n, chip: 'Reportada', tono: 'espera',
+        b1: ['Ver estado de cuenta', 'reloj', 'seguimiento'] };
+      case 'REVISADA POR SUPERVISOR': return { t: 'Tu cuenta ' + n + ' espera la aprobación de Contratación', chip: 'Revisada', tono: 'espera',
+        b1: ['Ver estado de cuenta', 'reloj', 'seguimiento'] };
+      case 'APROBADA': return { t: 'Reporta el plan de pagos de tu cuenta ' + n, chip: 'Aprobada', tono: 'curso',
+        b1: ['Ver qué sigue', 'adelante', 'seguimiento'] };
+      default: return { t: 'Tu cuenta ' + n + ' va hacia el pago', chip: nombreCapital(c.e), tono: 'espera',
+        b1: ['Ver estado de cuenta', 'reloj', 'seguimiento'] };
+    }
+  }
+
+  function pintarHero(hero, reciente) {
+    var c = cuentaEnCurso();
+    var h = textoHero(c);
+    var paso = PASO_DE[c.e] === undefined ? 0 : PASO_DE[c.e];
+    var etiqueta = 'CUENTA ' + c.n + (c.total ? ' DE ' + c.total : '');
+
+    var pasos = PASOS.map(function (p, i) {
+      var cls = i < paso ? 'ini-paso ini-paso--hecho' : (i === paso && !c.alDia ? 'ini-paso ini-paso--ahora' : 'ini-paso');
+      if (c.alDia) cls = 'ini-paso ini-paso--hecho';
+      return '<li class="' + cls + '"' + (i === paso && !c.alDia ? ' aria-current="step"' : '') + '>' +
+        '<span class="ini-paso__n" aria-hidden="true">' + (i < paso || c.alDia ? K.icono('check', 14) : (i + 1)) + '</span>' +
+        '<span class="ini-paso__t">' + p + '</span></li>';
+    }).join('');
+
+    hero.innerHTML =
+      '<div class="ini-hero__cab">' +
+      '  <span class="ini-hero__eti">' + etiqueta + '</span>' +
+      '  <span class="ini-hero__chip ini-hero__chip--' + h.tono + '">' + K.esc(h.chip) + '</span>' +
+      '</div>' +
+      '<h3 class="ini-hero__t">' + K.esc(h.t) + '</h3>' +
+      '<div class="ini-hero__avance"></div>' +
+      '<ol class="ini-pasos" aria-label="Pasos de la cuenta">' + pasos + '</ol>' +
+      '<div class="ini-hero__botones"></div>';
+
+    /* el avance del borrador, solo si este teléfono lo conoce (lo deja borrador.js) */
+    if (paso === 0 && !c.corregir) {
+      var av = hero.querySelector('.ini-hero__avance');
+      var p = K.guardar.leer('inicio.progreso', null);
+      var obl = (CONTRATO && CONTRATO.obligaciones && CONTRATO.obligaciones.length) || 0;
+      if (p && p.id === (CONTRATO && CONTRATO.idContrato) && Number(p.informe) === c.n && p.total) {
+        av.innerHTML = barra('Obligaciones escritas', p.escritas, p.total) + barra('Con evidencia', p.conFoto, p.total);
+      } else if (obl) {
+        av.innerHTML = '<p class="ini-hero__p">' + (c.e === 'NUEVA' ? 'Tus ' + obl + ' obligaciones te esperan en el borrador.' : 'Tienes ' + obl + ' obligaciones en esta cuenta.') + '</p>';
+      }
+    }
+
+    /* candado de datos: lo dice aquí, donde la persona va a seguir */
+    var cand = candadoContrato();
+    var bots = hero.querySelector('.ini-hero__botones');
+    if (cand && !c.corregir && paso <= 1) {
+      hero.querySelector('.ini-hero__avance').appendChild(K.nodo(
+        '<p class="ini-hero__alerta">' + K.icono('aviso', 18) + '<span>Antes de ingresar la cuenta completa tus datos: sin ellos no radicas ni reportas.</span></p>'));
+    }
+    [h.b1, h.b2].forEach(function (b, i) {
+      if (!b) return;
+      var el = K.nodo('<button type="button" class="ini-btn' + (i ? ' ini-btn--sec' : '') + '">' + K.icono(b[1], i ? 18 : 20) + '<span>' + K.esc(b[0]) + '</span></button>');
+      el.addEventListener('click', function () { K.vibrar(8); irA(b[2]); });
+      bots.appendChild(el);
+    });
+
+    pintarReciente(reciente, c);
+  }
+
+  function barra(txt, n, total) {
+    var pct = total ? Math.round((Number(n) || 0) * 100 / total) : 0;
+    return '<div class="ini-barra"><div class="ini-barra__t"><span>' + txt + '</span><b>' + (Number(n) || 0) + ' de ' + total + '</b></div>' +
+      '<div class="ini-barra__b" role="progressbar" aria-valuemin="0" aria-valuemax="' + total + '" aria-valuenow="' + (Number(n) || 0) + '" aria-label="' + txt + '">' +
+      '<i style="width:' + pct + '%"></i></div></div>';
+  }
+
+  /* lo último que pasó: una cuenta anterior que va hacia el pago, o la última pagada */
+  function pintarReciente(sitio, actual) {
+    sitio.innerHTML = '';
+    var l = cuentasDelArranque().filter(function (x) { return x.n !== actual.n; });
+    var enCamino = l.filter(function (x) { return x.e !== 'PAGADA' && x.e !== 'BORRADOR' && x.e !== 'NUEVA'; }).pop();
+    var pagada = l.filter(function (x) { return x.e === 'PAGADA'; }).pop();
+    var x = enCamino || pagada;
+    if (!x) return;
+    var ok = x.e === 'PAGADA';
+    var b = K.nodo(
+      '<button type="button" class="ini-reciente">' +
+      '  <span class="ini-reciente__ico ini-reciente__ico--' + (ok ? 'ok' : 'espera') + '" aria-hidden="true">' + K.icono(ok ? 'check' : 'reloj', 22) + '</span>' +
+      '  <span class="ini-reciente__txt"><span class="ini-reciente__t">Cuenta ' + x.n + (ok ? ' pagada' : ': ' + K.esc(nombreCapital(x.e))) + '</span>' +
+      '  <span class="ini-reciente__p">Ver el estado de cuenta</span></span>' +
+      '  <span class="ini-flecha" aria-hidden="true">' + K.icono('adelante', 18) + '</span>' +
+      '</button>');
+    b.addEventListener('click', function () { K.vibrar(8); irA('seguimiento'); });
+    sitio.appendChild(b);
+  }
+
+  /* los avisos al teléfono, solo cuando piden algo */
+  function pintarAvisoTelefono(sitio) {
+    sitio.innerHTML = '';
+    if (!K.piezas.avisos) return;
+    var e = K.piezas.avisos.estado();
+    if (e === 'listo' || e === 'no-soportado') return;
+    var bloqueado = e === 'bloqueado';
+    var b = K.nodo(
+      '<button type="button" class="ini-aviso' + (bloqueado ? ' ini-aviso--atencion' : '') + '">' +
+      '  <span aria-hidden="true">' + K.icono(bloqueado ? 'silencio' : 'campana', 22) + '</span>' +
+      '  <span class="ini-aviso__txt"><span class="ini-aviso__t">' + (bloqueado ? 'Los avisos al teléfono están bloqueados' : 'Recibe los avisos en este teléfono') + '</span>' +
+      '  <span class="ini-aviso__p">' + K.esc(textoAvisos()) + '</span></span>' +
+      '</button>');
+    b.addEventListener('click', function () { K.vibrar(8); tocarAvisos(); });
+    sitio.appendChild(b);
+  }
+
+  function rapido(titulo, texto, icono, al) {
+    var b = K.nodo(
+      '<button type="button" class="ini-rapido">' +
+      '  <span class="ini-rapido__ico" aria-hidden="true">' + K.icono(icono, 26) + '</span>' +
+      '  <span class="ini-rapido__t">' + K.esc(titulo) + '</span>' +
+      '  <span class="ini-rapido__p">' + K.esc(texto) + '</span>' +
+      '</button>');
+    b.addEventListener('click', function () { K.vibrar(8); al(); });
+    return b;
+  }
+
+  function fila(titulo, texto, icono, al) {
+    var b = K.nodo(
+      '<button type="button" class="ini-fila">' +
+      '  <span class="ini-fila__ico" aria-hidden="true">' + K.icono(icono, 20) + '</span>' +
+      '  <span class="ini-fila__txt"><span class="ini-fila__t">' + K.esc(titulo) + '</span>' +
+      '  <span class="ini-fila__p">' + K.esc(texto) + '</span></span>' +
+      '  <span class="ini-flecha" aria-hidden="true">' + K.icono('adelante', 18) + '</span>' +
+      '</button>');
+    b.addEventListener('click', function () { K.vibrar(8); al(); });
+    return b;
+  }
+
+  function lista(titulo, filas) {
+    var s = K.nodo('<section class="ini-lista" aria-label="' + K.esc(titulo) + '"><h3 class="ini-lista__t">' + K.esc(titulo) + '</h3><div class="ini-lista__caja"></div></section>');
+    var c = s.querySelector('.ini-lista__caja');
+    filas.forEach(function (f) { c.appendChild(f); });
+    return s;
+  }
+
 
   /* 18/11 · CONTRATO TERMINADO: la tarjeta "¿Ya aceptaste un nuevo contrato en el
      SECOP II?" (js/solicitudes.js). El estado viene con el inicio (sin viaje);
@@ -625,15 +791,6 @@
     return arranque().then(function () { return CONTRATO; });
   }
 
-  function pintarResumen(destino) {
-    var c = CONTRATO || {};
-    destino.innerHTML =
-      '<div class="kit-tarjeta resumen__caja">' +
-      '  <div class="resumen__fila"><span>Contrato</span><b>' + K.esc(c.contrato || '—') + '</b></div>' +
-      '  <div class="resumen__fila"><span>Secretaría</span><b>' + K.esc(c.secretaria || '—') + '</b></div>' +
-      '  <div class="resumen__fila"><span>Estado</span>' + pastillaEstado(c.estado) + '</div>' +
-      '</div>';
-  }
 
   /* 28/09 · CUENTA DEVUELTA O INCOMPLETA (Oss). El arranque dice si hay una
      cuenta por corregir; entonces la tarjeta INGRESAR CUENTA pasa a ser
@@ -690,39 +847,7 @@
     /* 19/10 · la configuración pública que llegó con el arranque (porcentajes de los aportes) */
     config: function () { return (ARRANQUE && ARRANQUE.config) || {}; }
   };
-  function tarjetaCuenta() {
-    var pc = porCorregir();
-    if (!pc && candadoContrato()) {
-      var tc = acceso('INGRESAR CUENTA', 'Primero completa tus datos: sin ellos no radicas ni reportas',
-        'img/datos_de_procesos.webp', function () { irA('cuenta'); });
-      tc.classList.add('acceso--alerta');
-      tc.appendChild(K.nodo('<span class="acceso__burbuja" aria-hidden="true">!</span>'));
-      return tc;
-    }
-    if (!pc) return acceso('INGRESAR CUENTA', 'Fechas, planilla y documentos para radicar', 'img/datos_de_procesos.webp', function () { irA('cuenta'); });
-    var t = acceso('CORREGIR CUENTA',
-      pc.estado === 'INCOMPLETA' ? 'Tu cuenta ' + pc.informe + ' quedó incompleta: complétala aquí'
-                                 : 'Tu cuenta ' + pc.informe + ' fue devuelta: corrígela aquí',
-      'img/datos_de_procesos.webp', function () { irA('cuenta'); });
-    t.classList.add('acceso--alerta');
-    t.appendChild(K.nodo('<span class="acceso__burbuja" aria-hidden="true">!</span>'));
-    return t;
-  }
 
-  /* 06/10 · acceso con ícono del kit (MIS REGISTROS), el mismo de las oficinas */
-  function accesoIcono(titulo, texto, icono, al) {
-    var b = K.nodo(
-      '<button type="button" class="kit-tarjeta acceso">' +
-      '  <span class="acceso__img acceso__img--icono" aria-hidden="true">' + K.icono(icono, 40) + '</span>' +
-      '  <span class="acceso__txt">' +
-      '    <span class="acceso__t">' + K.esc(titulo) + '</span>' +
-      '    <span class="acceso__p">' + K.esc(texto) + '</span>' +
-      '  </span>' +
-      '</button>'
-    );
-    b.addEventListener('click', function () { K.vibrar(8); al(); });
-    return b;
-  }
 
   function acceso(titulo, texto, medio, al) {
     var b = K.nodo(
