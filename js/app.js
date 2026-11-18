@@ -662,6 +662,9 @@
       bots.appendChild(el);
     });
 
+    /* 18/11 · el mismo cielo de la portada (aurora y globos) para que la
+       tarjeta no quede plana. Idempotente; solo transform y opacity. */
+    if (K.piezas.cielo) K.piezas.cielo.poner(hero, { burbujas: 4 });
     pintarReciente(reciente, c);
   }
 
