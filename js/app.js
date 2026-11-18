@@ -471,6 +471,10 @@
     /* 10.3 · NOTIFICADO: un solo aviso y la certificación, nada más */
     if (esNotificado()) { inicioNotificado(caja); return; }
 
+    /* 18/11 · ACTIVO con su última cuenta PAGADA: la pregunta del nuevo contrato del SECOP II */
+    var tNuevo = tarjetaNuevoContrato();
+    if (tNuevo) caja.appendChild(tNuevo);
+
     /* 4.8 · EL INICIO POR BLOQUES, COMO EL MENÚ DE SIEMPRE
        Con los trámites e institucional eran quince tarjetas seguidas, una
        lista que hay que leer entera para encontrar algo. Van en los bloques
@@ -551,6 +555,8 @@
       .then(function () {
         /* 10.3 · si el contrato llegó NOTIFICADO después de pintar, se repinta con su aviso */
         if (esNotificado()) { enrutar(); return; }
+        /* 18/11 · si el inicio llegó después de pintar, la tarjeta del nuevo contrato entra ahora */
+        if (!tNuevo) { tNuevo = tarjetaNuevoContrato(); if (tNuevo) caja.insertBefore(tNuevo, destino); }
         tarjetaTut.hidden = !tutorialesActivos();
         pintarResumen(destino);
         /* 4.7 · el estado de cuenta cuesta de 3 a 4 s de servidor y otros
@@ -568,6 +574,22 @@
       ['catch'](function (e) { destino.appendChild(errorCaja(e)); });
   }
 
+  /* 18/11 · CONTRATO TERMINADO: la tarjeta "¿Ya aceptaste un nuevo contrato en el
+     SECOP II?" (js/solicitudes.js). El estado viene con el inicio (sin viaje);
+     al pedir, se parcha el arranque en memoria y en su recuerdo. */
+  function tarjetaNuevoContrato() {
+    var est = ARRANQUE && ARRANQUE.nuevoContrato;
+    if (!est || !est.termino || !window.SOLCON || !window.SOLCON.tarjetaNuevo) return null;
+    return window.SOLCON.tarjetaNuevo(est, {
+      nombre: (YO && YO.nombre) || (CONTRATO && CONTRATO.nombre) || '',
+      alCambiar: function (n) {
+        if (!ARRANQUE) return;
+        ARRANQUE.nuevoContrato = n;
+        if (K.recuerdo) K.recuerdo.guardar(ligero(ARRANQUE));
+      }
+    });
+  }
+
   /* 10.3 · el inicio del contrato NOTIFICADO (la notificación final de ADMIN) */
   function inicioNotificado(caja) {
     var hasta = (CONTRATO && CONTRATO.accesoHasta) || '';
@@ -580,6 +602,9 @@
     aviso.querySelector('.notif-fin__p').innerHTML = 'Tu última cuenta ya fue pagada. Descarga la <b>certificación de tu contrato ' + K.esc((CONTRATO && CONTRATO.contrato) || '') +
       '</b> para actualizar tu hoja de vida del SIGEP' + (hasta ? '. Tienes hasta el <b>' + K.esc(hasta) + '</b>; después se cierra tu acceso a la app.' : ' antes de que se cierre tu acceso a la app.');
     caja.appendChild(aviso);
+    /* 18/11 · ¿ya aceptó un nuevo contrato en el SECOP II? (solicitud a Contratación) */
+    var tNuevo = tarjetaNuevoContrato();
+    if (tNuevo) caja.appendChild(tNuevo);
     var s = K.nodo('<section class="bloque" aria-label="Tu certificación"><h3 class="bloque__t">TU CERTIFICACIÓN</h3></section>');
     var r = K.nodo('<div class="kit-rejilla kit-rejilla--auto accesos"></div>');
     r.appendChild(acceso('CERTIFICACIÓN CONTRATO', 'Genera el certificado de tu contrato en PDF', 'img/datos_de_procesos.webp', function () { irA('seguimiento/certificacion'); }));

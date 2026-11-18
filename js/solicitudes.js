@@ -470,9 +470,115 @@
     return s;
   }
 
+  /* ════════════════ 3. CONTRATO TERMINADO · ¿YA ACEPTASTE UNO NUEVO? (18/11) ════════════════
+
+     Con el contrato NOTIFICADO, o ACTIVO con la última cuenta PAGADA, el
+     inicio trae `nuevoContrato` (CORE, NuevoContrato1118.gs) en la MISMA
+     llamada. La tarjeta pregunta si ya aceptó un nuevo contrato en el SECOP II;
+     con dos SÍ sale la solicitud a Contratación (ruta CONTRATISTA.nuevoContrato,
+     un solo viaje). Cuando Contratación registra el contrato nuevo, la
+     solicitud se responde sola y el contrato que terminó pasa a INACTIVO.
+
+     opc: { nombre, alCambiar(estadoNuevo) } — alCambiar parcha el arranque
+     en memoria (y su recuerdo) para no volver a pedir el inicio. */
+
+  function fechaCorta(f) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(f || ''));
+    return m ? m[3] + '/' + m[2] + '/' + m[1] : String(f || '');
+  }
+
+  function tarjetaNuevo(est, opc) {
+    opc = opc || {};
+    var t = K.nodo('<section class="kit-tarjeta nc-tarjeta" aria-live="polite"></section>');
+    pintarNuevo(t, est, opc);
+    return t;
+  }
+
+  function pintarNuevo(t, est, opc) {
+    est = est || {};
+    t.innerHTML = '';
+    var sol = est && est.solicitud;
+    var cab = K.nodo('<div class="nc-cab"><span class="nc-ico" aria-hidden="true">' + K.icono('documento', 22) + '</span><div class="nc-txt">' +
+      '<h3 class="nc-t"></h3><p class="nc-p"></p></div></div>');
+    var tt = cab.querySelector('.nc-t'), pp = cab.querySelector('.nc-p');
+    t.appendChild(cab);
+    t.classList.remove('nc-tarjeta--ok', 'nc-tarjeta--espera');
+
+    if (sol && sol.estado === 'RESPONDIDA') {
+      t.classList.add('nc-tarjeta--ok');
+      cab.querySelector('.nc-ico').innerHTML = K.icono('check', 22);
+      tt.textContent = 'Contratación respondió tu solicitud';
+      pp.textContent = tildes(sol.respuesta || 'Ya registraron tu contrato nuevo.') + ' Sal de la app y vuelve a entrar para trabajar con tu contrato nuevo.';
+      return;
+    }
+    if (sol && sol.id) {
+      t.classList.add('nc-tarjeta--espera');
+      cab.querySelector('.nc-ico').innerHTML = K.icono('reloj', 22);
+      tt.textContent = 'Tu solicitud ya está en Contratación';
+      pp.innerHTML = 'La solicitud <b>' + K.esc(sol.id) + '</b> del ' + K.esc(fechaCorta(sol.fecha)) + ' pide el acceso con tu contrato nuevo. ' +
+        'Cuando Contratación registre el contrato, la verás respondida aquí y te llegará la bienvenida por WhatsApp. ' +
+        'Si para entonces tu acceso ya se cerró, entra con tu documento y tu contraseña de siempre.';
+      return;
+    }
+
+    tt.textContent = '¿Ya aceptaste un nuevo contrato en el SECOP II?';
+    pp.textContent = 'Tu contrato ' + (est.contrato || '') + ' terminó. Si ya aceptaste uno nuevo en el SECOP II, pídele a Contratación que te dé el acceso a la app con el contrato nuevo.';
+    if (est.horario && est.horario.ok === false) {
+      var hor = K.nodo('<p class="nc-nota">' + K.icono('reloj', 14) + ' <span></span></p>');
+      hor.querySelector('span').textContent = tildes(est.horario.motivo).replace(/envian/g, 'envían').replace(/\bEstas\b/g, 'Estás');
+      t.appendChild(hor);
+      return;
+    }
+    var pie = K.nodo('<div class="nc-pie"></div>');
+    var no = K.nodo('<button type="button" class="kit-btn kit-btn--plano">Todavía no</button>');
+    var si = K.nodo('<button type="button" class="kit-btn kit-btn--marca">' + K.icono('check', 16) + ' Sí, ya lo acepté</button>');
+    pie.appendChild(no); pie.appendChild(si);
+    t.appendChild(pie);
+
+    no.addEventListener('click', function () {
+      K.piezas.confirmar.avisar({ titulo: 'Todavía no', texto: 'Cuando aceptes el nuevo contrato en el SECOP II, vuelve aquí y pídele el acceso a Contratación.', si: 'Entendido' });
+    });
+    si.addEventListener('click', function () {
+      if (si.disabled) return;
+      si.disabled = true; no.disabled = true;   /* escudo desde el primer toque */
+      var quien = nombrePropio(opc.nombre || '') || 'el titular del contrato';
+      K.piezas.confirmar.abrir({
+        titulo: 'Confirma tus datos',
+        texto: 'Confirmo que yo, ' + quien + ', ya acepté un NUEVO contrato en el SECOP II. ' +
+          'Te lo preguntamos dos veces para evitar reprocesos: Contratación solo puede darte acceso a un contrato ya aceptado.',
+        si: 'Sí, lo confirmo', no: 'No'
+      }).then(function (ok) {
+        if (!ok) { si.disabled = false; no.disabled = false; return; }
+        enviarNuevo(t, est, opc).then(null, function () { si.disabled = false; no.disabled = false; });
+      });
+    });
+  }
+
+  function enviarNuevo(t, est, opc) {
+    K.ocupado = true;
+    K.piezas.guardado.abrir({
+      titulo: 'Enviando tu solicitud a Contratación',
+      sub: 'No cierres la app hasta que termine.',
+      pasos: ['Comprobando tu contrato', 'Guardando la solicitud', 'Avisando a Contratación']
+    });
+    return K.pedir('nuevoContrato', { confirmado: true }, { ms: 60000 }).then(function (r) {
+      K.ocupado = false;
+      var nuevo = r.nuevoContrato || est;
+      K.piezas.guardado.listo({ sub: r.repetida ? 'Ya la tenías en Contratación.' : 'Quedó con el código ' + r.creada + '.' });
+      if (opc.alCambiar) { try { opc.alCambiar(nuevo); } catch (e) {} }
+      pintarNuevo(t, nuevo, opc);
+    }, function (e) {
+      K.ocupado = false;
+      K.piezas.guardado.fallo();
+      K.aviso(tildes((e && e.message) || 'No se pudo enviar.'), 'malo', 9000);
+      throw e;
+    });
+  }
+
   window.SOLCON = {
     sinAcceso: sinAcceso,
     vista: vista,
+    tarjetaNuevo: tarjetaNuevo,
     datos: function () { return DATA; },
     /* para el banco de pruebas */
     _tildes: tildes, _estadoDe: estadoDe
