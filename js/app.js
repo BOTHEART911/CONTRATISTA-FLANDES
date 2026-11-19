@@ -482,9 +482,9 @@
     var rejilla = K.nodo('<div class="ini-rejilla"><div class="ini-col ini-col--principal"></div><div class="ini-col ini-col--lado"></div></div>');
     var colP = rejilla.firstChild, colL = rejilla.lastChild;
     var hero = K.nodo('<section class="ini-hero" aria-label="Tu cuenta en curso"></section>');
-    var reciente = K.nodo('<div class="ini-reciente-sitio"></div>');
+    /* 19/11 (Oss) · sin la tarjeta de la cuenta anterior: Estado de cuenta ya lleva ahí */
+    var reciente = null;
     colP.appendChild(hero);
-    colL.appendChild(reciente);
 
     /* 19/11 (Oss) · LOS PROCESOS DE CUENTA DE SIEMPRE, con el diseño nuevo.
        Son las cuatro tarjetas del bloque PROCESOS DE CUENTA de la app anterior,
@@ -701,7 +701,6 @@
     /* 18/11 · el mismo cielo de la portada (aurora y globos) para que la
        tarjeta no quede plana. Idempotente; solo transform y opacity. */
     if (K.piezas.cielo) K.piezas.cielo.poner(hero, { burbujas: 4 });
-    pintarReciente(reciente, c);
   }
 
   function barra(txt, n, total) {
@@ -709,26 +708,6 @@
     return '<div class="ini-barra"><div class="ini-barra__t"><span>' + txt + '</span><b>' + (Number(n) || 0) + ' de ' + total + '</b></div>' +
       '<div class="ini-barra__b" role="progressbar" aria-valuemin="0" aria-valuemax="' + total + '" aria-valuenow="' + (Number(n) || 0) + '" aria-label="' + txt + '">' +
       '<i style="width:' + pct + '%"></i></div></div>';
-  }
-
-  /* lo último que pasó: una cuenta anterior que va hacia el pago, o la última pagada */
-  function pintarReciente(sitio, actual) {
-    sitio.innerHTML = '';
-    var l = cuentasDelArranque().filter(function (x) { return x.n !== actual.n; });
-    var enCamino = l.filter(function (x) { return x.e !== 'PAGADA' && x.e !== 'BORRADOR' && x.e !== 'NUEVA'; }).pop();
-    var pagada = l.filter(function (x) { return x.e === 'PAGADA'; }).pop();
-    var x = enCamino || pagada;
-    if (!x) return;
-    var ok = x.e === 'PAGADA';
-    var b = K.nodo(
-      '<button type="button" class="ini-reciente">' +
-      '  <span class="ini-reciente__ico ini-reciente__ico--' + (ok ? 'ok' : 'espera') + '" aria-hidden="true">' + K.icono(ok ? 'check' : 'reloj', 22) + '</span>' +
-      '  <span class="ini-reciente__txt"><span class="ini-reciente__t">Cuenta ' + x.n + (ok ? ' pagada' : ': ' + K.esc(pastillaDe(x.e))) + '</span>' +
-      '  <span class="ini-reciente__p">Ver el estado de cuenta</span></span>' +
-      '  <span class="ini-flecha" aria-hidden="true">' + K.icono('adelante', 18) + '</span>' +
-      '</button>');
-    b.addEventListener('click', function () { K.vibrar(8); irA('seguimiento'); });
-    sitio.appendChild(b);
   }
 
   /* ══════════════ 19/11 · EL INICIO EN VIVO ══════════════
