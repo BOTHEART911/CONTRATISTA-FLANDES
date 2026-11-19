@@ -447,20 +447,40 @@
     return LIB;
   }
 
-  /** Word y Excel: UN viaje al CORE para todos los que hagan falta (solo IDs). */
+  /** Word y Excel: UN viaje al CORE para todos (solo IDs).
+      19/11 · Antes iban máximo 12: con 19 Excel en ANEXOS (caso JUAN DAVID
+      RAMIREZ CANDIA, cuenta 2) del 13 en adelante nunca se pedían y se quedaban
+      en "Todavía no está en PDF" para siempre, aunque el PDF ya existía. Ahora
+      van todos; si el CORE deja pendientes (convierte de a 6) o es el CORE
+      viejo (atiende 12), se piden los que faltan mientras haya avance. */
+  var OFI_VUELTAS = 6;
   function pdfsOficina() {
     if (ST.oficina) return ST.oficina;
     var ids = ST.items.filter(function (i) { return i.clase === 'word' || i.clase === 'excel'; }).map(function (i) { return i.id; });
-    if (!ids.length) { ST.oficina = Promise.resolve({}); return ST.oficina; }
-    var t0 = Date.now(), gen = ST.gen;
-    ST.oficina = K.pedir('planPagosPdf', { informe: ST.informe, ids: ids.slice(0, 12) }, { ms: 120000, fondo: true })
-      .then(function (r) {
-        if (gen === GEN) MED.push({ paso: 'oficina', ms: Date.now() - t0, convertidos: r.convertidos || 0, servidor: r.ms || 0 });
-        return (r && r.pdfs) || {};
-      }, function (e) {
-        if (gen === GEN) ST.oficina = null;
-        throw e;
+    if (!ids.length) { ST.oficina = Promise.resolve({ pdfs: {}, fallos: {} }); return ST.oficina; }
+    var t0 = Date.now(), gen = ST.gen, mapa = {}, fallos = {}, vueltas = 0, conv = 0, srv = 0;
+    function ronda(lista) {
+      vueltas++;
+      return K.pedir('planPagosPdf', { informe: ST.informe, ids: lista }, { ms: 120000, fondo: true }).then(function (r) {
+        r = r || {};
+        var antes = Object.keys(mapa).length, pd = r.pdfs || {}, fa = r.fallos || {};
+        Object.keys(pd).forEach(function (k) { mapa[k] = pd[k]; });
+        Object.keys(fa).forEach(function (k) { if (!mapa[k]) fallos[k] = fa[k]; });
+        conv += r.convertidos || 0; srv += r.ms || 0;
+        var faltan = lista.filter(function (id) { return !mapa[id] && !fallos[id]; });
+        var avanzo = Object.keys(mapa).length > antes;
+        if (faltan.length && avanzo && vueltas < OFI_VUELTAS && gen === GEN) return ronda(faltan);
+        return null;
       });
+    }
+    ST.oficina = ronda(ids).then(function () {
+      if (gen === GEN) MED.push({ paso: 'oficina', ms: Date.now() - t0, vueltas: vueltas, convertidos: conv, servidor: srv,
+        listos: Object.keys(mapa).length, de: ids.length });
+      return { pdfs: mapa, fallos: fallos };
+    }, function (e) {
+      if (gen === GEN) ST.oficina = null;
+      throw e;
+    });
     return ST.oficina;
   }
 
@@ -490,9 +510,11 @@
 
   function bytesDe(it) {
     if (it.clase === 'word' || it.clase === 'excel') {
-      return pdfsOficina().then(function (m) {
-        var p = m[it.id];
-        if (!p) { ST.oficina = null; throw new Error('Todavía no está en PDF. Intenta en unos minutos.'); }
+      return pdfsOficina().then(function (o) {
+        var p = o.pdfs[it.id];
+        /* 19/11 · si no vino en el mapa, el CORE lo convierte y lo trae solo a
+           él; si tampoco puede, sale su razón real (nunca un "intenta luego" mudo) */
+        if (!p) return oficinaDeCore(it);
         var id = it.clase === 'excel' && it.hz ? (p.h || p.v) : p.v;
         it.pdfId = id;
         if (!K.drive || !K.drive.listo()) return oficinaDeCore(it);
