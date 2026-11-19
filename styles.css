@@ -2439,3 +2439,17 @@
 .nc-tarjeta     { border-color: rgba(var(--k-marca-rgb), .35); }
 .nc-tarjeta--espera { border-color: color-mix(in srgb, var(--k-aviso) 40%, transparent); }
 .nc-tarjeta--ok { border-color: color-mix(in srgb, var(--k-ok) 40%, transparent); }
+
+/* ---------- 18/11 · lo último que se vio, mientras llega lo fresco ----------
+   La vista se pinta al instante con lo recordado en este equipo (inerte)
+   y una línea discreta lo dice. Al llegar lo fresco se repinta SIN volver
+   a hacer la entrada escalonada: no parpadea. */
+.vista-actualiza {
+  margin: 8px 16px 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--k-tinta-2);
+}
+.vista--vieja { opacity: .78; transition: opacity .2s cubic-bezier(.2, .8, .2, 1); }
+.vista--repinta > * { animation: none; }
+@media (prefers-reduced-motion: reduce) { .vista--vieja { transition: none; } }

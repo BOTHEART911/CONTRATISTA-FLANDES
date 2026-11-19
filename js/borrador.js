@@ -73,6 +73,7 @@
   function volverCuenta() { return (ANCLA0 && ANCLA0.volver) || '#/cuenta'; }
   function pedirB(accion, datos, opciones) {
     datos = datos || {};
+    if (!(K.esLectura && K.esLectura(K.app, accion))) olvidarVisto();   /* 18/11 */
     if (E && E.idContrato) datos.ancla = anc();
     return K.pedir(accion, datos, opciones)['catch'](function (e) {
       if (e && e.codigo === 'CUENTA_CAMBIO') {
@@ -146,26 +147,74 @@
     if (cambia) { ANCLA0 = a0; E = null; }
     /* 10/11 · lo cargado hace más de 1 minuto y sin cambios aquí se vuelve a pedir: así se ve lo que se guardó desde el celular */
     if (E && !sucio && !guardando && Date.now() - (E._t || 0) > 60000) E = null;
+    if (E && E._viejo) E = null;   /* 18/11 · lo recordado nunca se reusa como fresco */
     if (E) { pintar(caja, sub); precargarAnteriores(); return; }
 
-    K.piezas.esqueletos.mientras(caja, K.pedir('borradorEstado', ANCLA0 ? { ancla: ANCLA0 } : {}), { forma: 'tarjetas', cuantos: 4 })
+    var pedido = K.pedir('borradorEstado', ANCLA0 ? { ancla: ANCLA0 } : {});
+
+    /* 18/11 · CABECERA ANTES QUE DATOS (regla 12). Medido: el viaje a Apps
+       Script cuesta ~3 s aunque el CORE responda en 0,6 s, y la persona veía
+       el esqueleto ~9 s. Ahora lo último que se vio en ESTE equipo se pinta
+       al instante, solo para mirar (la vista queda inerte), y en cuanto llega
+       lo fresco se repinta lista para trabajar. Escribir nada se hace sobre
+       lo recordado: todo pasa por lo fresco. */
+    var visto = sub ? null : leerVisto();
+    if (visto) {
+      cargar(visto);
+      E._viejo = true;
+      pintar(caja);
+      marcarViejo(caja, true);
+    }
+
+    (visto ? pedido : K.piezas.esqueletos.mientras(caja, pedido, { forma: 'tarjetas', cuantos: 4 }))
       .then(function (d) {
-        E = d;
-        E._t = Date.now();
-        textos = (d.actividades || []).slice();
-        baseTextos = textos.slice();
-        evidencias = (d.evidencias || []).map(listaEvi);
-        ARCH_ON = Object.prototype.toString.call(d.archivosEv) === '[object Array]';
-        archivos = ARCH_ON ? d.archivosEv.map(listaArch) : [];
-        ARCH_MULTI = ARCH_ON && Number(d.adjuntosTope) > 1;
-        ARCH_TOPE = ARCH_MULTI ? Number(d.adjuntosTope) : 1;
+        guardarVisto(d);
+        cargar(d);
+        if (!document.body.contains(caja)) return;   /* la persona ya se fue de la vista */
+        marcarViejo(caja, false);
         var rec = recuperarRespaldo();
         if (rec.recuperadas) K.aviso('Recuperamos lo que estabas escribiendo la última vez en este equipo.', 'info', 5000);
         if (rec.otroEquipo.length) K.aviso('La obligación ' + rec.otroEquipo.join(', ') + ' se guardó desde otro equipo: dejamos esa versión.', 'aviso', 7000);
         pintar(caja, sub);
         precargarAnteriores();
       })
-      ['catch'](function (e) { caja.appendChild(errorCaja(e)); });
+      ['catch'](function (e) {
+        if (visto) { E = null; caja.innerHTML = ''; marcarViejo(caja, false); }
+        caja.appendChild(errorCaja(e));
+      });
+  }
+
+  function cargar(d) {
+    E = d;
+    E._t = Date.now();
+    textos = (d.actividades || []).slice();
+    baseTextos = textos.slice();
+    evidencias = (d.evidencias || []).map(listaEvi);
+    ARCH_ON = Object.prototype.toString.call(d.archivosEv) === '[object Array]';
+    archivos = ARCH_ON ? d.archivosEv.map(listaArch) : [];
+    ARCH_MULTI = ARCH_ON && Number(d.adjuntosTope) > 1;
+    ARCH_TOPE = ARCH_MULTI ? Number(d.adjuntosTope) : 1;
+  }
+
+  /* ── 18/11 · lo último que se vio (K.recordado: atado al token, 12 h) ── */
+  function llaveVisto() { return 'borrador' + (ANCLA0 ? '.' + (ANCLA0.fila || '') + '.' + (ANCLA0.informe || '') : ''); }
+  function leerVisto() {
+    try {
+      var v = K.recordado ? K.recordado.leer(llaveVisto()) : null;
+      return (v && v.obligaciones && v.obligaciones.length) ? v : null;
+    } catch (e) { return null; }
+  }
+  function guardarVisto(d) { try { if (K.recordado && d) K.recordado.guardar(llaveVisto(), d); } catch (e) {} }
+  /* toda escritura de esta vista tira lo recordado: la próxima apertura no enseña algo de antes del guardado */
+  function olvidarVisto() { try { K.guardar.borrar('recordado.' + llaveVisto()); } catch (e) {} }
+  function marcarViejo(caja, si) {
+    var era = caja.classList.contains('vista--vieja');
+    caja.inert = !!si;
+    caja.classList.toggle('vista--vieja', !!si);
+    if (!si && era) caja.classList.add('vista--repinta');
+    var n = caja.parentNode && caja.parentNode.querySelector('.vista-actualiza');
+    if (si && !n) caja.parentNode.insertBefore(K.nodo('<p class="vista-actualiza" role="status">Actualizando…</p>'), caja);
+    if (!si && n) n.parentNode.removeChild(n);
   }
 
   function pintar(caja, sub) {
@@ -302,6 +351,7 @@
     var marcar = function () {
       if (hecho) return Promise.resolve();   /* ya quedó: un segundo toque no vuelve a escribir */
       b.disabled = true; b.classList.add('kit-ocupado');
+      olvidarVisto();
       return K.pedir('recomendacionesLeidas', { fila: r.fila }, { ms: 45000 }).then(function () {
         hecho = true;
         E.recomendaciones = null;

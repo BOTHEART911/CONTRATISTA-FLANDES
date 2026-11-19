@@ -81,7 +81,8 @@
        aprobó, qué toca ahora) sin haber entrado a esta vista */
     c.seg.then(function (d) {
       ULTIMO = d;
-      c.hist.then(function (h) { if (ULTIMO === d) mezclar(h, d); });
+      guardarVisto(d);   /* 18/11 */
+      c.hist.then(function (h) { if (ULTIMO === d) { mezclar(h, d); guardarVisto(d); } });
     }, function () {});
     /* si la principal falla, no se guarda: la próxima vez se vuelve a pedir */
     c.seg['catch'](function () { if (CACHE === c) CACHE = null; });
@@ -210,8 +211,22 @@
       zona = K.nodo('<div class="seg-espera"></div>');
       CAJA.appendChild(zona);
     }
-    K.piezas.esqueletos.mientras(zona, c.seg, { forma: 'ficha', cuantos: 3, espera: 'Trayendo tu estado de cuenta' })
+    /* 18/11 · CABECERA ANTES QUE DATOS (regla 12). El viaje a Apps Script
+       cuesta ~3 s aunque el CORE responda en 0,6 s: lo último que se vio en
+       ESTE equipo se pinta al instante, solo para mirar (inerte, con
+       "Actualizando…"), y al llegar lo fresco se repinta. Los botones
+       (reportar, documentos) solo se pueden tocar con lo fresco. */
+    var visto = sub === 'certificacion' ? null : leerVisto();
+    if (visto) {
+      S = visto; S._viejo = true;
+      S.egresos = egresosDe(S.cuentas);
+      SEL = S.actual;
+      pintar();
+      marcarViejo(true);
+    }
+    (visto ? c.seg : K.piezas.esqueletos.mientras(zona, c.seg, { forma: 'ficha', cuantos: 3, espera: 'Trayendo tu estado de cuenta' }))
       .then(function (d) {
+        if (visto) { marcarViejo(false); if (!document.body.contains(CAJA)) { S = d; return; } }
         S = d;
         S.egresos = egresosDe(S.cuentas);
         SEL = S.actual;
@@ -230,9 +245,31 @@
         });
       })
       ['catch'](function (e) {
+        if (visto) { marcarViejo(false); S = null; CAJA.innerHTML = ''; zona = CAJA; }
         zona.appendChild(errorCaja(e));
         K.piezas.creditos.montar(CAJA);
       });
+  }
+
+  /* ── 18/11 · lo último que se vio (K.recordado: atado al token, 12 h) ── */
+  var LLAVE_VISTO = 'seguimiento';
+  function leerVisto() {
+    try { var v = K.recordado ? K.recordado.leer(LLAVE_VISTO) : null; return (v && v.cuentas && v.cuentas.length) ? v : null; }
+    catch (e) { return null; }
+  }
+  function guardarVisto(d) {
+    try { if (K.recordado && d && !d._viejo) { var x = {}; for (var k in d) if (k.charAt(0) !== '_') x[k] = d[k]; K.recordado.guardar(LLAVE_VISTO, x); } } catch (e) {}
+  }
+  function olvidarVisto() { try { K.guardar.borrar('recordado.' + LLAVE_VISTO); } catch (e) {} }
+  function marcarViejo(si) {
+    if (!CAJA) return;
+    var era = CAJA.classList.contains('vista--vieja');
+    CAJA.inert = !!si;
+    CAJA.classList.toggle('vista--vieja', !!si);
+    if (!si && era) CAJA.classList.add('vista--repinta');
+    var n = CAJA.parentNode && CAJA.parentNode.querySelector('.vista-actualiza');
+    if (si && !n && CAJA.parentNode) CAJA.parentNode.insertBefore(K.nodo('<p class="vista-actualiza" role="status">Actualizando…</p>'), CAJA);
+    if (!si && n) n.parentNode.removeChild(n);
   }
 
   function horaCorta(d) {
@@ -864,6 +901,7 @@
         sub: 'Guardamos el reporte y le avisamos a tu supervisor(a).',
         pasos: ['Guardando el reporte', 'Avisando a tu supervisor(a)', 'Terminando']
       });
+      olvidarVisto();   /* 18/11 · lo recordado ya no vale tras reportar */
       K.pedir(accion, { informe: informe, tipo: tipo || 'inicial' }, { ms: 90000 })
         .then(function (r) {
           K.ocupado = false;
@@ -943,7 +981,7 @@
     abrir: function (sub) { abrir(sub); },
     /* 28/09 · al guardar la cuenta, cuenta.js trae a la persona aquí con
        una guía: revisa tus documentos y después toca el botón de reportar. */
-    guiar: function (g) { GUIA = g || null; CACHE = null; DOCS = {}; },
+    guiar: function (g) { GUIA = g || null; CACHE = null; DOCS = {}; olvidarVisto(); },
     precargar: precargar,
     /* 26/10 · para UNIFICAR Y DESCARGAR (planpagos.js) */
     docsDe: docsDe,
