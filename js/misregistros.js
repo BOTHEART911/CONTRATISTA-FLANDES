@@ -15,6 +15,10 @@
 (function () {
   'use strict';
 
+  /* 19/11 (Oss) · CERRADA en la hoja = plan de pagos aceptado: esa palabra no se le muestra al contratista */
+  function estadoVer(e) { return String(e || '').trim().toUpperCase() === 'CERRADA' ? 'PLAN ACEPTADO' : e; }
+
+
   var K = window.KIT;
   var C = {};
   var MEMO_K = 'misregistros.contratista.v1';
@@ -140,7 +144,7 @@
       if (x.egreso) pago.push('Egreso ' + x.egreso + (x.fechaEgreso ? ' (' + fecha(x.fechaEgreso) + ')' : ''));
       if (pago.length) cc.appendChild(K.nodo('<p class="mrc-fila__d">' + K.esc(pago.join(' · ')) + '</p>'));
       f.appendChild(cc);
-      f.appendChild(K.nodo('<span class="kit-pastilla mrc-fila__e">' + K.esc(x.estado || '') + '</span>'));
+      f.appendChild(K.nodo('<span class="kit-pastilla mrc-fila__e">' + K.esc(estadoVer(x.estado) || '') + '</span>'));
       lista.appendChild(f);
     });
     caja.appendChild(lista);
@@ -186,7 +190,7 @@
         { etiqueta: 'Devueltas o incompletas', valor: K.numero(devueltas), nota: devueltas ? 'revisar las observaciones' : 'ninguna en el rango', tono: devueltas ? 'malo' : 'ok' }
       ],
       registros: cuentas.map(function (x) {
-        return { fecha: fechaCuenta(x), tipo: x.estado || 'SIN ESTADO', tono: IC.tono(x.estado) || 'info', categoria: '', sujeto: '',
+        return { fecha: fechaCuenta(x), tipo: estadoVer(x.estado) || 'SIN ESTADO', tono: IC.tono(x.estado) || 'info', categoria: '', sujeto: '',
                  monto: Number(x.cobro) || 0, ref: 'Cuenta ' + x.informe + (x.total ? ' de ' + x.total : '') + (x.desde ? ' · ' + fecha(x.desde) + ' al ' + fecha(x.hasta) : '') };
       }),
       hallazgos: [
@@ -207,7 +211,7 @@
           cols: [{ titulo: 'Cuenta', ancho: 16 }, { titulo: 'Radicada', ancho: 22 }, { titulo: 'Cobro', ancho: 30, derecha: true }, { titulo: 'Estado' },
                  { titulo: 'Orden', ancho: 26 }, { titulo: 'Egreso', ancho: 26 }, { titulo: 'Días', ancho: 14, derecha: true }],
           filas: cuentas.slice().sort(function (a, b) { return a.informe - b.informe; }).map(function (x) {
-            var f = [String(x.informe) + (x.total ? '/' + x.total : ''), fecha(x.radicada), K.pesos(x.cobro), x.estado || '',
+            var f = [String(x.informe) + (x.total ? '/' + x.total : ''), fecha(x.radicada), K.pesos(x.cobro), estadoVer(x.estado) || '',
                      x.orden ? 'N° ' + x.orden : '', x.egreso ? 'N° ' + x.egreso : '', String(dias(x.radicada, x.fechaEgreso || x.fechaOrden) === null ? '' : dias(x.radicada, x.fechaEgreso || x.fechaOrden))];
             return f;
           })

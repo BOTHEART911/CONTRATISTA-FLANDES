@@ -35,6 +35,10 @@
 (function () {
   'use strict';
 
+  /* 19/11 (Oss) · CERRADA en la hoja = plan de pagos aceptado: esa palabra no se le muestra al contratista */
+  function estadoVer(e) { return String(e || '').trim().toUpperCase() === 'CERRADA' ? 'PLAN ACEPTADO' : e; }
+
+
   var K = window.KIT;
   var app = K.id('app');
 
@@ -474,7 +478,7 @@
     }
     TESO.cuentas.slice().reverse().forEach(function (x) {
       var b = K.nodo('<button type="button" role="radio" aria-checked="false" class="tr-cta' + (x.puede ? '' : ' tr-cta--no') + '"' + (x.puede ? '' : ' aria-disabled="true"') + '>' +
-        '<span class="tr-cta__cab"><b>Cuenta ' + x.informe + (x.total ? ' de ' + x.total : '') + '</b><span class="tr-est tr-est--' + (x.estado === 'PAGADA' ? 'ok' : 'aviso') + '">' + K.esc(x.estado) + '</span></span>' +
+        '<span class="tr-cta__cab"><b>Cuenta ' + x.informe + (x.total ? ' de ' + x.total : '') + '</b><span class="tr-est tr-est--' + (x.estado === 'PAGADA' ? 'ok' : 'aviso') + '">' + K.esc(estadoVer(x.estado)) + '</span></span>' +
         '<small>' + K.esc([x.valor ? pesos(x.valor) : '', x.egreso ? 'Egreso ' + x.egreso : '', x.fechaEgreso ? 'del ' + x.fechaEgreso : ''].filter(Boolean).join(' · ')) + '</small>' +
         (x.puede ? '' : '<small class="tr-cta__por">' + K.icono('reloj', 13) + ' ' + K.esc(textoTildes(x.motivo)) + '</small>') + '</button>');
       b.addEventListener('click', function () {

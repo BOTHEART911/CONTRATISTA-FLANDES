@@ -2292,6 +2292,11 @@
 .ini-hero__avance { display: flex; flex-direction: column; gap: 12px; }
 .ini-hero__avance:empty { display: none; }
 .ini-hero__p { margin: 0; font-size: .92rem; color: #dcebe3; }
+/* 19/11 · la línea bajo el título (texto aprobado de cada etapa) y el cambio en vivo */
+.ini-hero__linea { margin-top: -8px; font-size: .95rem; }
+.ini-hero--vivo .ini-hero__t, .ini-hero--vivo .ini-hero__linea, .ini-hero--vivo .ini-hero__chip { animation: iniVivo .45s cubic-bezier(.2, .8, .2, 1); }
+@keyframes iniVivo { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ini-hero--vivo .ini-hero__t, .ini-hero--vivo .ini-hero__linea, .ini-hero--vivo .ini-hero__chip { animation: none; } }
 .ini-hero__alerta { margin: 0; display: flex; gap: 8px; align-items: flex-start; font-size: .88rem; background: rgba(0, 0, 0, .18); border-radius: 12px; padding: 10px 12px; }
 .ini-hero__alerta svg { flex: 0 0 auto; color: #fde68a; margin-top: 1px; }
 

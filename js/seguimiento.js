@@ -38,6 +38,10 @@
 (function () {
   'use strict';
 
+  /* 19/11 (Oss) · CERRADA en la hoja = plan de pagos aceptado: esa palabra no se le muestra al contratista */
+  function estadoVer(e) { return String(e || '').trim().toUpperCase() === 'CERRADA' ? 'PLAN ACEPTADO' : e; }
+
+
   var K = window.KIT;
   var app = K.id('app');
 
@@ -82,6 +86,8 @@
     c.seg.then(function (d) {
       ULTIMO = d;
       guardarVisto(d);   /* 18/11 */
+      /* 19/11 · el inicio se entera de lo fresco sin otro viaje (app.js, inicio en vivo) */
+      if (d && d.cuentas && d.cuentas.length) K.disparar('kit:cuentasResumen', d.cuentas.map(function (x) { return { informe: x.informe, estado: x.estado }; }));
       c.hist.then(function (h) { if (ULTIMO === d) { mezclar(h, d); guardarVisto(d); } });
     }, function () {});
     /* si la principal falla, no se guarda: la próxima vez se vuelve a pedir */
@@ -404,7 +410,7 @@
       '<section class="kit-tarjeta seg-estado seg-estado--' + tono(c) + '">' +
       '  <header class="seg-estado__cab">' +
       '    <span class="seg-estado__n">Cuenta ' + c.informe + (c.total ? ' de ' + c.total : '') + '</span>' +
-      '    <span class="seg-estado__pastilla">' + K.esc(c.estado || 'SIN ESTADO') + '</span>' +
+      '    <span class="seg-estado__pastilla">' + K.esc(estadoVer(c.estado) || 'SIN ESTADO') + '</span>' +
       '  </header>' +
       '  <h2 class="seg-estado__t">' + K.esc(d[0]) + '</h2>' +
       '  <p class="seg-estado__p">' + K.esc(d[1]) + '</p>' +
@@ -735,7 +741,7 @@
       filas += '<tr data-n="' + n + '"' + (n === SEL ? ' class="seg-plan__sel"' : '') + '>' +
         '<th scope="row">' + n + '</th>' +
         '<td class="seg-num">' + K.esc(c.valor ? pesos(c.valor) : '—') + '</td>' +
-        '<td><span class="seg-est seg-est--' + tono(c) + '">' + K.esc(c.estado || '—') + '</span></td>' +
+        '<td><span class="seg-est seg-est--' + tono(c) + '">' + K.esc(estadoVer(c.estado) || '—') + '</span></td>' +
         '<td>' + K.esc(c.radicada || '—') + '</td>' +
         '<td>' + K.esc(c.orden || '—') + '</td>' +
         '<td>' + K.esc(c.egreso || '—') + '</td>' +
@@ -905,6 +911,9 @@
       K.pedir(accion, { informe: informe, tipo: tipo || 'inicial' }, { ms: 90000 })
         .then(function (r) {
           K.ocupado = false;
+          /* 19/11 · el inicio cambia ya, sin esperar a recargar (app.js, inicio en vivo).
+             La corrección del plan no cambia el estado: sigue en PLAN DE PAGOS. */
+          K.disparar('kit:cuentaEstado', { informe: informe, estado: plan ? 'PLAN DE PAGOS' : 'REPORTADA' });
           K.piezas.guardado.listo({ sub: plan ? (correccion ? 'Le avisamos a tu supervisor(a).' : 'Plan de pagos reportado. Le avisamos a tu supervisor(a).') : 'Cuenta reportada. Le avisamos a tu supervisor(a).' });
           var aviso = r && r.aviso;
           /* 14/11 · CORE nuevo: el WhatsApp al grupo quedó en cola. Se pide
@@ -976,6 +985,9 @@
     c.querySelector('button').addEventListener('click', recargar);
     return c;
   }
+
+  /* 19/11 · un estado nuevo llegó en vivo: lo precargado y lo recordado ya no valen */
+  K.cuando('kit:cuentasVivo', function () { CACHE = null; olvidarVisto(); });
 
   window.SEGUIMIENTO = {
     abrir: function (sub) { abrir(sub); },

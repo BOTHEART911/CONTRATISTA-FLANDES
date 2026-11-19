@@ -130,6 +130,7 @@
       }
       if (K.recuerdo) { if (recordado) setTimeout(refrescarArranque, 30); else K.recuerdo.guardar(ligero(d)); }
       quitar();
+      setTimeout(vivoAbrir, 0);   /* 19/11 · el inicio en vivo */
       return d;
     }, function (e) {
       quitar();
@@ -564,6 +565,18 @@
     'APROBADA': 4, 'PLAN DE PAGOS': 4, 'CERRADA': 4, 'ORDEN DE PAGO': 4, 'EGRESO': 4,
     'PAGADA': 5
   };
+  /* 19/11 (Oss) · en la etapa Pago, el paso exacto en vez de "Pago".
+     CERRADA en la hoja = el supervisor ACEPTÓ el plan de pagos (FC61_cerrarPlan);
+     la palabra "Cerrada" nunca se le muestra al contratista. */
+  var SUBPASO_PAGO = { 'APROBADA': 'Plan', 'PLAN DE PAGOS': 'Plan', 'CERRADA': 'Orden', 'ORDEN DE PAGO': 'Egreso', 'EGRESO': 'Egreso', 'PAGADA': 'Pagada' };
+  /* la pastilla corta de cada estado, también para "lo último que pasó" */
+  var PASTILLA = {
+    'NUEVA': 'Por empezar', 'BORRADOR': 'En borrador', 'EN PROCESO': 'A medio ingresar', 'INGRESADA': 'Ingresada',
+    'DEVUELTA': 'Devuelta', 'INCOMPLETA': 'Incompleta', 'REPORTADA': 'Reportada', 'REVISADA POR SUPERVISOR': 'Revisada',
+    'APROBADA': 'Aprobada', 'PLAN DE PAGOS': 'En revisión', 'CERRADA': 'Plan aceptado', 'ORDEN DE PAGO': 'En Tesorería',
+    'EGRESO': 'Egreso emitido', 'PAGADA': 'Pagada'
+  };
+  function pastillaDe(e) { return PASTILLA[e] || 'En trámite'; }
 
   function cuentasDelArranque() {
     var l = (ARRANQUE && ARRANQUE.cuentasResumen) || [];
@@ -581,14 +594,14 @@
     if (pc) return { n: Number(pc.informe) || 0, e: K.norm(pc.estado || 'DEVUELTA'), total: total, corregir: true };
     var u = l.length ? l[l.length - 1] : null;
     if (!u) return { n: 1, e: 'NUEVA', total: total };
-    if (u.e === 'PAGADA') return (!total || u.n < total) ? { n: u.n + 1, e: 'NUEVA', total: total } : { n: u.n, e: 'PAGADA', total: total, alDia: true };
+    /* 19/11 · pagada: se dice que se pagó; si no es la última, invita a adelantar la siguiente */
+    if (u.e === 'PAGADA') return { n: u.n, e: 'PAGADA', total: total, ultima: !!(total && u.n >= total) };
     return { n: u.n, e: u.e, total: total };
   }
 
+  /* 19/11 · textos aprobados por Oss: título · línea · pastilla · botón */
   function textoHero(c) {
-    var n = c.n;
-    if (c.alDia) return { t: 'Todas tus cuentas están pagadas', chip: 'Al día', tono: 'ok',
-      b1: ['Ver mis registros', 'descargar', 'misregistros'] };
+    var n = c.n, ver = ['Ver estado de cuenta', 'reloj', 'seguimiento'];
     if (c.corregir) return { t: (c.e === 'INCOMPLETA' ? 'Completa tu cuenta ' : 'Corrige tu cuenta ') + n,
       chip: c.e === 'INCOMPLETA' ? 'Incompleta' : 'Devuelta', tono: 'malo',
       b1: ['Corregir cuenta', 'lapiz', 'cuenta'], b2: ['Ver qué te pidieron', 'info', 'seguimiento'] };
@@ -601,29 +614,43 @@
         b1: ['Seguir ingresando', 'enviar', 'cuenta'], b2: ['Ver el borrador', 'lapiz', 'borrador'] };
       case 'INGRESADA': return { t: 'Reporta tu cuenta ' + n + ' a tu supervisor(a)', chip: 'Ingresada', tono: 'curso',
         b1: ['Ir a reportar', 'enviar', 'seguimiento'] };
-      case 'REPORTADA': return { t: 'Tu supervisor(a) está revisando tu cuenta ' + n, chip: 'Reportada', tono: 'espera',
-        b1: ['Ver estado de cuenta', 'reloj', 'seguimiento'] };
-      case 'REVISADA POR SUPERVISOR': return { t: 'Tu cuenta ' + n + ' espera la aprobación de Contratación', chip: 'Revisada', tono: 'espera',
-        b1: ['Ver estado de cuenta', 'reloj', 'seguimiento'] };
-      case 'APROBADA': return { t: 'Reporta el plan de pagos de tu cuenta ' + n, chip: 'Aprobada', tono: 'curso',
-        b1: ['Ver qué sigue', 'adelante', 'seguimiento'] };
-      default: return { t: 'Tu cuenta ' + n + ' va hacia el pago', chip: nombreCapital(c.e), tono: 'espera',
-        b1: ['Ver estado de cuenta', 'reloj', 'seguimiento'] };
+      case 'REPORTADA': return { t: 'Tu supervisor(a) está revisando tu cuenta ' + n, chip: 'Reportada', tono: 'espera', b1: ver };
+      case 'REVISADA POR SUPERVISOR': return { t: 'Tu cuenta ' + n + ' espera la aprobación de Contratación', chip: 'Revisada', tono: 'espera', b1: ver };
+      case 'APROBADA': return { t: 'Reporta el plan de pagos de tu cuenta ' + n, p: 'Tu cuenta ya fue aprobada', chip: 'Aprobada', tono: 'curso',
+        b1: ['Reportar plan de pagos', 'enviar', 'seguimiento'] };
+      case 'PLAN DE PAGOS': return { t: 'Tu plan de pagos de la cuenta ' + n + ' está en revisión', p: 'Pendiente de aceptación de tu supervisor', chip: 'En revisión', tono: 'espera', b1: ver };
+      case 'CERRADA': return { t: 'Contabilidad elaborará la Orden de Pago de tu cuenta ' + n, p: 'Tu plan de pagos fue aceptado', chip: 'Plan aceptado', tono: 'espera', b1: ver };
+      case 'ORDEN DE PAGO': return { t: 'Según presupuesto, se elaborará el Egreso de tu cuenta ' + n, p: 'La orden de pago ya está en Tesorería', chip: 'En Tesorería', tono: 'espera', b1: ver };
+      case 'EGRESO': return { t: 'Se emitió el Egreso de tu cuenta ' + n, p: 'El pago está en camino', chip: 'Egreso emitido', tono: 'ok', b1: ver };
+      case 'PAGADA': return c.ultima
+        ? { t: 'Ya se pagó tu última cuenta', p: 'Tu contrato quedó al día', chip: 'Pagada', tono: 'ok', b1: ver }
+        : { t: 'Ya se pagó tu cuenta ' + n, p: 'Adelanta el borrador de actividades de tu cuenta ' + (n + 1), chip: 'Pagada', tono: 'ok',
+            b1: ['Crear borrador de la cuenta ' + (n + 1), 'lapiz', 'borrador'] };
+      default: return { t: 'Tu cuenta ' + n + ' sigue su trámite', chip: pastillaDe(c.e), tono: 'espera', b1: ver };
     }
   }
 
+  /* 19/11 · la tarjeta y "lo último que pasó" se recuerdan para repintarlas en
+     vivo sin volver a armar la vista */
+  var INI_SITIOS = null;
+
   function pintarHero(hero, reciente) {
+    INI_SITIOS = { hero: hero, reciente: reciente };
     var c = cuentaEnCurso();
     var h = textoHero(c);
+    var pagada = c.e === 'PAGADA';
     var paso = PASO_DE[c.e] === undefined ? 0 : PASO_DE[c.e];
     var etiqueta = 'CUENTA ' + c.n + (c.total ? ' DE ' + c.total : '');
 
     var pasos = PASOS.map(function (p, i) {
-      var cls = i < paso ? 'ini-paso ini-paso--hecho' : (i === paso && !c.alDia ? 'ini-paso ini-paso--ahora' : 'ini-paso');
-      if (c.alDia) cls = 'ini-paso ini-paso--hecho';
-      return '<li class="' + cls + '"' + (i === paso && !c.alDia ? ' aria-current="step"' : '') + '>' +
-        '<span class="ini-paso__n" aria-hidden="true">' + (i < paso || c.alDia ? K.icono('check', 14) : (i + 1)) + '</span>' +
-        '<span class="ini-paso__t">' + p + '</span></li>';
+      var hecho = i < paso || pagada;
+      var ahora = i === paso && !pagada;
+      var cls = hecho ? 'ini-paso ini-paso--hecho' : (ahora ? 'ini-paso ini-paso--ahora' : 'ini-paso');
+      /* la etapa Pago dice el paso exacto (Plan, Orden, Egreso, Pagada) */
+      var txt = (i === 4 && SUBPASO_PAGO[c.e] && !c.corregir) ? SUBPASO_PAGO[c.e] : p;
+      return '<li class="' + cls + '"' + (ahora ? ' aria-current="step"' : '') + (txt !== p ? ' aria-label="Pago: ' + txt + '"' : '') + '>' +
+        '<span class="ini-paso__n" aria-hidden="true">' + (hecho ? K.icono('check', 14) : (i + 1)) + '</span>' +
+        '<span class="ini-paso__t">' + txt + '</span></li>';
     }).join('');
 
     hero.innerHTML =
@@ -632,9 +659,11 @@
       '  <span class="ini-hero__chip ini-hero__chip--' + h.tono + '">' + K.esc(h.chip) + '</span>' +
       '</div>' +
       '<h3 class="ini-hero__t">' + K.esc(h.t) + '</h3>' +
+      (h.p ? '<p class="ini-hero__p ini-hero__linea">' + K.esc(h.p) + '</p>' : '') +
       '<div class="ini-hero__avance"></div>' +
       '<ol class="ini-pasos" aria-label="Pasos de la cuenta">' + pasos + '</ol>' +
       '<div class="ini-hero__botones"></div>';
+    hero.setAttribute('data-estado', c.e + ':' + c.n);
 
     /* el avance del borrador, solo si este teléfono lo conoce (lo deja borrador.js) */
     if (paso === 0 && !c.corregir) {
@@ -687,13 +716,102 @@
     var b = K.nodo(
       '<button type="button" class="ini-reciente">' +
       '  <span class="ini-reciente__ico ini-reciente__ico--' + (ok ? 'ok' : 'espera') + '" aria-hidden="true">' + K.icono(ok ? 'check' : 'reloj', 22) + '</span>' +
-      '  <span class="ini-reciente__txt"><span class="ini-reciente__t">Cuenta ' + x.n + (ok ? ' pagada' : ': ' + K.esc(nombreCapital(x.e))) + '</span>' +
+      '  <span class="ini-reciente__txt"><span class="ini-reciente__t">Cuenta ' + x.n + (ok ? ' pagada' : ': ' + K.esc(pastillaDe(x.e))) + '</span>' +
       '  <span class="ini-reciente__p">Ver el estado de cuenta</span></span>' +
       '  <span class="ini-flecha" aria-hidden="true">' + K.icono('adelante', 18) + '</span>' +
       '</button>');
     b.addEventListener('click', function () { K.vibrar(8); irA('seguimiento'); });
     sitio.appendChild(b);
   }
+
+  /* ══════════════ 19/11 · EL INICIO EN VIVO ══════════════
+   *
+   * Oss: reportó el plan de pagos de la cuenta 10, volvió al inicio y seguía
+   * "Reporta el plan de pagos"; con la vista abierta la supervisora lo aceptó
+   * y la tarjeta tampoco cambió. La tarjeta sale de 'cuentasResumen', que
+   * solo viajaba con el 'inicio' al abrir la app.
+   *
+   * Ahora:
+   *   · el CORE publica el número y el estado de las cuentas del contrato en
+   *     Firebase Realtime Database (/vivo/<llave>, Vivo1119.gs) cada vez que
+   *     cambian, y la app lo escucha con EventSource (sin SDK, sin reloj);
+   *   · lo que la propia app reporta o lo que trae el estado de cuenta se
+   *     aplica al instante, sin esperar a Firebase;
+   *   · con la app escondida la escucha se cierra (la capa gratuita admite
+   *     100 conexiones) y al volver se reabre: Firebase manda lo último.
+   * Si Firebase no responde, todo sigue como antes con el 'inicio'.
+   */
+  var VIVO = { es: null, llave: '', medidas: [] };
+
+  function selloCuentas(l) {
+    return (l || []).map(function (c) { return (Number(c.informe) || 0) + ':' + K.norm(c.estado || ''); }).join('|');
+  }
+
+  /** Aplica una lista [{informe, estado}] al arranque y repinta lo que se ve. -> true si cambió */
+  function aplicarCuentas(lista, origen, tServidor) {
+    if (!ARRANQUE || !lista || !lista.length) return false;
+    var nueva = lista.map(function (c) { return { informe: Number(c.informe) || 0, estado: K.norm(c.estado || '') }; })
+      .filter(function (c) { return c.informe > 0; });
+    if (selloCuentas(nueva) === selloCuentas(ARRANQUE.cuentasResumen)) return false;
+    var t0 = Date.now();
+    ARRANQUE.cuentasResumen = nueva;
+    /* la cuenta por corregir también se sigue: devuelta o incompleta la pone, corregida la quita */
+    var pc = nueva.filter(function (c) { return c.estado === 'DEVUELTA' || c.estado === 'INCOMPLETA'; }).pop();
+    if (pc) { if (!porCorregir() || Number(ARRANQUE.porCorregir.informe) !== pc.informe || K.norm(ARRANQUE.porCorregir.estado || '') !== pc.estado) ARRANQUE.porCorregir = { informe: pc.informe, estado: pc.estado }; }
+    else if (porCorregir()) ARRANQUE.porCorregir = null;
+    if (K.recuerdo) K.recuerdo.guardar(ligero(ARRANQUE));
+    if (origen === 'vivo') K.disparar('kit:cuentasVivo', nueva);
+    if (enInicio() && INI_SITIOS && document.body.contains(INI_SITIOS.hero)) {
+      pintarHero(INI_SITIOS.hero, INI_SITIOS.reciente);
+      INI_SITIOS.hero.classList.remove('ini-hero--vivo');
+      void INI_SITIOS.hero.offsetWidth;
+      INI_SITIOS.hero.classList.add('ini-hero--vivo');
+    }
+    VIVO.medidas.push({ origen: origen, pintarMs: Date.now() - t0, desdeServidorMs: tServidor ? Date.now() - tServidor : null, en: new Date().toISOString() });
+    if (VIVO.medidas.length > 30) VIVO.medidas.shift();
+    return true;
+  }
+
+  function vivoCerrar() { if (VIVO.es) { try { VIVO.es.close(); } catch (e) {} VIVO.es = null; } }
+
+  function vivoAbrir() {
+    var v = ARRANQUE && ARRANQUE.vivo;
+    if (!v || !v.url || !v.llave || typeof EventSource === 'undefined' || document.hidden || esNotificado()) return;
+    if (VIVO.es && VIVO.llave === v.llave) return;
+    vivoCerrar();
+    VIVO.llave = v.llave;
+    var nodo = null, es;
+    try { es = new EventSource(v.url + '/vivo/' + encodeURIComponent(v.llave) + '.json'); } catch (e) { return; }
+    VIVO.es = es;
+    var llegar = function (ev, parche) {
+      var d; try { d = JSON.parse(ev.data); } catch (e) { return; }
+      if (!d || (d.path !== '/' && d.path !== '')) {
+        /* un cambio más adentro del nodo (no lo manda el CORE, pero se respeta) */
+        if (d && nodo && d.path) { var k = d.path.replace(/^\//, '').split('/')[0]; if (k === 'r' || k === 't') nodo[k] = d.data; }
+      } else if (parche) { nodo = nodo || {}; for (var k2 in (d.data || {})) nodo[k2] = d.data[k2]; }
+      else nodo = d.data;
+      if (!nodo || !nodo.r) return;
+      var lista = [];
+      for (var i in nodo.r) { var x = nodo.r[i]; if (x) lista.push({ informe: x[0], estado: x[1] }); }
+      aplicarCuentas(lista, 'vivo', Number(nodo.t) || 0);
+    };
+    es.addEventListener('put', function (ev) { llegar(ev, false); });
+    es.addEventListener('patch', function (ev) { llegar(ev, true); });
+    /* reglas o llave que ya no sirven: no se insiste */
+    es.addEventListener('cancel', vivoCerrar);
+    es.addEventListener('auth_revoked', vivoCerrar);
+  }
+
+  document.addEventListener('visibilitychange', function () { if (document.hidden) vivoCerrar(); else vivoAbrir(); });
+  K.cuando('kit:sesion', function (d) { if (!d.entro) { vivoCerrar(); VIVO.llave = ''; } });
+  /* lo que la app misma reporta (seguimiento.js) y lo que trae el estado de cuenta */
+  K.cuando('kit:cuentaEstado', function (d) {
+    if (!ARRANQUE || !d || !d.informe || !d.estado) return;
+    var l = (ARRANQUE.cuentasResumen || []).map(function (c) { return { informe: c.informe, estado: Number(c.informe) === Number(d.informe) ? d.estado : c.estado }; });
+    if (!l.some(function (c) { return Number(c.informe) === Number(d.informe); })) l.push({ informe: d.informe, estado: d.estado });
+    aplicarCuentas(l, 'app');
+  });
+  K.cuando('kit:cuentasResumen', function (l) { if (l && l.length) aplicarCuentas(l, 'estadoCuenta'); });
 
   /* los avisos al teléfono, solo cuando piden algo */
   function pintarAvisoTelefono(sitio) {
@@ -838,6 +956,9 @@
   /* 24/10 · lo que el asistente (js/asistente-app.js) lee de la app, sin viajar */
   window.CONTRATISTA_APP = {
     arranque: function () { return ARRANQUE; },
+    /* 19/11 · el inicio en vivo: medidas y banco de pruebas */
+    vivo: { medidas: function () { return VIVO.medidas.slice(); }, abierto: function () { return !!VIVO.es && VIVO.es.readyState; },
+            _aplicar: function (l) { return aplicarCuentas(l, 'prueba'); } },
     yo: function () { return YO; },
     abrirFoto: abrirFoto,
     irA: irA

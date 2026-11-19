@@ -188,12 +188,16 @@
 
   /* ══════════════ la vista ══════════════ */
 
+  /* 19/11 · a donde lleva atrás, y a donde se sale sola al terminar la descarga */
+  var VOLVER = '#/seguimiento/documentos';
+  function volver() { location.hash = VOLVER; }
+
   function abrir(sub) {
     var informe = parseInt(sub, 10);
     var gen = ++GEN;
     MED = [];
     var t0 = Date.now();
-    K.piezas.banner.atras(function () { location.hash = '#/seguimiento/documentos'; });
+    K.piezas.banner.atras(volver);
     var caja = K.nodo('<div class="kit-ancho vista pp"></div>');
     app.appendChild(caja);
     if (!informe) { caja.appendChild(K.nodo('<p class="seg-nada">Falta la cuenta.</p>')); return; }
@@ -788,6 +792,11 @@
       setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
       MED.push({ paso: 'union', ms: Date.now() - t0, docs: dentro.length, kb: Math.round(bytes.length / 1024) });
       K.aviso('Listo: ' + nombre + ' (' + tamano(Math.round(bytes.length / 1024)) + ').', 'ok', 5000);
+      /* 19/11 (Oss) · terminada la descarga, la vista se va sola a donde estaba:
+         se espera un instante para que el navegador tome el archivo */
+      setTimeout(function () {
+        if (gen === GEN && /^#\/?unificar/.test(location.hash || '')) volver();
+      }, 900);
     })['catch'](function (e) {
       if (e && e.cortado) return;
       K.aviso((e && e.message) || 'No se pudo armar el PDF.', 'malo', 6000);
