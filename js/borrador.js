@@ -417,12 +417,34 @@
     return f;
   }
 
+  /* 19/11 · «Falta la evidencia» no aplica cuando la obligación no se mide
+     (general, o entrega al cierre antes de la última cuenta), cuando la
+     actividad dice que no requiere adjunto o cuando no se ejecutó en el
+     periodo. Mismo criterio del motor de bombillos: cero viajes. */
+  var NO_ADJ_TXT = /\bno\s+(requiere|requirio|necesita|genera|genero|aplica|lleva)\s+(de\s+)?(un\s+|una\s+|ningun\s+|ninguna\s+)?(adjunto|anexo|soporte|evidencia|archivo|documento)s?\b|\bsin\s+(adjunto|anexo|soporte)s?\s+(por|porque|ya)\b|\b(adjunto|anexo|soporte|evidencia)s?\s*:?\s*no\s+aplica\b/;
+  function noPideEvidencia(o, texto) {
+    var t = String(texto || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    if (NO_ADJ_TXT.test(t)) return true;
+    var I = K.piezas.informeCuentas;
+    if (!I || !I._esGeneral) return false;
+    try {
+      if (I._esGeneral(o.texto)) return true;
+      var ultima = Number(E.total) > 0 && Number(E.informe) >= Number(E.total);
+      if (I._esCierre && I._esCierre(o.texto) && !ultima) return true;
+      if (I._estr && I._estr.analizar && I._estr.preparar) {
+        var R = I._estr.analizar(texto, I._estr.preparar(o.texto, [], E.contrato), { informe: E.informe, total: E.total });
+        if (R && (R.estado === 'general' || R.estado === 'noreq')) return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
   function tarjetaObligacion(o, i, caja) {
     var escrito = String(textos[i] || '').trim();
     var foto = (evidencias[i] || []).length;
     var nArch = (archivos[i] || []).length + (subiendoArch[i] && !subiendoArch[i].reemplaza ? 1 : 0);
     var arch = nArch ? ((archivos[i] || [])[0] || subiendoArch[i]) : null;
-    var estado = escrito ? (foto || arch ? 'lista' : 'escrita') : 'pendiente';
+    var estado = escrito ? (foto || arch || noPideEvidencia(o, escrito) ? 'lista' : 'escrita') : 'pendiente';
     var rotulos = { lista: 'Completa', escrita: 'Falta la evidencia', pendiente: 'Sin diligenciar' };
 
     var t = K.nodo(
