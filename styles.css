@@ -2373,6 +2373,9 @@
 .ini-rapido__t { font-weight: 600; font-size: .95rem; }
 .ini-rapido__p { font-size: .78rem; color: var(--k-apagado); }
 .ini-rapido .acceso__burbuja { top: 12px; right: 12px; box-shadow: none; }
+/* 19/11 · Corregir cuenta / faltan datos: borde completo en rojo, nunca franja lateral */
+.ini-rapido--alerta { border-color: #b91c1c; }
+.ini-rapido--alerta .ini-rapido__ico { color: #b91c1c; }
 
 .ini-listas { display: flex; flex-direction: column; gap: 20px; }
 .ini-lista { display: flex; flex-direction: column; gap: 8px; }

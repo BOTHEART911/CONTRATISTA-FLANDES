@@ -483,41 +483,48 @@
     var colP = rejilla.firstChild, colL = rejilla.lastChild;
     var hero = K.nodo('<section class="ini-hero" aria-label="Tu cuenta en curso"></section>');
     var reciente = K.nodo('<div class="ini-reciente-sitio"></div>');
-    var avisosSitio = K.nodo('<div class="ini-avisos"></div>');
     colP.appendChild(hero);
     colL.appendChild(reciente);
 
-    /* cuatro accesos rápidos, cada uno con su ícono */
-    var rapidos = K.nodo('<section class="ini-rapidos" aria-label="Accesos rápidos"></section>');
-    rapidos.appendChild(rapido('Estado de cuenta', 'Dónde va y tus pagos', 'reloj', function () { irA('seguimiento'); }));
-    rapidos.appendChild(rapido('Mis registros', 'Tus cuentas en PDF o Excel', 'descargar', function () { irA('misregistros'); }));
-    rapidos.appendChild(rapido('Certificación', 'De tu contrato, en PDF', 'documento', function () { irA('seguimiento/certificacion'); }));
-    var tarjetaCom = rapido('Comunicados', 'De la Alcaldía y las oficinas', 'megafono', function () { irA('comunicados'); });
-    rapidos.appendChild(tarjetaCom);
+    /* 19/11 (Oss) · LOS PROCESOS DE CUENTA DE SIEMPRE, con el diseño nuevo.
+       Son las cuatro tarjetas del bloque PROCESOS DE CUENTA de la app anterior,
+       con su misma lógica: el borrador SIEMPRE está a la mano (la vista del
+       borrador decide si ya se puede empezar la siguiente cuenta, con la regla
+       INGRESA_SIGUIENTE_DESDE del CORE) e INGRESAR CUENTA pasa a CORREGIR CUENTA
+       con alerta si hay una devuelta o incompleta, o se marca si faltan datos. */
+    var rapidos = K.nodo('<section class="ini-rapidos" aria-label="Procesos de cuenta"></section>');
     colP.appendChild(rapidos);
-    pintarBurbujaComunicados(tarjetaCom);
-
-    colL.appendChild(avisosSitio);
-    pintarAvisoTelefono(avisosSitio);
+    pintarRapidos(rapidos);
 
     /* lo demás, en listas cortas por sección */
     var listas = K.nodo('<div class="ini-listas"></div>');
     listas.appendChild(lista('Trámites y solicitudes', [
+      fila('Certificación del contrato', 'Genera el certificado de tu contrato en PDF', 'documento', function () { irA('seguimiento/certificacion'); }),
       fila('Comunicaciones', 'Fotos, video y piezas gráficas', 'camara', function () { irA('comunicaciones'); }),
       fila('Tesorería', 'Pregunta por el pago de una cuenta', 'moneda', function () { irA('tesoreria'); }),
       fila('Contratación', 'Adición, cesión, modificación o suspensión', 'intercambiar', function () { irA('contratacion'); })
     ]));
-    var filaAvisos = fila('Mis notificaciones', 'Todo lo que te hemos avisado', 'campana', function () { irA('avisos'); });
+    /* 19/11 (Oss) · activar los avisos al teléfono va en MIS NOTIFICACIONES: si
+       este teléfono aún no los recibe, el toque (el gesto que pide el navegador)
+       los activa y después abre la vista. */
+    var filaAvisos = fila('Mis notificaciones', textoNotificaciones(), 'campana', function () {
+      var e = K.piezas.avisos ? K.piezas.avisos.estado() : 'listo';
+      if (e === 'listo' || e === 'no-soportado') { irA('avisos'); return; }
+      K.piezas.avisos.activar({ forzar: true }).then(function () { irA('avisos'); }, function () { irA('avisos'); });
+    });
+    var filaCom = fila('Comunicados', 'De la Alcaldía y las oficinas', 'megafono', function () { irA('comunicados'); });
     var filaTut = fila('Tutoriales de uso', 'Videos cortos de cada paso de la app', 'play', function () { irA('tutoriales'); });
     filaTut.hidden = !tutorialesActivos();
     listas.appendChild(lista('Tu contrato y la Alcaldía', [
       fila('Datos del contrato', 'Valor, plazo y quién lo supervisa', 'hoja', function () { irA('proceso'); }),
       filaAvisos,
+      filaCom,
       fila('Directorio institucional', 'Dependencias, correos y teléfonos', 'ubicacion', function () { irA('directorio'); }),
       fila('Sitios web', 'SECOP II, SIA Observa, la DIAN y más', 'globo', function () { irA('sitios'); }),
       filaTut
     ]));
     colL.appendChild(listas);
+    pintarBurbujaComunicados(filaCom);
     pintarBurbuja(filaAvisos);
 
     caja.appendChild(rejilla);
@@ -763,6 +770,7 @@
     if (origen === 'vivo') K.disparar('kit:cuentasVivo', nueva);
     if (enInicio() && INI_SITIOS && document.body.contains(INI_SITIOS.hero)) {
       pintarHero(INI_SITIOS.hero, INI_SITIOS.reciente);
+      if (INI_RAPIDOS && document.body.contains(INI_RAPIDOS)) pintarRapidos(INI_RAPIDOS);
       INI_SITIOS.hero.classList.remove('ini-hero--vivo');
       void INI_SITIOS.hero.offsetWidth;
       INI_SITIOS.hero.classList.add('ini-hero--vivo');
@@ -813,21 +821,38 @@
   });
   K.cuando('kit:cuentasResumen', function (l) { if (l && l.length) aplicarCuentas(l, 'estadoCuenta'); });
 
-  /* los avisos al teléfono, solo cuando piden algo */
-  function pintarAvisoTelefono(sitio) {
+  /* 19/11 · el bloque PROCESOS DE CUENTA (lógica de tarjetaCuenta de la app anterior) */
+  function pintarRapidos(sitio) {
+    if (!sitio) return;
+    INI_RAPIDOS = sitio;
     sitio.innerHTML = '';
-    if (!K.piezas.avisos) return;
-    var e = K.piezas.avisos.estado();
-    if (e === 'listo' || e === 'no-soportado') return;
-    var bloqueado = e === 'bloqueado';
-    var b = K.nodo(
-      '<button type="button" class="ini-aviso' + (bloqueado ? ' ini-aviso--atencion' : '') + '">' +
-      '  <span aria-hidden="true">' + K.icono(bloqueado ? 'silencio' : 'campana', 22) + '</span>' +
-      '  <span class="ini-aviso__txt"><span class="ini-aviso__t">' + (bloqueado ? 'Los avisos al teléfono están bloqueados' : 'Recibe los avisos en este teléfono') + '</span>' +
-      '  <span class="ini-aviso__p">' + K.esc(textoAvisos()) + '</span></span>' +
-      '</button>');
-    b.addEventListener('click', function () { K.vibrar(8); tocarAvisos(); });
-    sitio.appendChild(b);
+    var pc = porCorregir();
+    sitio.appendChild(rapido('Borrador de actividades', pc
+      ? 'Corrige las actividades y evidencias de tu cuenta ' + pc.informe
+      : 'Escribe tus actividades y sube las evidencias', 'lapiz', function () { irA('borrador'); }));
+    var tc;
+    if (pc) {
+      tc = rapido('Corregir cuenta', pc.estado === 'INCOMPLETA' ? 'Tu cuenta ' + pc.informe + ' quedó incompleta: complétala aquí'
+        : 'Tu cuenta ' + pc.informe + ' fue devuelta: corrígela aquí', 'enviar', function () { irA('cuenta'); });
+    } else if (candadoContrato()) {
+      tc = rapido('Ingresar cuenta', 'Primero completa tus datos: sin ellos no radicas ni reportas', 'enviar', function () { irA('cuenta'); });
+    } else {
+      tc = rapido('Ingresar cuenta', 'Fechas, planilla y documentos para radicar', 'enviar', function () { irA('cuenta'); });
+    }
+    if (pc || candadoContrato()) {
+      tc.classList.add('ini-rapido--alerta');
+      tc.appendChild(K.nodo('<span class="acceso__burbuja" aria-hidden="true">!</span>'));
+    }
+    sitio.appendChild(tc);
+    sitio.appendChild(rapido('Estado de cuenta', 'Dónde va, reportar, tus documentos y pagos', 'reloj', function () { irA('seguimiento'); }));
+    sitio.appendChild(rapido('Mis registros', 'Tus cuentas en PDF o Excel', 'descargar', function () { irA('misregistros'); }));
+  }
+  var INI_RAPIDOS = null;
+
+  function textoNotificaciones() {
+    var e = K.piezas.avisos ? K.piezas.avisos.estado() : 'listo';
+    if (e === 'listo' || e === 'no-soportado') return 'Todo lo que te hemos avisado';
+    return textoAvisos();
   }
 
   function rapido(titulo, texto, icono, al) {
@@ -926,6 +951,7 @@
       ARRANQUE.porCorregir = null;
       ARRANQUE.primeraCuenta = false;   /* 01/10 · ya hay cuenta: el candado no vuelve */
       if (K.recuerdo) K.recuerdo.guardar(ligero(ARRANQUE));
+      if (INI_RAPIDOS && document.body.contains(INI_RAPIDOS)) pintarRapidos(INI_RAPIDOS);   /* 19/11 */
     }
   });
 
@@ -1095,17 +1121,7 @@
     return 'Toca para activarlos en este teléfono';
   }
 
-  function tocarAvisos() {
-    if (!K.piezas.avisos) return;
-    var e = K.piezas.avisos.estado();
-    /* Si nunca se le preguntó, se le explica antes; si ya dijo que sí o el
-       caso no tiene arreglo desde aquí (iPhone sin instalar, bloqueado),
-       activar() ya enseña la hoja que corresponde. */
-    /* 4.9: sin hoja intermedia. El toque en la tarjeta ya es el gesto que
-       el navegador necesita para mostrar su cuadro. */
-    var paso = K.piezas.avisos.activar({ forzar: true });
-    paso.then(function () { enrutar(); });
-  }
+
 
   /* ---------- datos del contrato ---------- */
   /*
