@@ -701,6 +701,8 @@
     /* 18/11 · el mismo cielo de la portada (aurora y globos) para que la
        tarjeta no quede plana. Idempotente; solo transform y opacity. */
     if (K.piezas.cielo) K.piezas.cielo.poner(hero, { burbujas: 4 });
+    /* 20/11 · los accesos de abajo se ajustan a los botones que acaba de poner la tarjeta */
+    if (INI_RAPIDOS && document.body.contains(INI_RAPIDOS)) pintarRapidos(INI_RAPIDOS);
   }
 
   function barra(txt, n, total) {
@@ -825,6 +827,25 @@
     sitio.appendChild(tc);
     sitio.appendChild(rapido('Estado de cuenta', 'Dónde va, reportar, tus documentos y pagos', 'reloj', function () { irA('seguimiento'); }));
     sitio.appendChild(rapido('Mis registros', 'Tus cuentas en PDF o Excel', 'descargar', function () { irA('misregistros'); }));
+
+    /* 20/11 (Oss) · NO REPETIR BOTONES: si la tarjeta de la cuenta ya tiene un
+       botón que lleva al mismo sitio, el acceso de abajo se ESCONDE (no se quita:
+       vuelve solo en cuanto la tarjeta cambia de botón, también en vivo).
+       La tarjeta manda; los accesos completan. */
+    var destinos = destinosHero(), d = ['borrador', 'cuenta', 'seguimiento', 'misregistros'], vis = 0;
+    Array.prototype.forEach.call(sitio.children, function (el, i) {
+      el.setAttribute('data-destino', d[i]);
+      el.hidden = destinos.indexOf(d[i]) >= 0;
+      if (!el.hidden) vis++;
+    });
+    sitio.setAttribute('data-visibles', String(vis));
+  }
+
+  /** a dónde llevan los botones que la tarjeta muestra ahora ([] si aún no hay tarjeta) */
+  function destinosHero() {
+    if (!(INI_SITIOS && INI_SITIOS.hero && document.body.contains(INI_SITIOS.hero)) || !CONTRATO || !ARRANQUE) return [];
+    var h = textoHero(cuentaEnCurso());
+    return [h.b1, h.b2].filter(Boolean).map(function (b) { return b[2]; });
   }
   var INI_RAPIDOS = null;
 
