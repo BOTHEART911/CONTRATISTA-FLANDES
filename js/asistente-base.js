@@ -815,7 +815,7 @@ window.ASISTENTE_BASE = [
 "proceso secop",
 "primera cuenta bloqueada"
 ],
-"respuesta": "Los datos del contrato salen impresos en todos tus formatos: sin ellos no se ingresa la **primera cuenta**. En **DATOS DEL CONTRATO** toca el botón de editar y llénalos con tu clausulado y tu acta de inicio: el **N° de proceso** (solo los tres dígitos del medio: en CPS-021-2026 escribe 021), las **fechas del acta de inicio** y el **RP** (solo los últimos dígitos).",
+"respuesta": "Los datos del contrato salen impresos en todos tus formatos: sin ellos no se ingresa la **primera cuenta**. En **DATOS DEL CONTRATO** toca el botón de editar y llénalos con tu clausulado y tu acta de inicio: las **fechas del acta de inicio** y el **RP** (solo los últimos dígitos). El **N° de proceso** ya no lo escribes tú: lo registra **Contratación** al crear tu contrato; si te sale que falta, pídeselo en **SOLICITUD CONTRATACIÓN**.",
 "accion": "ir:proceso",
 "estado": "",
 "activo": true,

@@ -183,6 +183,10 @@
               return 'En **RELACIÓN DE PLANILLA** escribe primero la **Base de cotización**: mientras esté vacía, salud, pensión y ARL quedan bloqueados. ' +
                      'Al escribirla se llenan solos: **salud ' + p(c.PLANILLA_PCT_SALUD, '12.5') + ' %**, **pensión ' + p(c.PLANILLA_PCT_PENSION, '16') + ' %** y **ARL ' + p(c.PLANILLA_PCT_ARL, '0.522') + ' %** de la base, redondeados hacia arriba a la centena (base 1.750.905: 218.900, 280.200 y 9.200).\n' +
                      '**Deben quedar iguales a los de la planilla que adjuntas.** Si tu planilla dice otra cosa, corrígelos a mano. Lo mismo pasa en la **planilla anexa**.'; } },
+          { texto: '¿Puedo repetir la planilla de otra cuenta?', responde: function () {
+              return 'No. Cada cuenta lleva **su propia planilla**, la que pagaste para ese periodo. ' +
+                     'El **N° de planilla** y el de la **planilla anexa** no pueden ser uno que ya usaste en una cuenta anterior, y la anexa no puede llevar el mismo número de la planilla. La app te avisa apenas lo escribes.\n' +
+                     'Tampoco se puede subir el **mismo PDF** de planilla o planilla anexa de una cuenta anterior: al subirlo te dice en qué cuenta ya lo usaste.'; } },
           { texto: '¿Qué pasa si se me va la señal?', responde: function () {
               return 'Nada se pierde: lo escrito queda en este teléfono y cada PDF que subes queda guardado al instante. Vuelve a entrar y sigues donde ibas.'; } },
           { texto: '¿Cuál es el siguiente paso?', responde: function () {

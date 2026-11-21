@@ -1265,6 +1265,12 @@
         'obligatorios del contrato. Sin ellos no puedes radicar ni reportar tus cuentas' +
         (faltan.length ? ': <b>' + faltan.map(K.esc).join(', ') + '</b>.' : '.') + '</p>'
       ));
+      /* 21/11 · el N° de proceso lo registra Contratación: aquí no se puede llenar */
+      if (faltan.some(function (x) { return /proceso/i.test(x); })) {
+        var pide = K.nodo('<p class="formulario__nota">El <b>N° de proceso SECOP II</b> lo registra Contratación. ' +
+          'Pídeselo en <a href="#/contratacion">SOLICITUD CONTRATACIÓN</a>.</p>');
+        s.appendChild(pide);
+      }
     }
 
     var b = K.nodo('<button type="button" class="kit-btn kit-btn--marca">' +
@@ -1294,9 +1300,8 @@
         '<b>acta de inicio</b>. Ténlos a la mano: van impresos en todos los formatos de tus cuentas.</p>'
       ));
 
-      campoTexto(f, D, 'numProceso', 'N° de proceso SECOP II',
-        'En el clausulado, el número que va en CPS-(aquí)-' + (new Date().getFullYear()) + '. Ejemplo: 021',
-        { valor: numProcesoCorto(c.numProceso), numerico: 3, marcador: 'Ej: 021' });
+      /* 21/11 · (Oss) el N° de proceso SECOP II ya no se escribe aquí: lo registra
+         Contratación (o ADMIN) al crear el contrato. Se enseña arriba, en El contrato. */
 
       var fIni = campoFecha(f, D, 'fechaInicio', 'Fecha de inicio',
         'La que dice tu ACTA DE INICIO.', c.fechaInicio);
@@ -1483,7 +1488,7 @@
      dedazo en el RP se descubre cuando el pago no sale. */
   function mandarContrato(caja, c, D) {
     var ROTULOS = {
-      numProceso: 'N° de proceso', fechaInicio: 'Fecha de inicio',
+      fechaInicio: 'Fecha de inicio',
       fechaTermino: 'Fecha de terminación', meses: 'Meses', dias: 'Días',
       rp: 'RP', rpAdicion: 'RP de la adición', regimen: 'Régimen simple', factura: 'Factura electrónica',
       costos: 'Costos o deducciones'
@@ -1492,7 +1497,6 @@
     Object.keys(ROTULOS).forEach(function (k) {
       var v = String(D[k] === undefined || D[k] === null ? '' : D[k]).trim();
       if (!v) return;
-      if (k === 'numProceso') v = 'CPS-' + ('00' + v).slice(-3) + '-' + (new Date().getFullYear());
       /* 4.5: en el campo se escribe el final, pero en el resumen tiene que
          salir el número entero, que es lo que va a quedar en la hoja. */
       if (k === 'rp' || k === 'rpAdicion') v = String(c.rpAnio || new Date().getFullYear()) + ('000000' + v).slice(-6);
@@ -1546,17 +1550,6 @@
           K.aviso(e && e.message ? e.message : 'No se pudo guardar.', 'malo', 7000);
         });
     });
-  }
-
-  /* El N° de proceso llega guardado como CPS-021-2026. Quitarle todo lo que
-     no es dígito y quedarse con los tres últimos daba "026" (el AÑO): quien
-     volvía a abrir el formulario para cambiar el RP y guardaba, dejaba el
-     proceso mal escrito en todos sus formatos. Se toma el número del medio. */
-  function numProcesoCorto(v) {
-    var t = String(v || '').trim();
-    var m = /(\d{1,3})\D+\d{4}\s*$/.exec(t);
-    var n = m ? m[1] : t.replace(/\D/g, '').slice(-3);
-    return n ? ('00' + n).slice(-3) : '';
   }
 
   function plata(v) {

@@ -419,6 +419,10 @@
       };
     }
     var vacios = b.campos.filter(function (c) { return !String(D[c] || '').trim(); });
+    /* 21/11 · un N° de planilla repetido no deja el bloque listo */
+    if (b.id === 'planilla' && (planillaRepetida('planilla') || planillaRepetida('planillaA'))) {
+      return { clase: 'falta', icono: '!', detalle: planillaRepetida('planilla') ? 'N° de planilla ya usado' : 'N° de planilla anexa repetido' };
+    }
     /* 23/10 · con un periodo que no deja radicar hoy, el bloque no queda listo */
     if (!vacios.length && b.id === 'fechas' && textoRadicacion()) return { clase: 'falta', icono: '!', detalle: 'La radicación va después del fin del periodo' };
     if (!vacios.length) return { clase: 'ok', icono: K.icono('check', 15), detalle: resumenBloque(b) };
@@ -741,7 +745,7 @@
   /* ---------- bloque 3: planilla ---------- */
 
   function bloquePlanilla(s) {
-    campoTexto(s, 'planilla', 'N° de planilla', 'La planilla que YA pagaste.', 'numeric');
+    var inPlan = campoTexto(s, 'planilla', 'N° de planilla', 'La planilla que YA pagaste.', 'numeric');
 
     var g = grupo(s, 'Mes relacionado en la planilla', 'El mes que aparece en tu planilla.');
     var sel = K.nodo('<select class="cta-inp"><option value="">Selecciona</option></select>');
@@ -786,7 +790,11 @@
     if (String(D.planillaA || '').trim()) det.open = true;
     s.appendChild(det);
 
-    campoTexto(det, 'planillaA', 'N° de planilla anexa', '', 'numeric');
+    var inPlanA = campoTexto(det, 'planillaA', 'N° de planilla anexa', '', 'numeric');
+    /* 21/11 · el aviso de N° repetido sale al escribir, debajo de cada campo */
+    var revPlan = avisoRepetida(inPlan, 'planilla'), revPlanA = avisoRepetida(inPlanA, 'planillaA');
+    inPlan.addEventListener('input', revPlanA);   /* la anexa se compara con la planilla */
+    inPlanA.addEventListener('input', revPlan);
     var g2 = grupo(det, 'Mes de la planilla anexa', '');
     var sel2 = K.nodo('<select class="cta-inp"><option value="">Selecciona</option></select>');
     (E.meses || []).forEach(function (m) {
@@ -812,10 +820,60 @@
       recordar();
       K.$$('.cta-inp', det).forEach(function (i) { i.value = ''; });
       sel2.value = '';
+      revPlanA();
       anexaSolos();   /* sin base, los aportes vuelven a quedar bloqueados */
       K.aviso('Planilla anexa vacía. Se guardará así.', 'info');
     });
     det.appendChild(limpiar);
+  }
+
+  /* ---------- 21/11 · N° DE PLANILLA SIN REPETIR (Oss) ----------
+
+     El N° de planilla no puede ser uno ya usado en una cuenta anterior del
+     mismo contratista (cualquiera de sus contratos), y el de la planilla
+     anexa tampoco, ni el mismo N° de planilla de esta cuenta. La lista llega
+     con cuentaEstado (planillasPrevias), sin otro viaje; el CORE lo vuelve a
+     exigir al guardar. Lo ya guardado en la cuenta no se revisa: solo de
+     aquí en adelante. Con un CORE viejo (sin la lista) solo se compara la
+     anexa con la planilla. */
+  function numPlan(v) { return String(v === null || v === undefined ? '' : v).replace(/\D/g, '').replace(/^0+/, ''); }
+
+  function planillaRepetida(clave) {
+    var v = numPlan(D[clave]);
+    if (!v) return '';
+    var g = (E && E.campos) || {};
+    var guardado = numPlan(g[clave]);
+    if (clave === 'planillaA') {
+      var p = numPlan(D.planilla);
+      if (v === p && (v !== guardado || p !== numPlan(g.planilla))) {
+        return 'Es el mismo N° de planilla de esta cuenta. La planilla anexa lleva su propio número.';
+      }
+    }
+    if (v === guardado) return '';
+    var lista = (E && E.planillasPrevias && E.planillasPrevias.numeros) || [];
+    for (var i = 0; i < lista.length; i++) {
+      var x = lista[i];
+      if (x.n !== v) continue;
+      return 'Ya usaste este número en tu cuenta ' + x.informe + (x.contrato ? ' del contrato ' + x.contrato : '') +
+        (x.anexa ? ' (planilla anexa)' : '') + '. Escribe el N° de la planilla que pagaste para esta cuenta.';
+    }
+    return '';
+  }
+
+  /* El aviso debajo del campo, al escribir. Devuelve la función que lo repinta. */
+  function avisoRepetida(inp, clave) {
+    var p = K.nodo('<p class="cta-error" role="alert" hidden></p>');
+    inp.parentNode.appendChild(p);
+    function revisar() {
+      var m = planillaRepetida(clave);
+      p.hidden = !m;
+      p.textContent = m;
+      inp.classList.toggle('cta-inp--mal', !!m);
+      if (m) inp.setAttribute('aria-invalid', 'true'); else inp.removeAttribute('aria-invalid');
+    }
+    inp.addEventListener('input', revisar);
+    revisar();
+    return revisar;
   }
 
   /* ---------- 19/10 · aportes que se llenan solos (Oss) ----------
@@ -1070,6 +1128,7 @@
         }), { ms: 120000 });
       })
       .then(function (r) {
+        quitarRepetido(cuerpo);
         E.archivos = E.archivos || {};
         E.archivos[a.k] = r.url;
         if (r && r.fila && !E.fila) E.fila = r.fila;   /* 23/10 · la cuenta nueva ya tiene fila: el ancla la lleva */
@@ -1079,9 +1138,21 @@
       ['catch'](function (e) {
         K.piezas.guardado.fallo();
         if (cambioDeCuenta(e)) return;
+        /* 21/11 · planilla o anexa que ya se usó: el motivo queda escrito en la casilla */
+        if (e && e.codigo === 'PLANILLA_REPETIDA') {
+          adj.limpiar();
+          quitarRepetido(cuerpo);
+          cuerpo.appendChild(K.nodo('<p class="cta-error cta-error--doc" role="alert">' + K.esc(e.message) + '</p>'));
+          return;
+        }
         K.aviso(e.message || 'No se pudo subir el archivo', 'malo', 6000);
         adj.limpiar();
       });
+  }
+
+  function quitarRepetido(cuerpo) {
+    var v = cuerpo.querySelector('.cta-error--doc');
+    if (v) v.parentNode.removeChild(v);
   }
 
   /* ══════════════ campos ══════════════ */

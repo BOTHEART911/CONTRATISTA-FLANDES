@@ -2467,3 +2467,19 @@
 .vista--vieja { opacity: .78; transition: opacity .2s cubic-bezier(.2, .8, .2, 1); }
 .vista--repinta > * { animation: none; }
 @media (prefers-reduced-motion: reduce) { .vista--vieja { transition: none; } }
+
+/* 21/11 · N° de planilla o archivo ya usado en una cuenta anterior: el motivo
+   queda escrito debajo del campo, al escribir o al subir (no al final). */
+.cta-error {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  font-size: .88rem;
+  line-height: 1.4;
+  border-radius: var(--k-r-sm);
+  background: var(--k-malo-fondo);
+  border: 1px solid color-mix(in srgb, var(--k-malo) 40%, transparent);   /* como .kit-aviso--malo: texto en tinta, 4,5:1 en claro y oscuro */
+  color: var(--k-tinta);
+}
+.cta-error--doc { margin: 0 0 10px; }
+.cta-inp.cta-inp--mal { border-color: var(--k-malo); }
+.cta-inp.cta-inp--mal:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--k-malo) 18%, transparent); }
