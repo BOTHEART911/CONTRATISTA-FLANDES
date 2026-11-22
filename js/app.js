@@ -363,10 +363,10 @@
     /* ajuste 4 · ADMIN enciende o apaga los tutoriales: apagados, el enlace
        guardado lleva al inicio (el CORE tampoco entrega nada) */
     tutoriales: function (sub) {
-      if (tutorialesActivos()) { window.INSTITUCIONAL.tutoriales(sub); return; }
+      if (tutorialesActivos()) { window.TUTORIALES.vista(sub); return; }
       if (ARRANQUE) { location.hash = '#/inicio'; return; }
       cargarInicio().then(function () {
-        if (tutorialesActivos()) window.INSTITUCIONAL.tutoriales(sub); else location.hash = '#/inicio';
+        if (tutorialesActivos()) window.TUTORIALES.vista(sub); else location.hash = '#/inicio';
       }, function () { location.hash = '#/inicio'; });
     },
     sitios: function () { window.INSTITUCIONAL.sitios(); }

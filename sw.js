@@ -98,6 +98,7 @@ var ARMAZON = [
   './js/tramites.js',
   './js/solicitudes.js',
   './js/institucional.js',
+  './js/tutoriales.js',
   /* 4.9 · caras, foto de perfil y la ayuda de cada vista */
   './kit/personas.js', './kit/personas.css',
   './kit/perfil.js',

@@ -2,11 +2,10 @@
    CONTRATISTA-FLANDES · INSTITUCIONAL Y AYUDA
    Ecosistema Flandes · Fase 4, entrega 4.8
 
-   Cuatro vistas del menú viejo, rehechas:
+   Tres vistas del menú viejo, rehechas:
 
      #/comunicados[/ID]  COMUNICADOS y su detalle
      #/directorio        DIRECTORIO INSTITUCIONAL
-     #/tutoriales[/ID]   TUTORIALES DE USO (video, me gusta, comentarios)
      #/sitios            SITIOS WEB
 
    Lo que hacía la app vieja y lo que cambia (medido el 22/09 en la copia)
@@ -23,11 +22,7 @@
        varios correos, se marca el que no sirve (uno tiene tilde) y se
        añade buscador y compartir con el sistema del teléfono.
 
-     TUTORIALES. 14 videos en 11 temas. Pastillas con el conteo, video
-       dentro de la app, me gusta con candado en el servidor (un doble
-       toque ya no duplica), comentarios con respuestas, edición y borrado
-       de lo propio. La miniatura cae a la que saca Drive del video si la
-       de la hoja (Cloudinary) no carga.
+     TUTORIALES. Desde el 22/11 viven en js/tutoriales.js (YouTube).
 
      SITIOS WEB. Los 6 enlaces salen de la llave SITIOS_WEB de CONFIG, no
        del código. Son páginas de terceros que no se dejan mostrar dentro
@@ -44,9 +39,7 @@
   var DOC = '';            /* de quién es la marca de "leído" */
   var COM = null;          /* comunicados */
   var DIR = null;          /* directorio */
-  var TUT = null;          /* tutoriales {categorias, videos} */
   var SITIOS = null;       /* de CONFIG, vía el arranque */
-  var FILTRO_TUT = '';     /* la pastilla elegida se recuerda al volver */
   var MAPA = null;         /* mapa-cloudinary.json de ALCALDIA-MEDIOS */
 
   /* ══════════════ utilidades ══════════════ */
@@ -462,321 +455,6 @@
     return t;
   }
 
-  /* ══════════════ TUTORIALES ══════════════ */
-
-  var TEMAS = {
-    primera: 'Primera cuenta', personales: 'Datos personales', contrato: 'Datos del contrato',
-    borrador: 'Borrador', ingresar: 'Ingresar cuenta', corregir: 'Corregir cuenta',
-    reportes: 'Reportes', estados: 'Estados de cuenta', tramites: 'Trámites',
-    institucional: 'Institucional', adicion: 'Adiciones'
-  };
-  function tema(c) { return TEMAS[c] || (c ? c.charAt(0).toUpperCase() + c.slice(1) : 'Otros'); }
-
-  function cargarTutoriales(forzar) {
-    if (TUT && !forzar) return Promise.resolve(TUT);
-    return K.pedir('tutoriales').then(function (r) { TUT = r || { categorias: [], videos: [] }; return TUT; });
-  }
-
-  function vistaTutoriales(sub) {
-    var c = caja('ins');
-    var id = sub ? decodeURIComponent(sub) : '';
-    if (id) K.piezas.banner.atras(function () { location.hash = '#/tutoriales'; });
-    K.piezas.esqueletos.mientras(c, cargarTutoriales(false), { forma: 'tarjetas', cuantos: 4, espera: 'Trayendo los tutoriales' })
-      .then(function () { if (id) detalleTutorial(c, id); else listaTutoriales(c); })
-      ['catch'](function (e) {
-        c.appendChild(errorCaja(e, function () { TUT = null; rehacer(); }));
-        K.piezas.creditos.montar(c);
-      });
-  }
-
-  function miniatura(v, clase) {
-    var img = K.nodo('<img class="' + (clase || '') + '" alt="" loading="lazy" referrerpolicy="no-referrer">');
-    var fuentes = [v.miniatura, v.miniaturaDrive].filter(Boolean), i = 0;
-    img.addEventListener('error', function () {
-      i++;
-      if (i < fuentes.length) img.src = fuentes[i];
-      else img.classList.add('ins-mini--sin');
-    });
-    if (fuentes.length) img.src = fuentes[0]; else img.classList.add('ins-mini--sin');
-    return img;
-  }
-
-  function metaVideo(v) {
-    return [plural(v.vistas || 0, 'vista', 'vistas'), plural(v.likes || 0, 'me gusta', 'me gusta'),
-            plural(v.comentarios || 0, 'comentario', 'comentarios')].join(' · ');
-  }
-
-  function listaTutoriales(c) {
-    c.innerHTML = '';
-    c.appendChild(cabecera('play', 'TUTORIALES DE USO',
-      'Videos cortos que te enseñan cada paso de la app. Dale me gusta y deja tus dudas en los comentarios.'));
-
-    var conteos = { '': TUT.videos.length };
-    TUT.videos.forEach(function (v) { conteos[v.categoria] = (conteos[v.categoria] || 0) + 1; });
-    var fila = K.nodo('<div class="ins-temas"></div>');
-    c.appendChild(fila);
-    var rejilla = K.nodo('<div class="kit-rejilla kit-rejilla--auto ins-videos"></div>');
-    c.appendChild(rejilla);
-
-    if (FILTRO_TUT && TUT.categorias.indexOf(FILTRO_TUT) < 0) FILTRO_TUT = '';
-    var p = K.piezas.pastillas.montar(fila, {
-      opciones: [{ valor: '', texto: 'Todos' }].concat(TUT.categorias.map(function (x) { return { valor: x, texto: tema(x) }; })),
-      valor: FILTRO_TUT,
-      alCambiar: function (v) { FILTRO_TUT = v || ''; pintar(); }
-    });
-    if (p && p.conteos) p.conteos(conteos);
-
-    function pintar() {
-      rejilla.innerHTML = '';
-      TUT.videos.filter(function (v) { return !FILTRO_TUT || v.categoria === FILTRO_TUT; })
-        .forEach(function (v) { rejilla.appendChild(tarjetaVideo(v)); });
-    }
-    pintar();
-    if (!TUT.videos.length) rejilla.appendChild(K.nodo('<p class="ins-conteo">Todavía no hay tutoriales.</p>'));
-    K.piezas.creditos.montar(c);
-  }
-
-  function tarjetaVideo(v) {
-    var a = K.nodo(
-      '<a class="kit-tarjeta ins-video" href="#/tutoriales/' + encodeURIComponent(v.id) + '">' +
-      '  <span class="ins-video__mini">' +
-      '    <span class="ins-video__play">' + K.icono('play', 22) + '</span>' +
-      (v.duracion ? '<span class="ins-video__dur">' + K.esc(v.duracion) + '</span>' : '') +
-      '  </span>' +
-      '  <span class="ins-video__txt">' +
-      '    <span class="ins-video__tema">' + K.esc(tema(v.categoria)) + (v.meGusta ? ' <span class="ins-video__tuyo" title="Te gusta">' + K.icono('corazon', 13) + '</span>' : '') + '</span>' +
-      '    <b class="ins-video__t">' + K.esc(v.titulo) + '</b>' +
-      '    <small class="ins-video__meta">' + K.esc(metaVideo(v)) + '</small>' +
-      '  </span>' +
-      '</a>'
-    );
-    a.querySelector('.ins-video__mini').insertBefore(miniatura(v, 'ins-mini'), a.querySelector('.ins-video__play'));
-    return a;
-  }
-
-  function detalleTutorial(c, id) {
-    c.innerHTML = '';
-    var v = null;
-    TUT.videos.forEach(function (x) { if (x.id === id) v = x; });
-    if (!v) {
-      c.appendChild(K.nodo('<section class="kit-tarjeta ins-vacio"><p>Ese tutorial ya no está.</p>' +
-        '<a class="kit-btn kit-btn--marca" href="#/tutoriales">Ver los tutoriales</a></section>'));
-      K.piezas.creditos.montar(c);
-      return;
-    }
-
-    var t = K.nodo(
-      '<article class="kit-tarjeta ins-ver">' +
-      '  <div class="ins-reproductor"></div>' +
-      '  <div class="ins-ver__cuerpo">' +
-      '    <span class="ins-video__tema">' + K.esc(tema(v.categoria)) + '</span>' +
-      '    <h2 class="ins-ver__t">' + K.esc(v.titulo) + '</h2>' +
-      '    <p class="ins-ver__meta">' + K.esc([plural(v.vistas || 0, 'vista', 'vistas'), v.duracion, v.fecha].filter(Boolean).join(' · ')) + '</p>' +
-      '    <div class="ins-ver__acciones"></div>' +
-      (v.descripcion ? '<p class="ins-ver__desc">' + K.esc(v.descripcion) + '</p>' : '') +
-      '  </div>' +
-      '</article>'
-    );
-    c.appendChild(t);
-    montarReproductor(t.querySelector('.ins-reproductor'), v);
-
-    var acc = t.querySelector('.ins-ver__acciones');
-    var like = K.nodo('<button type="button" class="ins-like" aria-pressed="' + (v.meGusta ? 'true' : 'false') + '">' +
-      K.icono('corazon', 18) + '<span class="ins-like__n">' + (v.likes || 0) + '</span><span class="kit-solo-lector"> me gusta</span></button>');
-    like.addEventListener('click', function () { tocarLike(v, like); });
-    acc.appendChild(like);
-    var sh = K.nodo('<button type="button" class="kit-btn kit-btn--plano">' + K.icono('compartir-ios', 16) + ' Compartir</button>');
-    sh.addEventListener('click', function () {
-      compartir(v.titulo, v.titulo + '\n' + (v.descripcion || '') + '\nhttps://drive.google.com/file/d/' + v.drive + '/view');
-    });
-    acc.appendChild(sh);
-
-    var com = K.nodo('<section class="kit-tarjeta ins-coms" aria-label="Comentarios"></section>');
-    c.appendChild(com);
-    comentarios(com, v);
-
-    /* lo que sigue: primero lo del mismo tema, después el resto */
-    var otros = TUT.videos.filter(function (x) { return x.id !== v.id; });
-    otros.sort(function (a, b) { return (a.categoria === v.categoria ? 0 : 1) - (b.categoria === v.categoria ? 0 : 1); });
-    if (otros.length) {
-      var mas = K.nodo('<section class="kit-tarjeta ins-mas"><h3 class="seg-sec__t">Otros tutoriales</h3><div class="ins-mas__lista"></div></section>');
-      otros.slice(0, 6).forEach(function (x) {
-        var fila = K.nodo('<a class="ins-mas__i" href="#/tutoriales/' + encodeURIComponent(x.id) + '"><span class="ins-mas__mini"></span>' +
-          '<span><b>' + K.esc(x.titulo) + '</b><small>' + K.esc(tema(x.categoria) + (x.duracion ? ' · ' + x.duracion : '')) + '</small></span></a>');
-        fila.querySelector('.ins-mas__mini').appendChild(miniatura(x, 'ins-mini'));
-        mas.querySelector('.ins-mas__lista').appendChild(fila);
-      });
-      c.appendChild(mas);
-    }
-    K.piezas.creditos.montar(c);
-    try { window.scrollTo(0, 0); } catch (e) {}
-  }
-
-  /* El video de Drive NO se carga hasta que se pide: son MB que no tiene
-     por qué gastar quien solo entró a leer los comentarios. */
-  function montarReproductor(zona, v) {
-    zona.innerHTML = '';
-    var poster = K.nodo('<button type="button" class="ins-reproductor__poster" aria-label="Reproducir ' + K.esc(v.titulo) + '">' +
-      '<span class="ins-reproductor__boton">' + K.icono('play', 30) + '</span>' +
-      (v.duracion ? '<span class="ins-video__dur">' + K.esc(v.duracion) + '</span>' : '') + '</button>');
-    poster.insertBefore(miniatura(v, 'ins-mini'), poster.firstChild);
-    poster.addEventListener('click', function () {
-      if (!v.drive) { K.aviso('Este video no tiene archivo en Drive.', 'malo'); return; }
-      zona.innerHTML = '<iframe class="ins-reproductor__marco" src="https://drive.google.com/file/d/' + encodeURIComponent(v.drive) +
-        '/preview" title="' + K.esc(v.titulo) + '" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>';
-      /* la vista se cuenta en el servidor una vez por persona y video */
-      K.pedir('tutorialVista', { id: v.id }).then(function (r) {
-        if (r && r.contada) v.vistas = r.vistas;
-      })['catch'](function () {});
-    });
-    zona.appendChild(poster);
-  }
-
-  var EN_VUELO_LIKE = {};
-  function tocarLike(v, boton) {
-    if (EN_VUELO_LIKE[v.id]) return;
-    var quiero = !v.meGusta;
-    /* se ve de una: esperar 2 s al servidor para pintar un corazón es lento */
-    pintarLike(boton, quiero, (v.likes || 0) + (quiero ? 1 : -1));
-    K.vibrar(8);
-    EN_VUELO_LIKE[v.id] = true;
-    K.pedir('tutorialLike', { id: v.id, quiero: quiero })
-      .then(function (r) {
-        v.meGusta = !!r.meGusta; v.likes = r.likes;
-        pintarLike(boton, v.meGusta, v.likes);
-      })
-      ['catch'](function (e) {
-        pintarLike(boton, v.meGusta, v.likes || 0);
-        K.aviso((e && e.message) || 'No se pudo guardar tu me gusta.', 'malo');
-      })
-      .then(function () { delete EN_VUELO_LIKE[v.id]; });
-  }
-  function pintarLike(b, si, n) {
-    b.setAttribute('aria-pressed', si ? 'true' : 'false');
-    b.querySelector('.ins-like__n').textContent = Math.max(0, n);
-  }
-
-  /* ---------- comentarios ---------- */
-
-  function comentarios(zona, v) {
-    zona.innerHTML = '<h3 class="seg-sec__t">Comentarios</h3>';
-    zona.appendChild(formComentario(v, '', 'Escribe tu duda o comentario…', function () { comentarios(zona, v); }));
-    var lista = K.nodo('<div class="ins-coms__lista"></div>');
-    zona.appendChild(lista);
-    K.piezas.esqueletos.mientras(lista, K.pedir('tutorialComentarios', { id: v.id }), { forma: 'filas', cuantos: 2 })
-      .then(function (r) {
-        v.comentarios = r.total || 0;
-        zona.querySelector('.seg-sec__t').textContent = 'Comentarios' + (r.total ? ' (' + r.total + ')' : '');
-        if (!r.comentarios.length) {
-          lista.appendChild(K.nodo('<p class="ins-conteo">Sé el primero en comentar.</p>'));
-          return;
-        }
-        r.comentarios.forEach(function (x) { lista.appendChild(comentario(x, v, zona, false)); });
-      })
-      ['catch'](function (e) {
-        lista.appendChild(errorCaja(e, function () { comentarios(zona, v); }));
-      });
-  }
-
-  function formComentario(v, respuestaA, marcador, alTerminar, textoInicial, comentarioId) {
-    var f = K.nodo(
-      '<form class="ins-cform" novalidate>' +
-      '  <textarea rows="2" maxlength="1000" placeholder="' + K.esc(marcador) + '" aria-label="' + K.esc(marcador) + '"></textarea>' +
-      '  <div class="ins-cform__pie"><small class="ins-cform__n">0 / 1000</small>' +
-      '    <button type="button" class="kit-btn kit-btn--plano ins-cform__no">Cancelar</button>' +
-      '    <button type="submit" class="kit-btn kit-btn--marca" disabled>' + K.icono('enviar', 15) + ' ' + (comentarioId ? 'Guardar' : (respuestaA ? 'Responder' : 'Comentar')) + '</button>' +
-      '  </div>' +
-      '</form>'
-    );
-    var ta = f.querySelector('textarea'), enviar = f.querySelector('[type=submit]'), n = f.querySelector('.ins-cform__n');
-    var no = f.querySelector('.ins-cform__no');
-    if (!respuestaA && !comentarioId) no.hidden = true;
-    ta.value = textoInicial || '';
-    function contar() {
-      n.textContent = ta.value.length + ' / 1000';
-      enviar.disabled = !ta.value.trim() || ta.value.trim() === String(textoInicial || '').trim();
-    }
-    ta.addEventListener('input', contar);
-    contar();
-    no.addEventListener('click', function () { alTerminar(true); });
-    f.addEventListener('submit', function (ev) {
-      ev.preventDefault();
-      var texto = ta.value.trim();
-      if (!texto || enviar.disabled) return;
-      enviar.disabled = true; ta.disabled = true; K.ocupado = true;
-      var p = comentarioId
-        ? K.pedir('tutorialComentarioEditar', { comentarioId: comentarioId, texto: texto })
-        : K.pedir('tutorialComentar', { id: v.id, texto: texto, respuestaA: respuestaA || '' });
-      p.then(function () {
-        K.ocupado = false;
-        K.aviso(comentarioId ? 'Comentario editado ✓' : (respuestaA ? 'Respuesta publicada ✓' : 'Comentario publicado ✓'), 'ok', 2200);
-        alTerminar(false);
-      })['catch'](function (e) {
-        K.ocupado = false; ta.disabled = false; contar();
-        K.aviso((e && e.message) || 'No se pudo publicar.', 'malo', 6000);
-      });
-    });
-    return f;
-  }
-
-  function comentario(x, v, zona, esRespuesta) {
-    var el = K.nodo(
-      '<div class="ins-cmt' + (esRespuesta ? ' ins-cmt--resp' : '') + '">' +
-      '  <div class="ins-cmt__cuerpo">' +
-      '    <p class="ins-cmt__cab"><b>' + K.esc(x.nombre) + '</b>' + (x.mio ? ' <span class="ins-cmt__tu">tú</span>' : '') +
-      '      <small>' + K.esc([x.secretaria, x.fecha].filter(Boolean).join(' · ')) + (x.editado ? ' · editado' : '') + '</small></p>' +
-      '    <p class="ins-cmt__txt">' + textoRico(x.texto) + '</p>' +
-      '    <div class="ins-cmt__acc"></div>' +
-      '  </div>' +
-      '</div>'
-    );
-    el.insertBefore(avatar(x.foto, x.nombre, 'ins-avatar--chico'), el.firstChild);
-    var acc = el.querySelector('.ins-cmt__acc');
-    var cuerpo = el.querySelector('.ins-cmt__cuerpo');
-    function accion(icono, texto, fn, peligro) {
-      var b = K.nodo('<button type="button" class="ins-cmt__b' + (peligro ? ' ins-cmt__b--malo' : '') + '">' + K.icono(icono, 14) + ' ' + texto + '</button>');
-      b.addEventListener('click', fn);
-      acc.appendChild(b);
-    }
-    if (!esRespuesta) {
-      accion('responder', 'Responder', function () {
-        if (cuerpo.querySelector('.ins-cform')) return;
-        var f = formComentario(v, x.id, 'Responde a ' + x.nombre.split(' ')[0] + '…', function (cancelado) {
-          f.remove(); if (!cancelado) comentarios(zona, v);
-        });
-        cuerpo.appendChild(f);
-        f.querySelector('textarea').focus();
-      });
-    }
-    if (x.mio) {
-      accion('lapiz', 'Editar', function () {
-        if (cuerpo.querySelector('.ins-cform')) return;
-        var txt = el.querySelector('.ins-cmt__txt');
-        txt.hidden = true; acc.hidden = true;
-        var f = formComentario(v, '', 'Edita tu comentario', function (cancelado) {
-          f.remove(); txt.hidden = false; acc.hidden = false;
-          if (!cancelado) comentarios(zona, v);
-        }, x.texto, x.id);
-        cuerpo.insertBefore(f, acc);
-        f.querySelector('textarea').focus();
-      });
-      accion('basura', 'Borrar', function () {
-        K.piezas.confirmar.abrir({
-          titulo: '¿Borrar tu comentario?', texto: 'Se quita de la lista para todos. No se puede deshacer.',
-          si: 'Borrar', no: 'Cancelar', peligro: true
-        }).then(function (ok) {
-          if (!ok) return;
-          K.ocupado = true;
-          K.pedir('tutorialComentarioBorrar', { comentarioId: x.id })
-            .then(function () { K.ocupado = false; K.aviso('Comentario borrado', 'ok', 2000); comentarios(zona, v); })
-            ['catch'](function (e) { K.ocupado = false; K.aviso((e && e.message) || 'No se pudo borrar.', 'malo'); });
-        });
-      }, true);
-    }
-    (x.respuestas || []).forEach(function (r) { el.appendChild(comentario(r, v, zona, true)); });
-    return el;
-  }
-
   /* ══════════════ SITIOS WEB ══════════════ */
 
   function vistaSitios() {
@@ -822,10 +500,9 @@
     noLeidos: noLeidos,
     comunicados: vistaComunicados,
     directorio: vistaDirectorio,
-    tutoriales: vistaTutoriales,
     sitios: vistaSitios,
     /* para el banco de pruebas */
-    _olvidar: function () { COM = null; DIR = null; TUT = null; SITIOS = null; FILTRO_TUT = ''; MAPA = null; },
+    _olvidar: function () { COM = null; DIR = null; SITIOS = null; MAPA = null; },
     _textoRico: textoRico
   };
 }());

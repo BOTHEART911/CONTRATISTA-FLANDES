@@ -341,10 +341,37 @@
     return String(location.hash || '').replace(/^#\/?/, '').split('/')[0] || 'inicio';
   }
 
+  /* 22/11 · ¿hay un tutorial en video para lo que se preguntó? Se compara la
+     pregunta y el tema con las PALABRAS que ADMIN le puso a cada tutorial
+     (índice TUTORIALES_INDICE del arranque: sin viajes). Cada video se
+     ofrece una vez por sesión, y nunca estando ya en TUTORIALES. */
+  var OFRECIDOS = {};
+  function video(tema, pregunta) {
+    if (!window.TUTORIALES || !window.TUTORIALES.activo()) return null;
+    if (vista() === 'tutoriales' || /tutorial/.test(String((tema && tema.accion) || ''))) return null;
+    var idx = window.TUTORIALES ? window.TUTORIALES.indice() : [];
+    if (!idx.length) return null;
+    var txt = ' ' + K.norm([pregunta || '', (tema && tema.titulo) || ''].join(' ')).replace(/[^A-Z0-9Ñ ]/g, ' ').replace(/\s+/g, ' ') + ' ';
+    var mejor = null, puntos = 0;
+    idx.forEach(function (x) {
+      if (OFRECIDOS[x.id]) return;
+      var n = 0;
+      (x.p || []).forEach(function (w) {
+        w = K.norm(w).replace(/[^A-Z0-9Ñ ]/g, ' ').replace(/\s+/g, ' ').trim();
+        if (w.length >= 4 && txt.indexOf(' ' + w + ' ') >= 0) n += w.split(' ').length;
+      });
+      if (n > puntos) { puntos = n; mejor = x; }
+    });
+    if (!mejor) return null;
+    OFRECIDOS[mejor.id] = 1;
+    return { titulo: 'Tutorial ' + mejor.n + ' · ' + mejor.t, detalle: mejor.d || '', img: mejor.img || '',
+      ir: function () { location.hash = '#/tutoriales/' + encodeURIComponent(mejor.id); } };
+  }
+
   var ADAPTADOR = {
     vista: vista,
     estado: function () { return terminado() ? 'TERMINADO' : 'ACTIVO'; },
-    dato: dato, urgente: urgente, destino: destino, puerta: puerta, accion: accion
+    dato: dato, urgente: urgente, destino: destino, puerta: puerta, accion: accion, video: video
   };
 
   /* ══════════════ la pantalla de entrada ══════════════ */
@@ -357,7 +384,20 @@
     setTimeout(function () { el.classList.remove('kit-as-resalta'); }, 3600);
   }
 
+  /* 22/11 · en la entrada, a quien no sabe entrar se le ofrece el tutorial 1
+     («Entra a la app»): se ve ahí mismo, sin sesión (TUTORIALES.verSuelto). */
+  function videoEntrada() {
+    var T = window.TUTORIALES;
+    if (!T || !T.activo()) return null;
+    var idx = T.indice(), x = null;
+    for (var i = 0; i < idx.length; i++) if (idx[i].n === 1) x = idx[i];
+    if (!x || OFRECIDOS[x.id]) return null;
+    OFRECIDOS[x.id] = 1;
+    return { titulo: 'Tutorial 1 · ' + x.t, detalle: x.d || '', img: x.img || '', ir: function () { T.verSuelto(x.id); } };
+  }
+
   var ENTRADA = {
+    video: videoEntrada,
     vista: function () { return 'entrada'; },
     estado: function () { return ''; },
     dato: function () { return ''; },

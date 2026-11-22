@@ -363,10 +363,12 @@
 
     tutoriales: function () {
       return {
-        guia: 'Videos cortos de cada paso de la app. Puedes darles me gusta y dejar tu pregunta en los comentarios.',
+        guia: 'Videos cortos de cada paso de la app. En el celular se ven como Shorts y en el computador como video. Dale me gusta y deja tu pregunta en los comentarios: el desarrollador te responde.',
         botones: [
           { texto: '¿Cuál veo primero?', responde: function () {
-              return 'El de **borrador de actividades** y después el de **ingresar cuenta**: son los dos pasos que más se equivocan.'; } }
+              return 'Empieza por el **1 · Entra a la app** y sigue en orden: en **Sigue con** está el próximo que te falta.'; } },
+          { texto: '¿Cómo paso al siguiente?', responde: function () {
+              return 'En el celular **desliza hacia arriba** sobre el título o toca **Siguiente**. En el computador, elige uno de la columna **Siguientes**.'; } }
         ]
       };
     },
