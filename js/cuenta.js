@@ -829,8 +829,9 @@
 
   /* ---------- 21/11 · N° DE PLANILLA SIN REPETIR (Oss) ----------
 
-     El N° de planilla no puede ser uno ya usado en una cuenta anterior del
-     mismo contratista (cualquiera de sus contratos), y el de la planilla
+     El N° de planilla no puede ser uno ya usado en otra cuenta del MISMO
+     contrato (23/11: entre contratos distintos sí se puede; el CORE solo manda
+     los de este contrato), y el de la planilla
      anexa tampoco, ni el mismo N° de planilla de esta cuenta. La lista llega
      con cuentaEstado (planillasPrevias), sin otro viaje; el CORE lo vuelve a
      exigir al guardar. Lo ya guardado en la cuenta no se revisa: solo de
