@@ -26,7 +26,8 @@
   var app = K.id('app');
 
   var PDFLIB_URL = 'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js';
-  var ESTADOS = ['APROBADA', 'PLAN DE PAGOS', 'ORDEN DE PAGO', 'EGRESO', 'PAGADA', 'CERRADA'];
+  /* 25/11 (Oss) · solo se habilita en estos estados: en los demás no se une ni se descarga */
+  var ESTADOS = ['APROBADA', 'PLAN DE PAGOS', 'CERRADA', 'ORDEN DE PAGO'];
   var CARTA = [612, 792];   /* hoja carta, en puntos */
   var MARGEN = 24;
 
@@ -239,14 +240,20 @@
       ST.vigencia = vigenciaDe(c);
       ST.estado = c ? c.estado : '';
       cab.querySelector('.pp-nombre__t').textContent = nombreFinal();
+      /* 25/11 (Oss) · fuera de APROBADA, PLAN DE PAGOS, CERRADA u ORDEN DE PAGO no se habilita */
+      if (!c || ESTADOS.indexOf(String(c.estado || '').toUpperCase()) < 0) {
+        ST.ol.innerHTML = '';
+        var no = K.nodo('<li class="seg-nada pp-cerrado">' + K.icono('candado', 16) + ' <span></span></li>');
+        no.querySelector('span').textContent = 'Unificar y descargar se habilita cuando tu cuenta está APROBADA, en PLAN DE PAGOS, CERRADA u ORDEN DE PAGO.' +
+          (c ? ' Tu cuenta ' + informe + ' está en ' + c.estado + '.' : '');
+        ST.ol.appendChild(no);
+        pie.hidden = true;
+        return;
+      }
       var lista = (r.plan && Array.isArray(r.plan.lista) && r.plan.lista.length) ? sinActa(r.plan) : FABRICA;
       if (!r.carpeta) { ST.ol.innerHTML = '<li class="seg-nada">Esta cuenta todavía no tiene carpeta de documentos.</li>'; return; }
       ST.items = aplicarRecuerdo(armar(lista, r.grupos));
       if (!ST.items.length) { ST.ol.innerHTML = '<li class="seg-nada">No encontramos documentos del plan de pagos en tu carpeta.</li>'; return; }
-      if (c && ESTADOS.indexOf(String(c.estado || '').toUpperCase()) < 0) {
-        cab.appendChild(K.nodo('<p class="seg-pista pp-ojo">' + K.icono('reloj', 15) +
-          ' Tu cuenta todavía no está aprobada: puede faltar el acta o algún formato. Úsalo como borrador.</p>'));
-      }
       pintar();
       cargarTodo();
     })['catch'](function (e) {

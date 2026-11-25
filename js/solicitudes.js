@@ -109,8 +109,10 @@
     return K.piezas.confirmar.abrir({ titulo: titulo, texto: texto, si: si || 'Sí', no: no || 'No' });
   }
 
-  /* Caso 1: con sus datos. Si en la hoja no hay celular, se pide aquí. */
+  /* Caso 1: con sus datos. Si en la hoja no hay celular, se pide aquí.
+     25/11 · con el CORE nuevo (datos.opc) se piden los datos del contrato nuevo. */
   function enviarInactivo(datos, doc) {
+    if (datos.opc && K.piezas.campos) return datosInactivo(datos, doc, null);
     if (datos.celular) return enviar({ documento: doc, confirmado: true }, datos);
     return pedirCelular().then(function (cel) {
       if (cel) return enviar({ documento: doc, confirmado: true, telefono: cel }, datos);
@@ -172,6 +174,7 @@
 
   /* Caso 2: los datos para unificar la solicitud. */
   function formularioNuevo(datos, doc, previo) {
+    if (datos.opc && K.piezas.campos) return datosPrimero(datos, doc, null);
     var secs = (datos.secretarias || []).map(function (s) { return '<option>' + K.esc(s) + '</option>'; }).join('');
     var h = capa('Tu solicitud a Contratación',
       '<p class="sol-aclara">Con estos datos Contratación busca tu contrato y te da el acceso. <b>El celular es obligatorio</b>: por ahí te responden.</p>' +
@@ -226,14 +229,167 @@
     return Promise.resolve();
   }
 
+  /* ════════════════ 25/11 · LOS DATOS DEL CONTRATO NUEVO ════════════════
+     El contratista adelanta lo que dice su clausulado (kit/campos.js: los
+     mismos campos de AGREGAR CONTRATISTA). Contratación los ve precargados
+     al registrarlo. Todo es obligatorio; el PDF del clausulado, opcional
+     (se borra cuando registran el contrato). */
+
+  var INTRO_DATOS = 'Escribe los datos de tu contrato nuevo <b>tal como salen en tu clausulado</b>. Con ellos Contratación te registra más rápido.';
+  var AVISO_CLAUSULADO = '¿No tienes tu clausulado? Aquí te enseñamos cómo obtenerlo.';
+
+  /**
+   * La capa con los datos. o: { titulo, opc, conSecretaria, secretaria, previo:{D, adjunto, X},
+   * extra(form, X) -> function validar() que devuelve el error o '' }.
+   * Promise con { D, datos, resumen, adjunto, X } o null si la cierra.
+   */
+  function capaDatos(o) {
+    o = o || {};
+    var P = o.previo || {};
+    var X = P.X || {};
+    return new Promise(function (res) {
+      var h = capa(o.titulo || 'Tu solicitud a Contratación', '', 'Revisar y enviar');
+      var f = h.nodo.querySelector('form');
+      f.appendChild(K.nodo('<p class="sol-aclara">' + INTRO_DATOS + '</p>'));
+      var validarExtra = o.extra ? o.extra(f, X) : null;
+      K.piezas.campos.aviso(f, { texto: AVISO_CLAUSULADO, tutorial: 4, secop: (o.opc || {}).secop });
+      f.appendChild(K.nodo('<h3 class="kc-sec">Datos de tu contrato nuevo</h3>'));
+      var D = P.D || {};
+      var cc = K.piezas.campos.contrato(f, D, { opc: o.opc, conSecretaria: o.conSecretaria, secretaria: o.secretaria });
+      f.appendChild(K.nodo('<h3 class="kc-sec">Tu clausulado en PDF <small class="kc-opc">(opcional)</small></h3>'));
+      var zonaAdj = K.nodo('<div class="sol-adj"></div>');
+      f.appendChild(zonaAdj);
+      f.appendChild(K.nodo('<p class="kc-nota-adj">Le sirve a Contratación para copiar el objeto y las obligaciones. Se borra cuando registren tu contrato.</p>'));
+      var adjunto = P.adjunto || null, adj = null;
+      function montarAdj() {
+        zonaAdj.innerHTML = '';
+        adj = null;
+        if (adjunto) {
+          var r = K.nodo('<p class="sol-adj-previo">' + K.icono('pdf', 16) + ' <span></span> <button type="button" class="kit-btn kit-btn--plano">' + K.icono('basura', 14) + ' Quitar</button></p>');
+          r.querySelector('span').textContent = adjunto.nombre;
+          r.querySelector('button').addEventListener('click', function () { adjunto = null; montarAdj(); });
+          zonaAdj.appendChild(r);
+          return;
+        }
+        adj = K.piezas.adjuntos ? K.piezas.adjuntos.montar(zonaAdj, { acepta: 'application/pdf', varios: false, maximo: 1, maximoMB: 8 }) : null;
+      }
+      montarAdj();
+      h.alCerrar = function () { res(null); };
+      h.si.addEventListener('click', function () {
+        var falta = validarExtra ? validarExtra() : '';
+        if (falta) { K.aviso(falta, 'aviso', 5000); return; }
+        var fc = cc.falta();
+        if (fc.length) { K.aviso('Te falta: ' + fc.join(', ') + '.', 'aviso', 6500); return; }
+        if (h.si.disabled) return;
+        h.si.disabled = true;
+        var p = (adj && adj.archivos().length) ? adj.aBase64().then(function (l) { return l[0] || null; }) : Promise.resolve(adjunto);
+        p.then(function (a) { h.cerrar(true); res({ D: D, datos: cc.datos(), resumen: cc.resumen(), adjunto: a, X: X }); },
+          function (e) { h.si.disabled = false; K.aviso((e && e.message) || 'No se pudo leer el PDF.', 'malo', 6000); });
+      });
+    });
+  }
+
+  function campoCelular(f, X) {
+    var c = K.nodo('<label class="campo"><span>Celular (WhatsApp) <i class="tr-oblig" aria-hidden="true">*</i></span>' +
+      '<input name="cel1125" type="tel" inputmode="numeric" maxlength="10" placeholder="3001234567" autocomplete="tel">' +
+      '<small class="campo__ayuda">No tenemos un celular tuyo registrado: por ahí te responde Contratación.</small></label>');
+    var inp = c.querySelector('input');
+    inp.value = X.cel || '';
+    inp.addEventListener('input', function () { inp.value = inp.value.replace(/\D/g, '').slice(0, 10); X.cel = inp.value; });
+    f.appendChild(c);
+    return function () { return /^3\d{9}$/.test(X.cel || '') ? '' : 'El celular tiene 10 dígitos y empieza por 3.'; };
+  }
+
+  function listaResumen(r, extra) {
+    return (extra || []).concat(r.resumen).concat(r.adjunto ? [['Clausulado', r.adjunto.nombre]] : []);
+  }
+
+  /* Caso 1 (INACTIVO) con los datos del contrato nuevo */
+  function datosInactivo(datos, doc, previo) {
+    var sinCel = !datos.celular;
+    return capaDatos({
+      opc: datos.opc, conSecretaria: true, secretaria: datos.secretaria, previo: previo,
+      extra: sinCel ? campoCelular : null
+    }).then(function (r) {
+      if (!r) return;
+      K.piezas.confirmar.abrir({
+        titulo: 'Resumen de tu solicitud',
+        lista: listaResumen(r, [['Documento', doc], ['Nombre', String(datos.nombre || '').toUpperCase()], sinCel ? ['Celular', r.X.cel] : null].filter(Boolean)),
+        nota: 'Confirmaste que ya aceptaste un nuevo contrato en el SECOP II. Revisa que los datos sean los de tu clausulado.',
+        si: 'Enviar', no: 'Editar'
+      }).then(function (ok) {
+        if (!ok) return datosInactivo(datos, doc, r);
+        var cuerpo = { documento: doc, confirmado: true, datos: r.datos, adjuntos: r.adjunto ? [r.adjunto] : [] };
+        if (sinCel) cuerpo.telefono = r.X.cel;
+        enviar(cuerpo, datos);
+      });
+    });
+  }
+
+  /* Caso 2 (sin registro): su nombre y contacto, y los datos del contrato */
+  function datosPrimero(datos, doc, previo) {
+    var secs = (datos.opc.secretarias || datos.secretarias || []).map(function (s) { return '<option>' + K.esc(s) + '</option>'; }).join('');
+    return capaDatos({
+      opc: datos.opc, conSecretaria: false, previo: previo,
+      extra: function (f, X) {
+        var b = K.nodo('<div>' +
+          '<label class="campo campo--quieto"><span>Documento</span><input name="doc" type="text" readonly></label>' +
+          '<label class="campo"><span>Nombre completo <i class="tr-oblig" aria-hidden="true">*</i></span>' +
+          '  <input name="nombre" type="text" maxlength="120" autocomplete="name" placeholder="Nombres y apellidos"></label>' +
+          '<div class="campo-fila">' +
+          '  <label class="campo"><span>Celular (WhatsApp) <i class="tr-oblig" aria-hidden="true">*</i></span>' +
+          '    <input name="cel" type="tel" inputmode="numeric" maxlength="10" placeholder="3001234567" autocomplete="tel"></label>' +
+          '  <label class="campo"><span>Correo</span><input name="correo" type="email" autocomplete="email" placeholder="Opcional"></label>' +
+          '</div>' +
+          '<label class="campo"><span>Secretaría de tu contrato <i class="tr-oblig" aria-hidden="true">*</i></span>' +
+          '  <select name="sec"><option value="">Escoge la secretaría</option>' + secs + '</select></label>' +
+          '<label class="campo"><span>Algo más para Contratación</span><textarea name="det" rows="2" maxlength="1000" placeholder="Opcional"></textarea></label>' +
+          '</div>');
+        f.appendChild(b);
+        var q = function (n) { return b.querySelector('[name="' + n + '"]'); };
+        q('doc').value = doc;
+        ['nombre', 'cel', 'correo', 'sec', 'det'].forEach(function (n) {
+          if (X[n] !== undefined) q(n).value = X[n];
+          q(n).addEventListener(n === 'sec' ? 'change' : 'input', function () {
+            if (n === 'cel') q(n).value = q(n).value.replace(/\D/g, '').slice(0, 10);
+            X[n] = q(n).value;
+          });
+        });
+        setTimeout(function () { try { q('nombre').focus(); } catch (e) {} }, 60);
+        return function () {
+          var nom = String(X.nombre || '').replace(/\s+/g, ' ').trim(), correo = String(X.correo || '').trim();
+          return nom.split(' ').length < 2 || nom.length < 6 ? 'Escribe tu nombre completo (nombres y apellidos).'
+            : !/^3\d{9}$/.test(X.cel || '') ? 'El celular tiene 10 dígitos y empieza por 3.'
+            : (correo && !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(correo)) ? 'El correo no está bien escrito.'
+            : !X.sec ? 'Escoge la secretaría de tu contrato.' : '';
+        };
+      }
+    }).then(function (r) {
+      if (!r) return;
+      var X = r.X, nom = String(X.nombre || '').replace(/\s+/g, ' ').trim();
+      K.piezas.confirmar.abrir({
+        titulo: 'Resumen de tu solicitud',
+        lista: listaResumen(r, [['Documento', doc], ['Nombre', nom.toUpperCase()], ['Celular', X.cel], X.correo ? ['Correo', X.correo] : null,
+          ['Secretaría', X.sec]].filter(Boolean)),
+        nota: 'Confirmaste que ya aceptaste tu contrato en el SECOP II. Revisa que los datos sean los de tu clausulado.',
+        si: 'Enviar', no: 'Editar'
+      }).then(function (ok) {
+        if (!ok) return datosPrimero(datos, doc, r);
+        enviar({ documento: doc, confirmado: true, nombre: nom, telefono: X.cel, correo: String(X.correo || '').trim(), secretaria: X.sec,
+                 contrato: r.datos.contrato, detalle: String(X.det || '').trim(), datos: r.datos, adjuntos: r.adjunto ? [r.adjunto] : [] }, datos);
+      });
+    });
+  }
+
   function enviar(cuerpo, datos) {
     K.ocupado = true;
     K.piezas.guardado.abrir({
       titulo: 'Enviando tu solicitud a Contratación',
       sub: 'No cierres la app hasta que termine.',
-      pasos: ['Comprobando tu documento', 'Guardando la solicitud', 'Avisando a Contratación']
+      pasos: (cuerpo.adjuntos && cuerpo.adjuntos.length) ? ['Comprobando tus datos', 'Guardando la solicitud', 'Subiendo tu clausulado']
+                                                         : ['Comprobando tu documento', 'Guardando la solicitud', 'Avisando a Contratación']
     });
-    return K.pedir('solicitudAcceso', cuerpo, { sinToken: true, app: 'CORE', ms: 60000 })
+    return K.pedir('solicitudAcceso', cuerpo, { sinToken: true, app: 'CORE', ms: 90000 })
       .then(function (r) {
         K.ocupado = false;
         K.piezas.guardado.listo({ sub: 'Quedó con el código ' + r.id + '.' });
@@ -317,12 +473,35 @@
       b.addEventListener('click', function () {
         D.tipo = t.valor;
         [].forEach.call(tipos.children, function (x) { x.setAttribute('aria-checked', x === b ? 'true' : 'false'); });
+        pintarAdicion();
       });
       tipos.appendChild(b);
     });
     var cT = K.nodo('<div class="campo"><span>¿Qué trámite? <i class="tr-oblig" aria-hidden="true">*</i></span></div>');
     cT.appendChild(tipos);
     f.appendChild(cT);
+
+    /* 25/11 · ADICIÓN: los datos del otrosí (kit/campos.js), con el CORE nuevo (DATA.adicion) */
+    var zonaAd = K.nodo('<div class="sol-adicion"></div>');
+    f.appendChild(zonaAd);
+    var AD = null, DA = {};
+    function conDatosAdicion() { return D.tipo === 'ADICION' && !!DATA.adicion && !!K.piezas.campos; }
+    function pintarAdicion() {
+      zonaAd.innerHTML = '';
+      AD = null;
+      var con = conDatosAdicion();
+      cTx.querySelector('span').innerHTML = con ? 'Algo más para Contratación <small class="kc-opc">(opcional)</small>'
+                                                : 'Tu solicitud <i class="tr-oblig" aria-hidden="true">*</i>';
+      montarAdj(con);
+      if (!con) return;
+      K.piezas.campos.aviso(zonaAd, { texto: '¿No tienes tus documentos de adición? Aquí te enseñamos cómo obtenerlos.', tutorial: 15, secop: DATA.secop });
+      if (!DATA.adicion.siguiente) {
+        zonaAd.appendChild(K.nodo('<p class="kc-calc kc-calc--mal">Tu contrato ya tiene sus dos adiciones registradas.</p>'));
+        return;
+      }
+      zonaAd.appendChild(K.nodo('<h3 class="kc-sec">Datos de tu ' + (DATA.adicion.siguiente === 2 ? '2ª' : '1ª') + ' adición <small class="kc-opc">(del otrosí, numeral 8: Modificaciones del contrato)</small></h3>'));
+      AD = K.piezas.campos.adicion(zonaAd, DA, { ctx: DATA.adicion });
+    }
 
     var tx = K.nodo('<textarea rows="5" maxlength="2000" placeholder="Cuéntale a Contratación qué necesitas: fechas, valores, el dato que hay que corregir…"></textarea>');
     var n = K.nodo('<small class="tr-cuenta">0 / 2000</small>');
@@ -338,9 +517,22 @@
     var cAdj = K.nodo('<div class="campo"><span>Soportes (opcional)</span><div class="sol-adj"></div>' +
       '<p class="campo__ayuda">Hasta 3 archivos PDF o imágenes (máximo 8 MB cada uno). Puedes pegar una captura con Ctrl+V.</p></div>');
     f.appendChild(cAdj);
-    var adj = K.piezas.adjuntos ? K.piezas.adjuntos.montar(cAdj.querySelector('.sol-adj'), {
-      acepta: 'application/pdf,image/*', varios: true, maximoMB: 8, maximo: 3
-    }) : null;
+    var adj = null, adjModo = '';
+    /* 25/11 · en la ADICIÓN con datos va UN PDF: el otrosí (se borra cuando Contratación la registra) */
+    function montarAdj(otrosi) {
+      var modo = otrosi ? 'otrosi' : 'normal';
+      if (modo === adjModo || !K.piezas.adjuntos) return;
+      adjModo = modo;
+      if (adj && adj.desmontar) adj.desmontar();
+      cAdj.querySelector('span').innerHTML = otrosi ? 'El otrosí en PDF <small class="kc-opc">(opcional)</small>' : 'Soportes (opcional)';
+      cAdj.querySelector('.campo__ayuda').textContent = otrosi
+        ? 'Un PDF de máximo 8 MB. Le sirve a Contratación para revisar la adición. Se borra cuando la registren.'
+        : 'Hasta 3 archivos PDF o imágenes (máximo 8 MB cada uno). Puedes pegar una captura con Ctrl+V.';
+      adj = K.piezas.adjuntos.montar(cAdj.querySelector('.sol-adj'), otrosi
+        ? { acepta: 'application/pdf', varios: false, maximoMB: 8, maximo: 1 }
+        : { acepta: 'application/pdf,image/*', varios: true, maximoMB: 8, maximo: 3 });
+    }
+    montarAdj(false);
 
     var pie = K.nodo('<div class="campo-fila campo-fila--botones"></div>');
     var no = K.nodo('<button type="button" class="kit-btn kit-btn--plano">Cancelar</button>');
@@ -351,37 +543,45 @@
 
     f.addEventListener('submit', function (ev) {
       ev.preventDefault();
-      var falta = !D.tipo ? 'Escoge el trámite.' : (String(D.detalle).trim().length < 10 ? 'Cuéntale a Contratación qué necesitas (mínimo 10 letras).' : '');
-      if (falta) { K.aviso(falta, 'aviso', 5000); return; }
+      var conAd = conDatosAdicion();
+      var falta = !D.tipo ? 'Escoge el trámite.'
+        : (conAd && !DATA.adicion.siguiente) ? 'Tu contrato ya tiene sus dos adiciones registradas.'
+        : (!conAd && String(D.detalle).trim().length < 10 ? 'Cuéntale a Contratación qué necesitas (mínimo 10 letras).' : '');
+      if (!falta && conAd && AD) { var fa = AD.falta(); if (fa.length) falta = 'Te falta: ' + fa.join(', ') + '.'; }
+      if (falta) { K.aviso(falta, 'aviso', 6000); return; }
       var t = (DATA.tipos || []).filter(function (x) { return x.valor === D.tipo; })[0] || {};
       var archivos = adj ? adj.archivos() : [];
       K.piezas.confirmar.abrir({
         titulo: 'Resumen de tu solicitud',
         lista: [
           ['Trámite', t.texto || D.tipo],
-          ['Contrato', (DATA.contrato && DATA.contrato.contrato) || '—'],
-          ['Solicitud', D.detalle.trim().length > 160 ? D.detalle.trim().slice(0, 159) + '…' : D.detalle.trim()],
-          archivos.length ? ['Soportes', archivos.length + (archivos.length === 1 ? ' archivo' : ' archivos')] : null
-        ].filter(Boolean),
+          ['Contrato', (DATA.contrato && DATA.contrato.contrato) || '—']
+        ].concat(conAd && AD ? AD.resumen() : []).concat([
+          D.detalle.trim() ? ['Solicitud', D.detalle.trim().length > 160 ? D.detalle.trim().slice(0, 159) + '…' : D.detalle.trim()] : null,
+          archivos.length ? [conAd ? 'Otrosí' : 'Soportes', conAd ? archivos[0].name : archivos.length + (archivos.length === 1 ? ' archivo' : ' archivos')] : null
+        ]).filter(Boolean),
         nota: 'Le avisamos al grupo de Contratación. La respuesta la vas a ver aquí mismo y te llega como notificación.',
         si: 'Enviar', no: 'Editar'
       }).then(function (ok) {
         if (!ok) return;
-        (adj && archivos.length ? adj.aBase64() : Promise.resolve([])).then(function (lista) { enviarApp(c, D, lista); },
+        var datosAd = conAd && AD ? AD.datos() : null;
+        (adj && archivos.length ? adj.aBase64() : Promise.resolve([])).then(function (lista) { enviarApp(c, D, lista, datosAd); },
           function (e) { K.aviso((e && e.message) || 'No se pudo leer un archivo.', 'malo', 6000); });
       });
     });
     return f;
   }
 
-  function enviarApp(c, D, adjuntos) {
+  function enviarApp(c, D, adjuntos, datosAd) {
     K.ocupado = true;
     K.piezas.guardado.abrir({
       titulo: 'Enviando tu solicitud a Contratación',
       sub: 'No cierres la app hasta que termine.',
       pasos: adjuntos.length ? ['Subiendo tus soportes', 'Guardando la solicitud', 'Avisando a Contratación'] : ['Guardando la solicitud', 'Avisando a Contratación']
     });
-    K.pedir('solicitudContratacion', { tipo: D.tipo, detalle: D.detalle, adjuntos: adjuntos }, { ms: 120000 })
+    var cuerpo = { tipo: D.tipo, detalle: D.detalle, adjuntos: adjuntos };
+    if (datosAd) cuerpo.datos = datosAd;   /* 25/11 · los datos del otrosí */
+    K.pedir('solicitudContratacion', cuerpo, { ms: 120000 })
       .then(function (r) {
         K.ocupado = false;
         DATA = r;
@@ -522,7 +722,8 @@
     }
 
     tt.textContent = '¿Ya aceptaste un nuevo contrato en el SECOP II?';
-    pp.textContent = 'Tu contrato ' + (est.contrato || '') + ' terminó. Si ya aceptaste uno nuevo en el SECOP II, pídele a Contratación que te dé el acceso a la app con el contrato nuevo.';
+    pp.textContent = 'Tu contrato ' + (est.contrato || '') + ' terminó. Si ya aceptaste uno nuevo en el SECOP II, pídele a Contratación que te dé el acceso a la app con el contrato nuevo.' +
+      (est.opc ? ' Ten a mano tu clausulado: te pediremos sus datos.' : '');
     if (est.horario && est.horario.ok === false) {
       var hor = K.nodo('<p class="nc-nota">' + K.icono('reloj', 14) + ' <span></span></p>');
       hor.querySelector('span').textContent = tildes(est.horario.motivo).replace(/envian/g, 'envían').replace(/\bEstas\b/g, 'Estás');
@@ -549,19 +750,44 @@
         si: 'Sí, lo confirmo', no: 'No'
       }).then(function (ok) {
         if (!ok) { si.disabled = false; no.disabled = false; return; }
+        /* 25/11 · con el CORE nuevo (est.opc) van los datos del contrato nuevo, del clausulado */
+        if (est.opc && K.piezas.campos) {
+          return datosTerminado(est, opc, null).then(function (cuerpo) {
+            if (!cuerpo) { si.disabled = false; no.disabled = false; return; }
+            return enviarNuevo(t, est, opc, cuerpo);
+          }).then(null, function () { si.disabled = false; no.disabled = false; });
+        }
         enviarNuevo(t, est, opc).then(null, function () { si.disabled = false; no.disabled = false; });
       });
     });
   }
 
-  function enviarNuevo(t, est, opc) {
+  /* 25/11 · los datos del contrato nuevo desde "Tu contrato terminó". Promise con el cuerpo o null. */
+  function datosTerminado(est, opc, previo) {
+    return capaDatos({ opc: est.opc, conSecretaria: true, secretaria: opc.secretaria, previo: previo }).then(function (r) {
+      if (!r) return null;
+      return K.piezas.confirmar.abrir({
+        titulo: 'Resumen de tu solicitud',
+        lista: listaResumen(r, []),
+        nota: 'Confirmaste que ya aceptaste un nuevo contrato en el SECOP II. Revisa que los datos sean los de tu clausulado.',
+        si: 'Enviar', no: 'Editar'
+      }).then(function (ok) {
+        if (!ok) return datosTerminado(est, opc, r);
+        return { confirmado: true, datos: r.datos, adjuntos: r.adjunto ? [r.adjunto] : [] };
+      });
+    });
+  }
+
+  function enviarNuevo(t, est, opc, cuerpo) {
+    cuerpo = cuerpo || { confirmado: true };
     K.ocupado = true;
     K.piezas.guardado.abrir({
       titulo: 'Enviando tu solicitud a Contratación',
       sub: 'No cierres la app hasta que termine.',
-      pasos: ['Comprobando tu contrato', 'Guardando la solicitud', 'Avisando a Contratación']
+      pasos: (cuerpo.adjuntos && cuerpo.adjuntos.length) ? ['Comprobando tus datos', 'Guardando la solicitud', 'Subiendo tu clausulado']
+                                                         : ['Comprobando tu contrato', 'Guardando la solicitud', 'Avisando a Contratación']
     });
-    return K.pedir('nuevoContrato', { confirmado: true }, { ms: 60000 }).then(function (r) {
+    return K.pedir('nuevoContrato', cuerpo, { ms: 90000 }).then(function (r) {
       K.ocupado = false;
       var nuevo = r.nuevoContrato || est;
       K.piezas.guardado.listo({ sub: r.repetida ? 'Ya la tenías en Contratación.' : 'Quedó con el código ' + r.creada + '.' });

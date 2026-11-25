@@ -2548,3 +2548,10 @@
 .tv-pantalla--h .tv-pantalla__rep .tv-rep__poster .tv-img { object-fit: contain; }
 .tv-pantalla__abajo--suelto { padding-right: 16px; }
 .tv-pantalla__nota { margin: 0; font: 400 .86rem/1.4 var(--k-fuente); opacity: .9; }
+
+/* 25/11 · solicitudes con los datos del contrato: el PDF ya adjuntado y Unificar cerrado */
+.sol-adj-previo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0; font: 500 .88rem/1.4 var(--k-fuente); color: var(--k-tinta); }
+.sol-adj-previo span { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.sol-adj-previo .kit-btn { min-height: 44px; }
+.pp-cerrado { display: flex; gap: 8px; align-items: flex-start; color: var(--k-tinta); }
+.pp-cerrado svg { flex: 0 0 auto; margin-top: 2px; color: var(--k-apagado); }

@@ -403,7 +403,8 @@
     /* 10.3 · CONTRATO NOTIFICADO: su última cuenta ya se pagó y solo le
        queda descargar la certificación (el CORE también lo corta). Lo demás
        lo devuelve a la certificación en vez de abrir una vista que no sirve. */
-    if (esNotificado() && ['inicio', 'seguimiento', 'avisos', 'contratacion'].indexOf(v) < 0) {
+    /* 25/11 · también los TUTORIALES (el 4 enseña a conseguir el clausulado del contrato nuevo) */
+    if (esNotificado() && ['inicio', 'seguimiento', 'avisos', 'contratacion', 'tutoriales'].indexOf(v) < 0) {
       K.aviso('Tu contrato terminó: aquí solo queda descargar la certificación.', 'info', 5000);
       irA('seguimiento/certificacion');
       return;
@@ -894,6 +895,7 @@
     if (!est || !est.termino || !window.SOLCON || !window.SOLCON.tarjetaNuevo) return null;
     return window.SOLCON.tarjetaNuevo(est, {
       nombre: (YO && YO.nombre) || (CONTRATO && CONTRATO.nombre) || '',
+      secretaria: (CONTRATO && CONTRATO.secretaria) || '',   /* 25/11 · la que sale marcada en los datos del contrato nuevo */
       alCambiar: function (n) {
         if (!ARRANQUE) return;
         ARRANQUE.nuevoContrato = n;
@@ -925,6 +927,12 @@
     r.appendChild(acceso('SOLICITUD CONTRATACIÓN', 'Tus solicitudes a Contratación y sus respuestas', 'img/tramites_y_solicitudes.webp', function () { irA('contratacion'); }));
     s.appendChild(r);
     caja.appendChild(s);
+    /* 25/11 · los TUTORIALES también con el contrato terminado */
+    if (tutorialesActivos()) {
+      caja.appendChild(lista('Aprende a usar la app', [
+        fila('Tutoriales de uso', 'Videos cortos: cómo conseguir tu clausulado, entrar y cada paso de la app', 'play', function () { irA('tutoriales'); })
+      ]));
+    }
     app.appendChild(caja);
     K.piezas.creditos.montar(caja);
   }

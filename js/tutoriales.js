@@ -497,7 +497,7 @@
       '  </div>' +
       '  <div class="tv-pantalla__abajo tv-pantalla__abajo--suelto">' +
       '    <h1 class="tv-pantalla__t">' + K.esc(v.titulo) + '</h1>' +
-      '    <p class="tv-pantalla__nota">Cuando entres, en Tutoriales de uso están todos los videos.</p>' +
+      '    <p class="tv-pantalla__nota">' + ((K.token && K.token()) ? 'En Tutoriales de uso están todos los videos.' : 'Cuando entres, en Tutoriales de uso están todos los videos.') + '</p>' +
       '  </div>' +
       '</div>');
     document.body.appendChild(p);

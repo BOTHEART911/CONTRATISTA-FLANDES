@@ -66,6 +66,7 @@ var ARMAZON = [
   './kit/avisos.js',
   './kit/bienvenida.js', './kit/bienvenida.css',
   './kit/adjuntos.js', './kit/adjuntos.css',
+  './kit/campos.js', './kit/campos.css',
   './kit/imagenes.js',
   './kit/carrusel.js', './kit/carrusel.css',
   './kit/insights.js', './kit/insights.css',
