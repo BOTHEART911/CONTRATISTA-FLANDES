@@ -183,6 +183,10 @@
               return 'En **RELACIÓN DE PLANILLA** escribe primero la **Base de cotización**: mientras esté vacía, salud, pensión y ARL quedan bloqueados. ' +
                      'Al escribirla se llenan solos: **salud ' + p(c.PLANILLA_PCT_SALUD, '12.5') + ' %**, **pensión ' + p(c.PLANILLA_PCT_PENSION, '16') + ' %** y **ARL ' + p(c.PLANILLA_PCT_ARL, '0.522') + ' %** de la base, redondeados hacia arriba a la centena (base 1.750.905: 218.900, 280.200 y 9.200).\n' +
                      '**Deben quedar iguales a los de la planilla que adjuntas.** Si tu planilla dice otra cosa, corrígelos a mano. Lo mismo pasa en la **planilla anexa**.'; } },
+          { texto: 'Mi empresa paga la planilla de sus empleados', responde: function () {
+              return 'Si tu contrato está a nombre de una **empresa (NIT)** y la planilla que pagas es la de tus **empleados** (tipo E, sin base de cotización propia), en **RELACIÓN DE PLANILLA** marca **«Mi planilla es de los empleados de la empresa»**.\n' +
+                     'La base de cotización desaparece. Escribe el **total a pagar de cada subsistema** de tu soporte: en salud, la suma de todas las EPS; en pensión, la de todas las AFP (con el fondo de solidaridad); en ARL, el total de la ARL. Y la **fecha de pago** que dice tu soporte.\n' +
+                     'Si pagas una planilla propia con tu IBC, no la marques. La planilla anexa tiene su propia casilla.'; } },
           { texto: '¿Puedo repetir la planilla de otra cuenta?', responde: function () {
               return 'No. Cada cuenta lleva **su propia planilla**, la que pagaste para ese periodo. ' +
                      'El **N° de planilla** y el de la **planilla anexa** no pueden ser uno que ya usaste en otra cuenta **del mismo contrato**, y la anexa no puede llevar el mismo número de la planilla. La app te avisa apenas lo escribes.\n' +

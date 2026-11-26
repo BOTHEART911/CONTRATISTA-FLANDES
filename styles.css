@@ -2559,3 +2559,17 @@
 .sol-adj-previo .kit-btn { min-height: 44px; }
 .pp-cerrado { display: flex; gap: 8px; align-items: flex-start; color: var(--k-tinta); }
 .pp-cerrado svg { flex: 0 0 auto; margin-top: 2px; color: var(--k-apagado); }
+
+/* 26/11 · planilla de empleados de la empresa (persona jurídica sin IBC propio) */
+.cta-emp { margin: 0 0 14px; }
+.cta-emp__op {
+  display: flex; gap: 12px; align-items: flex-start;
+  min-height: 44px; padding: 12px 14px;
+  border: 1px solid var(--k-linea); border-radius: var(--k-r-md);
+  background: var(--k-papel); cursor: pointer;
+}
+.cta-emp__op:has(input:checked) { border-color: var(--k-marca); background: var(--k-papel-2); }
+.cta-emp__chk { width: 20px; height: 20px; margin-top: 2px; flex: 0 0 auto; accent-color: var(--k-marca); }
+.cta-emp__op span { display: grid; gap: 4px; color: var(--k-tinta); font-size: .92rem; line-height: 1.35; }
+.cta-emp__op small { color: var(--k-tinta-2); font-size: .82rem; }
+.cta-emp__fecha[hidden], .cta-campo[hidden] { display: none; }

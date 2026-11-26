@@ -418,17 +418,22 @@
         detalle: 'Faltan ' + faltan.length + ' de los tres obligatorios'
       };
     }
-    var vacios = b.campos.filter(function (c) { return !String(D[c] || '').trim(); });
+    var lista = b.id === 'planilla' ? camposPlanilla() : b.campos;
+    var vacios = lista.filter(function (c) { return !String(D[c] || '').trim(); });
     /* 21/11 · un N° de planilla repetido no deja el bloque listo */
     if (b.id === 'planilla' && (planillaRepetida('planilla') || planillaRepetida('planillaA'))) {
       return { clase: 'falta', icono: '!', detalle: planillaRepetida('planilla') ? 'N° de planilla ya usado' : 'N° de planilla anexa repetido' };
+    }
+    /* 26/11 · planilla de empleados: la fecha de pago tiene que ser real y no futura */
+    if (b.id === 'planilla' && (fechaPagoMala('') || fechaPagoMala('A'))) {
+      return { clase: 'falta', icono: '!', detalle: 'Revisa la fecha de pago de la planilla' };
     }
     /* 23/10 · con un periodo que no deja radicar hoy, el bloque no queda listo */
     if (!vacios.length && b.id === 'fechas' && textoRadicacion()) return { clase: 'falta', icono: '!', detalle: 'La radicación va después del fin del periodo' };
     if (!vacios.length) return { clase: 'ok', icono: K.icono('check', 15), detalle: resumenBloque(b) };
     return {
       clase: 'falta', icono: '!',
-      detalle: vacios.length === b.campos.length ? b.pista : ('Te faltan ' + vacios.length + ' datos')
+      detalle: vacios.length === lista.length ? b.pista : ('Te faltan ' + vacios.length + ' datos')
     };
   }
 
@@ -436,7 +441,7 @@
     if (b.id === 'fechas') return D.inicioPeriodo + ' a ' + D.finPeriodo;
     if (b.id === 'pago') return 'Cobras ' + K.pesos(D.cobro) + ' · queda ' + K.pesos(nuevoSaldo()) +
       (E.rpCesion && E.rpCesion.pedir ? ' · RP cesión ' + rpCesionCompleto() : '');
-    if (b.id === 'planilla') return 'Planilla ' + D.planilla + ' de ' + D.mesPlanilla;
+    if (b.id === 'planilla') return 'Planilla ' + D.planilla + ' de ' + D.mesPlanilla + (esEmp('') ? ' · de empleados' : '');
     return '';
   }
 
@@ -483,7 +488,8 @@
      que se rehacen también en la corrección rápida. */
   var TEXTO_CORRECCION = ['inicioPeriodo', 'finPeriodo', 'saldo', 'cobro', 'planilla', 'mesPlanilla',
     'base', 'salud', 'pension', 'riesgos', 'caja', 'sena', 'icbf', 'facturaNum',
-    'planillaA', 'mesPlanillaA', 'baseA', 'saludA', 'pensionA', 'riesgosA', 'cajaA', 'senaA', 'icbfA', 'rpCesion'];
+    'planillaA', 'mesPlanillaA', 'baseA', 'saludA', 'pensionA', 'riesgosA', 'cajaA', 'senaA', 'icbfA', 'rpCesion',
+    'planEmp', 'fechaPago', 'planEmpA', 'fechaPagoA'];   /* 26/11 · planilla de empleados */
   function caminoRapido() {
     if (E.puerta !== 'corregir' || E.rehacerActividades) return false;
     var antes = E.campos || {};
@@ -757,7 +763,10 @@
     sel.addEventListener('change', function () { D.mesPlanilla = sel.value; recordar(); });
     g.appendChild(sel);
 
+    /* 26/11 · persona jurídica que paga la planilla de sus empleados (tipo E): sin IBC propio */
+    var empP = casillaEmpleados(s, '');
     campoPesos(s, 'base', 'Base de cotización', 'El IBC, tal como aparece en tu planilla.');
+    empP.pintar();
 
     /* El fondo de solidaridad no se pregunta: es el 1% del IBC cuando pasa
        del umbral. Se enseña para que nadie se lleve la sorpresa en el pago. */
@@ -765,7 +774,7 @@
     s.appendChild(av);
     var pintarSolidario = function () {
       var b = K.aNumero(D.base);
-      if (b >= (E.umbralSolidario || 0) && b > 0) {
+      if (!esEmp('') && b >= (E.umbralSolidario || 0) && b > 0) {
         av.hidden = false;
         av.innerHTML = 'Con esa base se te descuenta el <b>1% al fondo de solidaridad</b>: ' +
           K.esc(K.pesos(Math.round(b * 0.01))) + '.';
@@ -775,7 +784,8 @@
     var inSalud = campoPesos(s, 'salud', 'Aportes a salud', 'Sin intereses.');
     var inPension = campoPesos(s, 'pension', 'Aportes a pensión', 'Sin intereses. Si no aportas, escribe 0.');
     var inRiesgos = campoPesos(s, 'riesgos', 'Aportes a ARL', 'Sin intereses. Si los paga la entidad, escribe el valor del aporte.');
-    aportesSolos(s, 'base', { salud: inSalud, pension: inPension, riesgos: inRiesgos });
+    var principalSolos = aportesSolos(s, 'base', { salud: inSalud, pension: inPension, riesgos: inRiesgos }, function () { return esEmp(''); });
+    empP.alCambiar(function () { principalSolos(); pintarSolidario(); });
     campoPesos(s, 'caja', 'Caja de compensación', 'Solo si aportas.');
     campoPesos(s, 'sena', 'SENA', 'Solo si aportas.');
     campoPesos(s, 'icbf', 'ICBF', 'Solo si aportas.');
@@ -804,23 +814,27 @@
     });
     sel2.addEventListener('change', function () { D.mesPlanillaA = sel2.value; recordar(); });
     g2.appendChild(sel2);
+    var empA = casillaEmpleados(det, 'A');
     campoPesos(det, 'baseA', 'Base de cotización (anexa)', '');
+    empA.pintar();
     var inSaludA = campoPesos(det, 'saludA', 'Aportes a salud (anexa)', '');
     var inPensionA = campoPesos(det, 'pensionA', 'Aportes a pensión (anexa)', '');
     var inRiesgosA = campoPesos(det, 'riesgosA', 'Aportes a ARL (anexa)', '');
-    var anexaSolos = aportesSolos(det, 'baseA', { saludA: inSaludA, pensionA: inPensionA, riesgosA: inRiesgosA });
+    var anexaSolos = aportesSolos(det, 'baseA', { saludA: inSaludA, pensionA: inPensionA, riesgosA: inRiesgosA }, function () { return esEmp('A'); });
+    empA.alCambiar(function () { anexaSolos(); });
     campoPesos(det, 'cajaA', 'Caja de compensación (anexa)', '');
     campoPesos(det, 'senaA', 'SENA (anexa)', '');
     campoPesos(det, 'icbfA', 'ICBF (anexa)', '');
 
     var limpiar = K.nodo('<button type="button" class="kit-btn kit-btn--plano cta-limpiar">Limpiar la planilla anexa</button>');
     limpiar.addEventListener('click', function () {
-      ['planillaA', 'mesPlanillaA', 'baseA', 'saludA', 'pensionA', 'riesgosA', 'cajaA', 'senaA', 'icbfA']
+      ['planillaA', 'mesPlanillaA', 'baseA', 'saludA', 'pensionA', 'riesgosA', 'cajaA', 'senaA', 'icbfA', 'planEmpA', 'fechaPagoA']
         .forEach(function (k) { D[k] = ''; });
       recordar();
       K.$$('.cta-inp', det).forEach(function (i) { i.value = ''; });
       sel2.value = '';
       revPlanA();
+      empA.repintar();   /* 26/11 · la casilla de empleados también se desmarca */
       anexaSolos();   /* sin base, los aportes vuelven a quedar bloqueados */
       K.aviso('Planilla anexa vacía. Se guardará así.', 'info');
     });
@@ -908,7 +922,8 @@
 
   function pctTexto(p) { return String(p).replace('.', ',') + ' %'; }
 
-  function aportesSolos(destino, claveBase, campos) {
+  function aportesSolos(destino, claveBase, campos, libre) {
+    libre = libre || function () { return false; };
     var P = porcentajes();
     var baseInp = K.$$('.cta-inp', destino).filter(function (i) { return i.dataset.campo === claveBase; })[0];
     var claves = Object.keys(campos);
@@ -923,7 +938,8 @@
     else destino.appendChild(aviso);
 
     function bloquear() {
-      var hay = K.aNumero(D[claveBase]) > 0;
+      var emp = libre();
+      var hay = emp || K.aNumero(D[claveBase]) > 0;
       claves.forEach(function (k) {
         var i = campos[k];
         i.disabled = !hay;
@@ -932,7 +948,11 @@
         i.title = hay ? '' : 'Primero escribe la base de cotización';
       });
       aviso.hidden = !hay;
-      if (hay) {
+      /* 26/11 · planilla de empleados: no hay base ni porcentajes, se copian los totales del soporte */
+      if (emp) {
+        aviso.innerHTML = K.icono('info', 16) + ' <span>Escribe el <b>total a pagar de cada subsistema</b> de tu soporte: ' +
+          'en salud, la suma de todas las EPS; en pensión, la suma de todas las AFP (con el fondo de solidaridad); en ARL, el total de la ARL.</span>';
+      } else if (hay) {
         aviso.innerHTML = K.icono('info', 16) + ' <span>Calculamos los aportes con ' +
           'salud ' + K.esc(pctTexto(P.salud)) + ', pensión ' + K.esc(pctTexto(P.pension)) + ' y ARL ' + K.esc(pctTexto(P.riesgos)) +
           '. <b>Deben ser iguales a los de la planilla que adjuntas.</b> Si tu planilla dice otra cosa, corrígelos aquí.</span>';
@@ -957,9 +977,112 @@
       recordar();
     }
 
-    if (baseInp) baseInp.addEventListener('input', function () { calcular(); bloquear(); });
+    if (baseInp) baseInp.addEventListener('input', function () { if (!libre()) calcular(); bloquear(); });
     bloquear();
     return bloquear;
+  }
+
+  /* ---------- 26/11 · PLANILLA DE EMPLEADOS (Oss) ----------
+
+     Una persona jurídica que paga la planilla tipo E de sus empleados (caso
+     RADIO CADENA NACIONAL) no tiene un IBC propio. Solo a un contratista con
+     NIT (E.esNit, del CORE) le sale la casilla; es POR CUENTA y por planilla
+     (la anexa tiene la suya). Marcada: la base se esconde, salud / pensión /
+     ARL se escriben a mano con los totales del soporte y se pide la fecha de
+     pago. El CORE lo vuelve a exigir al guardar (Planilla1126.gs). Con un
+     CORE viejo (sin esNit) no sale nada y todo sigue como antes. */
+  function esEmp(suf) { return !!(E && E.esNit) && /^SI$/i.test(String(D['planEmp' + suf] || '')); }
+
+  function camposPlanilla() {
+    var c = ['planilla', 'mesPlanilla', 'base', 'salud', 'pension', 'riesgos'];
+    if (esEmp('')) { c.splice(c.indexOf('base'), 1, 'fechaPago'); }
+    if (esEmp('A')) c.push('fechaPagoA');
+    return c;
+  }
+
+  /* dd/mm/aaaa <-> aaaa-mm-dd del calendario del teléfono */
+  function aIso(f) { var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(f || '')); return m ? m[3] + '-' + m[2] + '-' + m[1] : ''; }
+  function deIso(f) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(f || '')); return m ? m[3] + '/' + m[2] + '/' + m[1] : ''; }
+  function hoyIso() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+
+  function fechaPagoMala(suf) {
+    if (!esEmp(suf)) return false;
+    var iso = aIso(D['fechaPago' + suf]);
+    if (!iso) return !!String(D['fechaPago' + suf] || '').trim();
+    return iso > hoyIso() || iso < '2020-01-01';
+  }
+
+  function casillaEmpleados(destino, suf) {
+    var oyentes = [];
+    var api = { alCambiar: function (f) { oyentes.push(f); }, repintar: function () {}, pintar: function () {} };
+    if (!(E && E.esNit)) return api;
+    if (D['planEmp' + suf] === undefined) D['planEmp' + suf] = '';   /* el CORE sabe que esta app ya conoce la casilla */
+    var caja = K.nodo(
+      '<div class="cta-emp">' +
+      '  <label class="cta-emp__op">' +
+      '    <input type="checkbox" class="cta-emp__chk">' +
+      '    <span><b>' + (suf ? 'La planilla anexa es de los empleados de la empresa' : 'Mi planilla es de los empleados de la empresa') + '</b>' +
+      '    <small>Planilla tipo E sin base de cotización propia. Escribes los totales de salud, pensión y ARL de tu soporte y la fecha de pago.</small></span>' +
+      '  </label>' +
+      '</div>');
+    var chk = caja.querySelector('input');
+    destino.appendChild(caja);
+
+    /* la fecha de pago, debajo de la casilla */
+    var g = K.nodo('<div class="cta-campo cta-emp__fecha">' +
+      '<span class="cta-campo__t">Fecha de pago de la planilla' + (suf ? ' anexa' : '') + '</span>' +
+      '<span class="cta-campo__p">La que aparece en tu soporte (por ejemplo, «PAGADO 07/04/2026»).</span></div>');
+    var inp = K.nodo('<input type="date" class="cta-inp" data-campo="fechaPago' + suf + '">');
+    inp.max = hoyIso();
+    inp.min = '2020-01-01';
+    g.appendChild(inp);
+    var err = K.nodo('<p class="cta-error" role="alert" hidden></p>');
+    g.appendChild(err);
+    destino.appendChild(g);
+
+    function revisarFecha() {
+      var mal = fechaPagoMala(suf);
+      err.hidden = !mal;
+      err.textContent = mal ? 'La fecha de pago no puede ser futura.' : '';
+      inp.classList.toggle('cta-inp--mal', mal);
+    }
+    inp.addEventListener('change', function () {
+      D['fechaPago' + suf] = deIso(inp.value);
+      recordar();
+      revisarFecha();
+    });
+
+    function repintar() {
+      var on = esEmp(suf);
+      chk.checked = on;
+      g.hidden = !on;
+      inp.value = aIso(D['fechaPago' + suf]);
+      revisarFecha();
+      /* la base se esconde, no se borra del DOM: su lógica (aportes solos) sigue viva */
+      var grupoBase = K.$$('.cta-inp', destino).filter(function (i) { return i.dataset.campo === 'base' + suf; })[0];
+      var gb = grupoBase && grupoBase.closest('.cta-campo');
+      if (gb) gb.hidden = on;
+    }
+    chk.addEventListener('change', function () {
+      D['planEmp' + suf] = chk.checked ? 'SI' : '';
+      if (chk.checked) {
+        /* sin IBC: la base y lo que se calculó con ella no aplican */
+        if (String(D['base' + suf] || '').trim()) {
+          ['base', 'salud', 'pension', 'riesgos'].forEach(function (k) { D[k + suf] = ''; });
+          K.$$('.cta-inp', destino).forEach(function (i) {
+            if (['base' + suf, 'salud' + suf, 'pension' + suf, 'riesgos' + suf].indexOf(i.dataset.campo) >= 0) i.value = '';
+          });
+        }
+      } else {
+        D['fechaPago' + suf] = '';
+      }
+      recordar();
+      repintar();
+      oyentes.forEach(function (f) { f(); });
+    });
+    api.repintar = function () { repintar(); oyentes.forEach(function (f) { f(); }); };
+    api.pintar = repintar;   /* se llama cuando la base ya está en el DOM */
+    return api;
   }
 
   /* ---------- bloque 4: documentos ---------- */
