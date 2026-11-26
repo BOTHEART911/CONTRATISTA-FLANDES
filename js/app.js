@@ -1316,6 +1316,12 @@
       var fFin = campoFecha(f, D, 'fechaTermino', 'Fecha de terminación',
         'Corrobórala en el acta de inicio.', c.fechaTermino);
 
+      /* 26/11 · la adición no se configura alargando la fecha (caso YOHAINA):
+         aviso fijo junto a la fecha y, si el plazo crece, la casilla del acta */
+      f.appendChild(avisoAdicionFijo());
+      var acta = casillaActa(c, D);
+      f.appendChild(acta.nodo);
+
       /* El plazo lo calcula el CORE con las dos fechas. Aquí solo se
          enseña, y se deja editar para el caso de siempre: que el acta diga
          otra cosa. */
@@ -1333,6 +1339,9 @@
       var inDias = campoTexto(fila, D, 'dias', 'Días', '', { valor: c.dias || '', numerico: 3, marcador: 'Automático' });
       f.appendChild(fila);
       enlazarPlazo(c, D, fIni, fFin, inMeses, inDias, plazo.querySelector('input'), plazo);
+      /* si deja de alargar el plazo, la casilla se va sola (y se desmarca) */
+      [fIni, fFin].forEach(function (x) { x.addEventListener('change', acta.revisar); });
+      [inMeses, inDias].forEach(function (x) { x.addEventListener('input', acta.revisar); });
 
       campoRP(f, D, 'rp', 'Registro Presupuestal (RP)',
         'Escribe <b>solo los últimos dígitos</b>, los que trae tu RP después de los ceros. ' +
@@ -1405,7 +1414,7 @@
 
     f.addEventListener('submit', function (ev) {
       ev.preventDefault();
-      mandarContrato(caja, c, D);
+      mandarContrato(caja, c, D, acta || null);
     });
 
     /* La rueda de fechas se engancha una vez, con el formulario ya montado. */
@@ -1492,9 +1501,150 @@
     else inTiempo.value = c.ejecucion || tiempoEjecucion(c.meses, c.dias);
   }
 
+  /*
+   * 26/11 · DATOS DEL CONTRATO: EL PLAZO NO CRECE SIN PREGUNTAR (Oss).
+   * Caso YOHAINA: con la adición hecha pero sin configurar, alargó más de un
+   * mes la fecha de terminación creyendo que así la configuraba. No se
+   * bloquea ni se avisa a Contratación: se persuade al contratista.
+   *   · Plazo igual o más corto (corrección del acta de inicio): guarda como hoy.
+   *   · Plazo que CRECE: tiene forma de adición -> «¿Tu contrato tiene 1ª
+   *     adición?». SÍ lleva a la solicitud; NO enseña la casilla «Mi acta de
+   *     inicio dice esta fecha de terminación», que es la única forma de
+   *     guardarlo (actaConfirma). El CORE hace la misma cuenta (Plazo1126.gs)
+   *     y frena con PLAZO_CRECE a una app vieja.
+   * El plazo de antes sale de las fechas guardadas, no de MESES_CONTRATO
+   * (va sin la suspensión); si los meses guardados son mayores, manda el mayor.
+   */
+  function cmpPlazo(a, b) { return ((a.meses || 0) - (b.meses || 0)) || ((a.dias || 0) - (b.dias || 0)); }
+  function plazoTexto(p) {
+    var t = [];
+    if (p.meses) t.push(p.meses + (p.meses === 1 ? ' mes' : ' meses'));
+    if (p.dias) t.push(p.dias + (p.dias === 1 ? ' día' : ' días'));
+    return t.join(' y ') || '0 días';
+  }
+  /** {antes, nuevo} si lo que se va a guardar alarga el plazo; si no, null. */
+  function plazoQueCrece(c, D) {
+    var vacio = function (x) { return x === undefined || x === null || String(x).trim() === ''; };
+    var hayIni = !vacio(D.fechaInicio), hayFin = !vacio(D.fechaTermino);
+    var conM = !vacio(D.meses), conD = !vacio(D.dias);
+    if (!(hayIni || hayFin || conM || conD)) return null;
+    var a0 = fechaDe(c.fechaInicio), b0 = fechaDe(c.fechaTermino);
+    if (!a0 || !b0) return null;   /* primera vez: no hay con qué comparar */
+    var p0 = plazoContrato(a0, b0) || { meses: 0, dias: 0 };
+    var g = { meses: parseInt(c.meses, 10) || 0, dias: parseInt(c.dias, 10) || 0 };
+    var antes = cmpPlazo(g, p0) > 0 ? g : p0;
+    var a = fechaDe(hayIni ? D.fechaInicio : c.fechaInicio), b = fechaDe(hayFin ? D.fechaTermino : c.fechaTermino);
+    var p = (a && b) ? plazoContrato(a, b) : null;
+    var nuevo = {
+      meses: conM ? (parseInt(D.meses, 10) || 0) : ((hayIni || hayFin) && p) ? p.meses : g.meses,
+      dias: conD ? (parseInt(D.dias, 10) || 0) : ((hayIni || hayFin) && p) ? p.dias : g.dias
+    };
+    return cmpPlazo(nuevo, antes) > 0 ? { antes: antes, nuevo: nuevo } : null;
+  }
+
+  function avisoAdicionFijo() {
+    return K.nodo(
+      '<div class="dc-adi" role="note">' +
+      '  <p class="dc-adi__p"><b>¿Te hicieron una adición?</b> No cambies aquí las fechas: la adición se pide a Contratación.</p>' +
+      '  <a class="kit-btn dc-adi__btn" href="#/contratacion/adicion">' + K.icono('enviar', 17) + ' Pedir la adición</a>' +
+      '</div>');
+  }
+
+  /* La casilla del acta: escondida hasta que la persona dice NO en el modal. */
+  function casillaActa(c, D) {
+    var nodo = K.nodo(
+      '<div class="dc-acta" hidden>' +
+      '  <p class="dc-acta__p" role="alert"></p>' +
+      '  <label class="dc-acta__op">' +
+      '    <input type="checkbox" class="dc-acta__chk">' +
+      '    <span><b>Mi acta de inicio dice esta fecha de terminación</b>' +
+      '    <small>Márcalo solo si tu acta lo dice. Si es una adición, no la marques: pídela a Contratación.</small></span>' +
+      '  </label>' +
+      '</div>');
+    var chk = nodo.querySelector('input'), p = nodo.querySelector('.dc-acta__p');
+    chk.addEventListener('change', function () {
+      if (chk.checked) D.actaConfirma = true; else delete D.actaConfirma;
+    });
+    function pintar(r) {
+      p.textContent = 'Estás alargando el plazo de tu contrato de ' + plazoTexto(r.antes) + ' a ' + plazoTexto(r.nuevo) +
+        '. El plazo lo fija tu clausulado y no cambia con el acta de inicio.';
+    }
+    return {
+      nodo: nodo,
+      mostrar: function (r, texto) {
+        if (r) pintar(r); else if (texto) p.textContent = texto;
+        nodo.hidden = false;
+        try { nodo.scrollIntoView({ behavior: 'smooth', block: 'center' }); chk.focus({ preventScroll: true }); } catch (e) {}
+      },
+      /* tras cada cambio de fechas o plazo: si ya no crece, se va y se desmarca */
+      revisar: function () {
+        if (nodo.hidden) return;
+        var r = plazoQueCrece(c, D);
+        if (r) { pintar(r); return; }
+        nodo.hidden = true; chk.checked = false; delete D.actaConfirma;
+      }
+    };
+  }
+
+  /* El modal: 'si', 'no' o null (cerró sin responder: no pasa nada). */
+  function preguntarAdicion(c, r) {
+    return new Promise(function (res) {
+      var num = String(c.contrato || '').trim();
+      var capa = K.nodo(
+        '<div class="kit-capa dc-modal" role="dialog" aria-modal="true" aria-labelledby="dc-modal-t">' +
+        '  <div class="kit-capa__velo"></div>' +
+        '  <section class="kit-capa__hoja">' +
+        '    <header class="kit-capa__h"><span id="dc-modal-t">¿Tu contrato tiene 1ª adición?</span>' +
+        '      <button type="button" class="kit-capa__x" aria-label="Cerrar">' + K.icono('cerrar', 18) + '</button></header>' +
+        '    <div class="kit-capa__cuerpo">' +
+        '      <p class="dc-modal__p"></p>' +
+        '      <p class="dc-modal__nota">La adición no se configura cambiando las fechas: se pide a Contratación y ellos la registran.</p>' +
+        '    </div>' +
+        '    <div class="kit-capa__pie">' +
+        '      <button type="button" class="kit-btn kit-btn--plano dc-modal__no">No, es lo que dice mi acta</button>' +
+        '      <button type="button" class="kit-btn kit-btn--marca dc-modal__si">' + K.icono('enviar', 17) + ' Sí, pedir la adición</button>' +
+        '    </div>' +
+        '  </section>' +
+        '</div>');
+      capa.querySelector('.dc-modal__p').textContent = 'Estás alargando el plazo de tu contrato' + (num ? ' ' + num : '') +
+        ' de ' + plazoTexto(r.antes) + ' a ' + plazoTexto(r.nuevo) + '.';
+      var listo = false;
+      function cerrar(v) {
+        if (listo) return;
+        listo = true;
+        document.removeEventListener('keydown', esc);
+        capa.classList.remove('kit-capa--on');
+        setTimeout(function () { capa.remove(); }, 200);
+        res(v);
+      }
+      function esc(ev) { if (ev.key === 'Escape') cerrar(null); }
+      capa.querySelector('.dc-modal__si').addEventListener('click', function () { cerrar('si'); });
+      capa.querySelector('.dc-modal__no').addEventListener('click', function () { cerrar('no'); });
+      capa.querySelector('.kit-capa__x').addEventListener('click', function () { cerrar(null); });
+      capa.querySelector('.kit-capa__velo').addEventListener('click', function () { cerrar(null); });
+      document.addEventListener('keydown', esc);
+      document.body.appendChild(capa);
+      setTimeout(function () {
+        capa.classList.add('kit-capa--on');
+        try { capa.querySelector('.dc-modal__si').focus(); } catch (e) {}
+      }, 10);
+    });
+  }
+
   /* El resumen antes de guardar. La app vieja lo tenía y no era adorno: un
      dedazo en el RP se descubre cuando el pago no sale. */
-  function mandarContrato(caja, c, D) {
+  function mandarContrato(caja, c, D, acta) {
+    /* 26/11 · si el plazo crece y no marcó la casilla del acta, primero la pregunta */
+    if (acta && c.modoEdicion === 'primario' && !D.actaConfirma) {
+      var crece = plazoQueCrece(c, D);
+      if (crece) {
+        preguntarAdicion(c, crece).then(function (v) {
+          if (v === 'si') { location.hash = '#/contratacion/adicion'; return; }
+          if (v === 'no') acta.mostrar(crece);
+        });
+        return;
+      }
+    }
     var ROTULOS = {
       fechaInicio: 'Fecha de inicio',
       fechaTermino: 'Fecha de terminación', meses: 'Meses', dias: 'Días',
@@ -1512,6 +1662,7 @@
       if (k === 'regimen' || k === 'factura' || k === 'costos') v = /^SI/i.test(v) ? 'SÍ' : 'NO';
       lista.push([ROTULOS[k], v]);
     });
+    if (D.actaConfirma && lista.length) lista.push(['Plazo más largo', 'Lo dice mi acta de inicio']);
 
     if (!lista.length) {
       K.aviso('No cambiaste ningún dato.', 'info', 4000);
@@ -1555,6 +1706,12 @@
         })
         ['catch'](function (e) {
           K.piezas.guardado.fallo();
+          /* 26/11 · el CORE frenó el plazo (la cuenta de aquí no lo vio): la casilla */
+          if (e && e.codigo === 'PLAZO_CRECE' && acta) {
+            acta.mostrar(plazoQueCrece(c, D), e.message);
+            K.aviso('Revisa la fecha de terminación: el plazo de tu contrato quedaría más largo.', 'aviso', 7000);
+            return;
+          }
           K.aviso(e && e.message ? e.message : 'No se pudo guardar.', 'malo', 7000);
         });
     });

@@ -2588,3 +2588,33 @@
 .cta-emp__op span { display: grid; gap: 4px; color: var(--k-tinta); font-size: .92rem; line-height: 1.35; }
 .cta-emp__op small { color: var(--k-tinta-2); font-size: .82rem; }
 .cta-emp__fecha[hidden], .cta-campo[hidden] { display: none; }
+
+/* ══════ 26/11 · DATOS DEL CONTRATO: la adición no se configura alargando la fecha ══════ */
+.dc-adi {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
+  margin: -4px 0 4px; padding: 11px 13px;
+  border: 1px solid var(--k-linea); border-radius: var(--k-r-md);
+  background: var(--k-papel-2);
+}
+.dc-adi__p { margin: 0; flex: 1 1 240px; font-size: .88rem; line-height: 1.4; color: var(--k-tinta); }
+.dc-adi__btn { min-height: 44px; flex: 0 0 auto; text-decoration: none; }
+.dc-acta { display: grid; gap: 10px; }
+.dc-acta[hidden] { display: none; }
+.dc-acta__p {
+  margin: 0; padding: 11px 13px; border-radius: var(--k-r-md);
+  border: 1px solid color-mix(in srgb, var(--k-aviso) 34%, transparent);
+  background: var(--k-aviso-fondo); color: var(--k-tinta);
+  font-size: .88rem; line-height: 1.45;
+}
+.dc-acta__op {
+  display: flex; gap: 12px; align-items: flex-start;
+  min-height: 44px; padding: 12px 14px;
+  border: 1px solid var(--k-linea); border-radius: var(--k-r-md);
+  background: var(--k-papel); cursor: pointer;
+}
+.dc-acta__op:has(input:checked) { border-color: var(--k-marca); background: var(--k-papel-2); }
+.dc-acta__chk { width: 20px; height: 20px; margin-top: 2px; flex: 0 0 auto; accent-color: var(--k-marca); }
+.dc-acta__op span { display: grid; gap: 4px; color: var(--k-tinta); font-size: .92rem; line-height: 1.35; }
+.dc-acta__op small { color: var(--k-tinta-2); font-size: .82rem; }
+.dc-modal__p { margin: 0 0 10px; font-size: 1rem; line-height: 1.45; color: var(--k-tinta); }
+.dc-modal__nota { margin: 0; font-size: .88rem; line-height: 1.45; color: var(--k-tinta-2); }
