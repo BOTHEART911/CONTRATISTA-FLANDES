@@ -256,10 +256,10 @@
       f.appendChild(K.nodo('<h3 class="kc-sec">Datos de tu contrato nuevo</h3>'));
       var D = P.D || {};
       var cc = K.piezas.campos.contrato(f, D, { opc: o.opc, conSecretaria: o.conSecretaria, secretaria: o.secretaria });
-      f.appendChild(K.nodo('<h3 class="kc-sec">Tu clausulado en PDF <small class="kc-opc">(opcional)</small></h3>'));
+      f.appendChild(K.nodo('<h3 class="kc-sec">Tu clausulado en PDF <i class="tr-oblig" aria-hidden="true">*</i></h3>'));
       var zonaAdj = K.nodo('<div class="sol-adj"></div>');
       f.appendChild(zonaAdj);
-      f.appendChild(K.nodo('<p class="kc-nota-adj">Le sirve a Contratación para copiar el objeto y las obligaciones. Se borra cuando registren tu contrato.</p>'));
+      f.appendChild(K.nodo('<p class="kc-nota-adj">Obligatorio. Contratación saca de ahí el objeto y las obligaciones. Se borra cuando registren tu contrato.</p>'));
       var adjunto = P.adjunto || null, adj = null;
       function montarAdj() {
         zonaAdj.innerHTML = '';
@@ -279,6 +279,8 @@
         var falta = validarExtra ? validarExtra() : '';
         if (falta) { K.aviso(falta, 'aviso', 5000); return; }
         var fc = cc.falta();
+        /* 25/11 noche (Oss) · el clausulado es obligatorio */
+        if (!adjunto && !(adj && adj.archivos().length)) fc.push('el PDF de tu clausulado');
         if (fc.length) { K.aviso('Te falta: ' + fc.join(', ') + '.', 'aviso', 6500); return; }
         if (h.si.disabled) return;
         h.si.disabled = true;
@@ -500,6 +502,12 @@
         return;
       }
       zonaAd.appendChild(K.nodo('<h3 class="kc-sec">Datos de tu ' + (DATA.adicion.siguiente === 2 ? '2ª' : '1ª') + ' adición <small class="kc-opc">(del otrosí, numeral 8: Modificaciones del contrato)</small></h3>'));
+      /* 25/11 noche · a qué contrato va (quien tiene dos contratos sabe a cuál le pide la adición) */
+      if (DATA.contrato) {
+        var aq = K.nodo('<p class="kc-calc kc-calc--total"></p>');
+        aq.textContent = 'Para tu contrato ' + (DATA.contrato.contrato || '') + (DATA.contrato.secretaria ? ' · ' + DATA.contrato.secretaria : '') + '.';
+        zonaAd.appendChild(aq);
+      }
       AD = K.piezas.campos.adicion(zonaAd, DA, { ctx: DATA.adicion });
     }
 
@@ -524,9 +532,9 @@
       if (modo === adjModo || !K.piezas.adjuntos) return;
       adjModo = modo;
       if (adj && adj.desmontar) adj.desmontar();
-      cAdj.querySelector('span').innerHTML = otrosi ? 'El otrosí en PDF <small class="kc-opc">(opcional)</small>' : 'Soportes (opcional)';
+      cAdj.querySelector('span').innerHTML = otrosi ? 'El otrosí en PDF <i class="tr-oblig" aria-hidden="true">*</i>' : 'Soportes (opcional)';
       cAdj.querySelector('.campo__ayuda').textContent = otrosi
-        ? 'Un PDF de máximo 8 MB. Le sirve a Contratación para revisar la adición. Se borra cuando la registren.'
+        ? 'Obligatorio: un PDF de máximo 8 MB. Contratación lo usa para revisar la adición. Se borra cuando la registren.'
         : 'Hasta 3 archivos PDF o imágenes (máximo 8 MB cada uno). Puedes pegar una captura con Ctrl+V.';
       adj = K.piezas.adjuntos.montar(cAdj.querySelector('.sol-adj'), otrosi
         ? { acepta: 'application/pdf', varios: false, maximoMB: 8, maximo: 1 }
@@ -547,7 +555,11 @@
       var falta = !D.tipo ? 'Escoge el trámite.'
         : (conAd && !DATA.adicion.siguiente) ? 'Tu contrato ya tiene sus dos adiciones registradas.'
         : (!conAd && String(D.detalle).trim().length < 10 ? 'Cuéntale a Contratación qué necesitas (mínimo 10 letras).' : '');
-      if (!falta && conAd && AD) { var fa = AD.falta(); if (fa.length) falta = 'Te falta: ' + fa.join(', ') + '.'; }
+      if (!falta && conAd && AD) {
+        var fa = AD.falta();
+        if (!(adj && adj.archivos().length)) fa.push('el PDF del otrosí');   /* 25/11 noche (Oss) · obligatorio */
+        if (fa.length) falta = 'Te falta: ' + fa.join(', ') + '.';
+      }
       if (falta) { K.aviso(falta, 'aviso', 6000); return; }
       var t = (DATA.tipos || []).filter(function (x) { return x.valor === D.tipo; })[0] || {};
       var archivos = adj ? adj.archivos() : [];
@@ -608,6 +620,7 @@
   function estadoDe(x) {
     if (x.tipo === 'GESTION') return { tono: 'info', txt: 'Gestión' };
     if (x.estado === 'RESPONDIDA') return { tono: 'ok', txt: 'Respondida' };
+    if (x.estado === 'REGISTRADA') return { tono: 'ok', txt: 'Registrada' };   /* 25/11 · Contratación ya registró el contrato o la adición */
     if (x.gestiones && x.gestiones.length) return { tono: 'info', txt: 'En gestión' };
     return { tono: 'aviso', txt: 'Recibida' };
   }
@@ -704,7 +717,7 @@
     t.appendChild(cab);
     t.classList.remove('nc-tarjeta--ok', 'nc-tarjeta--espera');
 
-    if (sol && sol.estado === 'RESPONDIDA') {
+    if (sol && (sol.estado === 'RESPONDIDA' || sol.estado === 'REGISTRADA')) {
       t.classList.add('nc-tarjeta--ok');
       cab.querySelector('.nc-ico').innerHTML = K.icono('check', 22);
       tt.textContent = 'Contratación respondió tu solicitud';
