@@ -77,6 +77,8 @@
 
   /** Texto de la hoja a HTML: escapado, con saltos de línea y enlaces tocables. */
   function textoRico(t) {
+    /* 26/11 · con formato (negrilla, cursiva, listas…) desde el kit */
+    if (K.piezas.formato) return K.piezas.formato.html(t);
     return K.esc(t || '')
       .replace(/https?:\/\/[^\s<]+/g, function (u) {
         var cola = (u.match(/(?:[).,;:!?]|&quot;|&#39;)+$/) || [''])[0];
@@ -230,6 +232,7 @@
   }
 
   function resumen(t, n) {
+    if (K.piezas.formato) t = K.piezas.formato.plano(t);
     var s = String(t || '').replace(/\s+/g, ' ').trim();
     return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s;
   }
@@ -253,7 +256,7 @@
       '    <div><b class="ins-det__de">' + K.esc(x.emisor || 'Alcaldía de Flandes') + '</b>' +
       '    <span class="ins-com__area">' + K.esc(x.area || '') + '</span></div>' +
       '  </header>' +
-      '  <div class="ins-det__txt">' + textoRico(x.texto) + '</div>' +
+      '  <div class="ins-det__txt kfmt-txt">' + textoRico(x.texto) + '</div>' +
       '</article>'
     );
     t.querySelector('.ins-det__cab').insertBefore(avatar(x.foto, x.emisor, 'ins-avatar--grande'), t.querySelector('.ins-det__cab').firstChild);
