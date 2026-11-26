@@ -46,7 +46,8 @@
      el CORE ya los maneja (borradorEstado.adjuntosTope): con un CORE de antes
      queda uno por obligación, como antes. */
   var ARCH_MULTI = false;
-  var subiendoArch = {};  /* i -> {nombre, reemplaza} mientras sube (no bloquea nada) */
+  var subiendoArch = {};  /* i -> {nombre, reemplaza} mientras sube (no bloquea nada); con .error quedó sin guardar y espera Reintentar (25/11) */
+  var fotosPend = {};     /* 25/11 · i -> {items, rid, error}: fotos ya en Drive que no alcanzaron a registrarse */
   var localArch = {};     /* id -> File recién subido: Ver lo abre sin viaje */
   var sucio = false;   /* hay cambios sin mandar al CORE */
   var guardando = false;
@@ -71,11 +72,30 @@
   }
   /* A dónde vuelve "Ir a CORREGIR / EDITAR CUENTA": a la misma vista de la que se vino. */
   function volverCuenta() { return (ANCLA0 && ANCLA0.volver) || '#/cuenta'; }
+  /* 25/11 · FILA DE ESCRITURAS PROPIAS (caso Oss, cuenta 11: «Otra persona está
+     guardando…» al adjuntar). El adjunto, las fotos y el guardado automático salían
+     a la vez y peleaban por el mismo candado del CORE. Ahora las escrituras de
+     esta vista salen de UNA en UNA: la siguiente espera a que la anterior responda.
+     Las lecturas (ver un adjunto, actividades anteriores) no hacen fila. El ancla
+     de la cuenta se arma al SALIR, no al pedir: si una escritura anterior creó la
+     fila de la cuenta, la siguiente ya viaja con ella. */
+  var ESCRIBE_B = { borradorGuardar: 1, evidenciaPreparar: 1, evidenciaListo: 1, evidenciaSubir: 1, evidenciaQuitar: 1,
+                    evidenciaArchivoPreparar: 1, evidenciaArchivoListo: 1, evidenciaArchivoSubir: 1, evidenciaArchivoQuitar: 1 };
+  var colaEsc = Promise.resolve();
+  function enFila(fn) {
+    var p = colaEsc.then(fn, fn);
+    colaEsc = p.then(function () {}, function () {});
+    return p;
+  }
+
   function pedirB(accion, datos, opciones) {
     datos = datos || {};
     if (!(K.esLectura && K.esLectura(K.app, accion))) olvidarVisto();   /* 18/11 */
-    if (E && E.idContrato) datos.ancla = anc();
-    return K.pedir(accion, datos, opciones)['catch'](function (e) {
+    var salir = function () {
+      if (E && E.idContrato) datos.ancla = anc();
+      return K.pedir(accion, datos, opciones);
+    };
+    return (ESCRIBE_B[accion] ? enFila(salir) : salir())['catch'](function (e) {
       if (e && e.codigo === 'CUENTA_CAMBIO') {
         K.aviso(e.message || 'Tu cuenta cambió. Volvemos a abrirla.', 'malo', 8000);
         E = null;
@@ -175,6 +195,7 @@
         var rec = recuperarRespaldo();
         if (rec.recuperadas) K.aviso('Recuperamos lo que estabas escribiendo la última vez en este equipo.', 'info', 5000);
         if (rec.otroEquipo.length) K.aviso('La obligación ' + rec.otroEquipo.join(', ') + ' se guardó desde otro equipo: dejamos esa versión.', 'aviso', 7000);
+        recuperarPend();   /* 25/11 · adjuntos o fotos que quedaron subidos sin guardar */
         pintar(caja, sub);
         precargarAnteriores();
       })
@@ -835,6 +856,7 @@
     lista.forEach(function (url, k) {
       destino.appendChild(fichaEvidencia(destino, i, url, k + 1, lista.length));
     });
+    if (fotosPend[i]) { destino.appendChild(fichaFotosPend(destino, i)); return; }   /* 25/11 · primero reintentar o descartar */
 
     if (lista.length < EVI_TOPE) {
       var zona = K.nodo('<div id="evi-caja-' + i + '"></div>');
@@ -861,6 +883,55 @@
         '</p>'
       ));
     }
+  }
+
+  /* 25/11 · Fotos que ya están en Drive y no alcanzaron a registrarse: Reintentar (mismo rid) o Descartar. */
+  function fichaFotosPend(destino, i) {
+    var p = fotosPend[i], n = p.items.length;
+    var f = K.nodo(
+      '<div class="evi-ok evi-ok--pend" role="status">' +
+      '  <span class="arch-ok__ico">' + K.icono('imagen', 22) + '</span>' +
+      '  <div class="evi-ok__txt">' +
+      '    <p class="evi-ok__t">' + (n > 1 ? n + ' fotos sin guardar' : '1 foto sin guardar') + '</p>' +
+      '    <p class="evi-ok__p">' + K.esc(p.error || '') + ' No se ' + (n > 1 ? 'perdieron' : 'perdió') + ': toca Reintentar.</p>' +
+      '  </div>' +
+      '  <div class="evi-ok__btns">' +
+      '    <button type="button" class="kit-btn kit-btn--marca evi-ok__b" data-a="reintentar">' + K.icono('recargar', 16) + ' Reintentar</button>' +
+      '    <button type="button" class="kit-btn kit-btn--plano evi-ok__b" data-a="descartar">' + K.icono('cerrar', 16) + ' Descartar</button>' +
+      '  </div>' +
+      '</div>');
+    var re = f.querySelector('[data-a="reintentar"]');
+    re.addEventListener('click', function () {
+      if (re.disabled) return;
+      re.disabled = true; re.classList.add('kit-ocupado');
+      var t0 = Date.now();
+      pedirB('evidenciaListo', { obligacion: i + 1, items: p.items, total: E.total || '', rid: p.rid }, { ms: 60000 })
+        .then(function (r) {
+          Object.keys(p.locales || {}).forEach(function (id) { eviLocal[id] = p.locales[id]; });
+          evidencias[i] = listaEvi(r.urls);
+          cambioSoporte(i);
+          if (r.informe) E.informe = r.informe;
+          if (r.fila && !E.fila) E.fila = r.fila;
+          delete fotosPend[i];
+          quitarPend('fotos', i);
+          medir('evidenciasReintento', t0);
+          K.aviso(n > 1 ? 'Las fotos quedaron guardadas.' : 'La foto quedó guardada.', 'ok', 4000);
+          zonaEvidencia(destino, i);
+        }, function (e) {
+          re.disabled = false; re.classList.remove('kit-ocupado');
+          if (reintentable(e)) { p.error = motivoAmable(e); K.aviso('Todavía no se pudo. ' + p.error + ' Inténtalo en un momento.', 'aviso', 6000); zonaEvidencia(destino, i); return; }
+          delete fotosPend[i];
+          quitarPend('fotos', i);
+          K.aviso((e && e.message) || 'No se pudo guardar la foto.', 'malo', 6000);
+          zonaEvidencia(destino, i);
+        });
+    });
+    f.querySelector('[data-a="descartar"]').addEventListener('click', function () {
+      delete fotosPend[i];
+      quitarPend('fotos', i);
+      zonaEvidencia(destino, i);
+    });
+    return f;
   }
 
   /* Cada evidencia ya cargada, con su número y sus tres acciones. */
@@ -976,7 +1047,7 @@
           var e = p && p.error;
           /* un error de la regla (ya tiene sus 3, cuenta cerrada…) se dice; lo demás va por el camino de antes */
           if (e && e.message && e.codigo !== 'VIA_VIEJA' && e.codigo !== 'GOOGLE_OCUPADO' && !/no tiene la accion/i.test(e.message) &&
-              ['SIN_RED', 'SERVIDOR', 'TIEMPO', 'RESPUESTA_NO_JSON', 'RED_LENTA'].indexOf(e.codigo) < 0) {
+              ['SIN_RED', 'SERVIDOR', 'TIEMPO', 'RESPUESTA_NO_JSON', 'RED_LENTA', 'OCUPADO'].indexOf(e.codigo) < 0) {
             K.piezas.guardado.fallo();
             K.aviso(e.message, 'malo', 6000);
             zonaEvidencia(destino, i);
@@ -1009,9 +1080,15 @@
         if (!ok.length) { siguiente(0); return; }
         var t2 = Date.now();
         var items = ok.map(function (x) { return { id: x.id, ranura: x.ranura, huella: x.huella }; });
-        return pedirB('evidenciaListo', { obligacion: i + 1, items: items, total: E.total || '' }, { ms: 60000 })
+        /* 25/11 · ya están en Drive: quedan anotadas (y con su rid) hasta que el CORE las registre */
+        var ridL = 'el' + t2.toString(36) + Math.random().toString(36).slice(2, 7);
+        var locales = {};
+        ok.forEach(function (x) { locales[x.id] = x._local; });
+        anotarPend('fotos', i, { items: items, rid: ridL });
+        return pedirB('evidenciaListo', { obligacion: i + 1, items: items, total: E.total || '', rid: ridL }, { ms: 60000 })
           .then(function (r) {
             tm.listo = Date.now() - t2;
+            quitarPend('fotos', i);
             ok.forEach(function (x) { eviLocal[x.id] = x._local; });
             evidencias[i] = listaEvi(r.urls);
             cambioSoporte(i);
@@ -1021,6 +1098,17 @@
             medir('evidenciasDirecto', t0, bytes, tm);
             if (faltan.length) { listas = faltan; siguiente(0); return; }
             siguiente(listas.length);
+          }, function (e) {
+            /* 25/11 · no es una regla: las fotos ya subidas NO se pierden, se quedan con Reintentar */
+            if (reintentable(e)) {
+              fotosPend[i] = { items: items, rid: ridL, locales: locales, error: motivoAmable(e) };
+              K.piezas.guardado.fallo();
+              K.aviso((items.length > 1 ? 'Las fotos no alcanzaron' : 'La foto no alcanzó') + ' a guardarse. ' + (items.length > 1 ? 'Quedaron' : 'Quedó') + ' en la obligación ' + (i + 1) + ': toca Reintentar.', 'aviso', 7000);
+              zonaEvidencia(destino, i);
+              return;
+            }
+            quitarPend('fotos', i);
+            throw e;
           });
       })['catch'](function (e) {
         K.piezas.guardado.fallo();
@@ -1237,10 +1325,10 @@
     var lista = archDe(i), sub = subiendoArch[i];
 
     lista.forEach(function (a, k) {
-      if (sub && sub.reemplaza === a.id) { destino.appendChild(fichaSubiendo(sub)); return; }
+      if (sub && sub.reemplaza === a.id) { destino.appendChild(sub.error ? fichaPendiente(i, sub) : fichaSubiendo(sub)); return; }
       destino.appendChild(fichaArchivo(destino, i, a, k));
     });
-    if (sub && !sub.reemplaza) destino.appendChild(fichaSubiendo(sub));
+    if (sub && !sub.reemplaza) destino.appendChild(sub.error ? fichaPendiente(i, sub) : fichaSubiendo(sub));
 
     var cuantos = lista.length + (sub && !sub.reemplaza ? 1 : 0);
     if (!cuantos) { elegirArchivo(destino, i, '', null); return; }
@@ -1286,7 +1374,7 @@
     if (K.piezas.visor && K.piezas.visor.precalentarOficina && (a.ext || extDe(a.nombre)) !== 'pdf') K.piezas.visor.precalentarOficina(a.ext || extDe(a.nombre));
     else if (K.drive && K.drive.precargar && !localArch[a.id]) K.drive.precargar(a.id);
     f.querySelector('[data-a="cambiar"]').addEventListener('click', function () {
-      if (subiendoArch[i]) { K.aviso('Espera a que termine de subir el adjunto anterior.', 'aviso', 4000); return; }
+      if (subiendoArch[i]) { K.aviso(subiendoArch[i].error ? 'Primero toca Reintentar o Descartar en el adjunto que quedó sin guardar.' : 'Espera a que termine de subir el adjunto anterior.', 'aviso', 4000); return; }
       var hueco = K.nodo('<div class="arch-hueco"></div>');
       f.replaceWith(hueco);
       destino.setAttribute('data-reemplaza', a.id);
@@ -1389,53 +1477,149 @@
        3. evidenciaArchivoListo: el CORE lo registra (y lo comparte).
      Con un CORE que no tenga la ruta nueva se sube como antes.
      Uno a la vez por obligación; el formulario sigue libre mientras sube. */
-  function subirArchivo(i, file, nombre, reemplaza) {
-    if (subiendoArch[i]) return;
+  function subirArchivo(i, file, nombre, reemplaza, pend) {
+    /* 25/11 · pend = lo que quedó de un intento anterior ({rid, id, nombreFinal}): se reintenta
+       con el MISMO rid, y si el archivo ya está en Drive (id) solo se registra, sin volver a subirlo */
+    if (subiendoArch[i] && !(pend && subiendoArch[i].error)) return;
     var fin = K.piezas.antidoble ? K.piezas.antidoble.escudo() : function () {};
-    var ext = extDe(file.name) || (/pdf/.test(file.type) ? 'pdf' : '');
-    subiendoArch[i] = { nombre: nombre + (ext ? '.' + ext : ''), ext: ext, pct: 0, reemplaza: reemplaza || '' };
+    var ext = (file && extDe(file.name)) || (file && /pdf/.test(file.type) ? 'pdf' : '') || (pend && pend.ext) || '';
+    var t0 = Date.now(), tm = {};
+    var rid = (pend && pend.rid) || ('ev' + t0.toString(36) + Math.random().toString(36).slice(2, 7));
+    subiendoArch[i] = { nombre: (pend && pend.nombreFinal) || (nombre + (ext ? '.' + ext : '')), ext: ext, pct: pend && pend.id ? 99 : 0,
+                        reemplaza: reemplaza || '', file: file || null, nombreBase: nombre, rid: rid, id: (pend && pend.id) || '' };
     repintarArch(i);
     fin(); fin = function () {};
-    var t0 = Date.now(), tm = {};
-    var rid = 'ev' + t0.toString(36) + Math.random().toString(36).slice(2, 7);
-    var meta = { obligacion: i + 1, nombre: nombre, tipo: file.type || '', nombreOriginal: file.name || '', bytes: file.size,
-                 total: E.total || '', reemplaza: reemplaza || '', rid: rid };
 
-    pedirB('evidenciaArchivoPreparar', meta, { ms: 60000 })
-      .then(function (p) {
-        tm.preparar = Date.now() - t0;
-        if (subiendoArch[i]) subiendoArch[i].nombre = sinNum(p.nombre);
-        repintarArch(i);
-        var t1 = Date.now();
-        return ponerEnDrive(p.sesion, file, p.mime, i).then(function (id) {
-          tm.drive = Date.now() - t1;
-          var t2 = Date.now();
-          /* 27/10 · rid PROPIO: con el de preparar, el CORE devolvía la respuesta
-             de preparar y el archivo quedaba en Drive sin registrar */
-          return pedirB('evidenciaArchivoListo', { obligacion: i + 1, id: id, total: E.total || '', reemplaza: reemplaza || '', rid: rid + 'L' }, { ms: 60000 })
-            .then(function (r) { tm.listo = Date.now() - t2; return r; });
+    function listo(id) {
+      var t2 = Date.now();
+      /* 27/10 · rid PROPIO: con el de preparar, el CORE devolvía la respuesta
+         de preparar y el archivo quedaba en Drive sin registrar */
+      return pedirB('evidenciaArchivoListo', { obligacion: i + 1, id: id, total: E.total || '', reemplaza: reemplaza || '', rid: rid + 'L' }, { ms: 60000 })
+        .then(function (r) { tm.listo = Date.now() - t2; return r; });
+    }
+
+    var flujo;
+    if (pend && pend.id) flujo = listo(pend.id);
+    else {
+      var meta = { obligacion: i + 1, nombre: nombre, tipo: file.type || '', nombreOriginal: file.name || '', bytes: file.size,
+                   total: E.total || '', reemplaza: reemplaza || '', rid: rid };
+      flujo = pedirB('evidenciaArchivoPreparar', meta, { ms: 60000 })
+        .then(function (p) {
+          tm.preparar = Date.now() - t0;
+          if (subiendoArch[i]) subiendoArch[i].nombre = sinNum(p.nombre);
+          repintarArch(i);
+          var t1 = Date.now();
+          return ponerEnDrive(p.sesion, file, p.mime, i).then(function (id) {
+            tm.drive = Date.now() - t1;
+            /* 25/11 · ya está en Drive: queda anotado en este equipo hasta que el CORE lo registre */
+            if (subiendoArch[i]) subiendoArch[i].id = id;
+            anotarPend('arch', i, { id: id, rid: rid, nombre: sinNum(p.nombre), reemplaza: reemplaza || '', ext: ext });
+            return listo(id);
+          });
+        }, function (e) {
+          /* CORE sin la ruta nueva, o Google sin cupo para abrir la subida directa (03/11): el camino de antes */
+          if (e && (/no tiene la accion/i.test(e.message || '') || e.codigo === 'GOOGLE_OCUPADO' || e.codigo === 'VIA_VIEJA')) return subirPorCore(i, file, nombre, reemplaza);
+          throw e;
         });
-      }, function (e) {
-        /* CORE sin la ruta nueva, o Google sin cupo para abrir la subida directa (03/11): el camino de antes */
-        if (e && (/no tiene la accion/i.test(e.message || '') || e.codigo === 'GOOGLE_OCUPADO' || e.codigo === 'VIA_VIEJA')) return subirPorCore(i, file, nombre, reemplaza);
-        throw e;
-      })
+    }
+
+    flujo
       .then(function (r) {
         delete subiendoArch[i];
+        quitarPend('arch', i);
         aplicarLista(i, r, reemplaza);
-        localArch[r.archivo.id] = file;
+        if (file) localArch[r.archivo.id] = file;
         if (r.informe) E.informe = r.informe;
         if (r.fila && !E.fila) E.fila = r.fila;   /* 23/10 · la fila nueva viaja en el ancla */
-        medir('subirArchivo', t0, file.size, tm);
+        medir('subirArchivo', t0, file ? file.size : 0, tm);
         K.aviso('Adjunto ' + numDe(i, archDe(i).length - 1, r.archivo) + ' de la obligación ' + (i + 1) + ' guardado: «' + sinNum(r.archivo.nombre) + '».', 'ok', 4500);
         repintarArch(i);
       })
       ['catch'](function (e) {
         fin();
+        var s = subiendoArch[i];
+        /* 25/11 · si no es una regla (red, Google, la cuenta ocupada), el adjunto NO se pierde:
+           se queda en su casilla con Reintentar (mismo rid; si ya subió, solo se registra) */
+        if (s && reintentable(e)) {
+          s.error = motivoAmable(e);
+          medir('subirArchivoPendiente', t0, file ? file.size : 0, tm);
+          K.aviso('El adjunto «' + sinNum(s.nombre) + '» no alcanzó a guardarse. Quedó en la obligación ' + (i + 1) + ': toca Reintentar.', 'aviso', 7000);
+          repintarArch(i);
+          return;
+        }
         delete subiendoArch[i];
+        quitarPend('arch', i);
         K.aviso((e && e.message) || 'No se pudo subir el archivo.', 'malo', 6000);
         repintarArch(i);
       });
+  }
+
+  /* ── 25/11 · lo que quedó sin guardar (adjuntos y fotos ya subidos a Drive) ──
+     Se anota en ESTE equipo por cuenta. Al volver a abrir el borrador aparece con
+     su botón Reintentar: nada se reintenta solo (regla de reintentos). */
+  var COD_REINTENTO = ['OCUPADO', 'SIN_RED', 'SERVIDOR', 'TIEMPO', 'RESPUESTA_NO_JSON', 'RED_LENTA', 'REPETIR', 'GOOGLE_OCUPADO', 'CANCELADA'];
+  function reintentable(e) {
+    if (!e) return false;
+    if (COD_REINTENTO.indexOf(e.codigo) >= 0 || e.red) return true;
+    return /guardando|otra escritura|otro guardado|No se pudo subir el archivo a Drive|Google est|intermitencia|Lock timeout/i.test(e.message || '');
+  }
+  function motivoAmable(e) {
+    if (e && (e.codigo === 'SIN_RED' || e.red || /internet/i.test(e.message || ''))) return 'Se fue el internet antes de terminar.';
+    if (e && (e.codigo === 'OCUPADO' || /guardando|otra escritura|otro guardado/i.test(e.message || ''))) return 'Tu cuenta se estaba guardando en ese momento.';
+    return 'Google tardó en responder.';
+  }
+  function llavePend() { return 'borrador:pend:' + (E ? E.idContrato : '') + ':' + (E ? E.informe : ''); }
+  function leerPend() { var v = K.guardar.leer(llavePend(), null); return v && typeof v === 'object' ? v : { arch: {}, fotos: {} }; }
+  function anotarPend(tipo, i, dato) { var v = leerPend(); v[tipo] = v[tipo] || {}; v[tipo][i] = dato; K.guardar.escribir(llavePend(), v); }
+  function quitarPend(tipo, i) {
+    var v = leerPend();
+    if (!v[tipo] || !v[tipo][i]) return;
+    delete v[tipo][i];
+    if (!Object.keys(v.arch || {}).length && !Object.keys(v.fotos || {}).length) K.guardar.borrar(llavePend()); else K.guardar.escribir(llavePend(), v);
+  }
+  /* Al abrir: lo anotado que el CORE ya registró se olvida; lo demás vuelve a su casilla con Reintentar. */
+  function recuperarPend() {
+    var v = leerPend(), n = [];
+    Object.keys(v.arch || {}).forEach(function (k) {
+      var i = Number(k), a = v.arch[k];
+      if (!a || !a.id) { quitarPend('arch', i); return; }
+      if ((archivos[i] || []).some(function (x) { return x.id === a.id; })) { quitarPend('arch', i); return; }
+      if (!subiendoArch[i]) subiendoArch[i] = { nombre: a.nombre, ext: a.ext, pct: 99, reemplaza: a.reemplaza || '', file: null, nombreBase: a.nombre, rid: a.rid, id: a.id,
+                                               error: 'Quedó subido pero no alcanzó a guardarse en tu cuenta.' };
+      n.push(i + 1);
+    });
+    Object.keys(v.fotos || {}).forEach(function (k) {
+      var i = Number(k), f = v.fotos[k], puestas = evisDe(i).join(' ');
+      if (!f || !f.items || !f.items.length || f.items.every(function (x) { return puestas.indexOf(x.id) >= 0; })) { quitarPend('fotos', i); return; }
+      if (!fotosPend[i]) fotosPend[i] = { items: f.items, rid: f.rid, error: 'Quedaron subidas pero no alcanzaron a guardarse en tu cuenta.' };
+      if (n.indexOf(i + 1) < 0) n.push(i + 1);
+    });
+    if (n.length) setTimeout(function () { K.aviso('En ' + (n.length === 1 ? 'la obligación ' : 'las obligaciones ') + n.join(', ') + ' hay evidencias que quedaron sin guardar. Toca Reintentar en esa obligación.', 'aviso', 9000); }, 600);
+  }
+
+  function fichaPendiente(i, s) {
+    var f = K.nodo(
+      '<div class="arch-ok arch-ok--pend" role="status">' +
+      '  <span class="arch-ok__ico">' + K.icono(iconoArch(s), 22) + '</span>' +
+      '  <div class="arch-ok__txt"><p class="arch-ok__t">' + K.esc(sinNum(s.nombre)) + '</p>' +
+      '  <p class="arch-ok__p">Sin guardar. ' + K.esc(s.error || '') + ' No se perdió: toca Reintentar.</p></div>' +
+      '  <div class="evi-ok__btns">' +
+      '    <button type="button" class="kit-btn kit-btn--marca evi-ok__b" data-a="reintentar">' + K.icono('recargar', 16) + ' Reintentar</button>' +
+      '    <button type="button" class="kit-btn kit-btn--plano evi-ok__b" data-a="descartar">' + K.icono('cerrar', 16) + ' Descartar</button>' +
+      '  </div>' +
+      '</div>');
+    var re = f.querySelector('[data-a="reintentar"]');
+    if (!s.file && !s.id) re.hidden = true;   /* sin el archivo ni su id no hay qué reintentar */
+    re.addEventListener('click', function () {
+      K.vibrar(8);
+      subirArchivo(i, s.file, s.nombreBase || sinNum(s.nombre).replace(/\.[a-z0-9]{2,5}$/i, ''), s.reemplaza, { rid: s.rid, id: s.id, nombreFinal: s.nombre, ext: s.ext });
+    });
+    f.querySelector('[data-a="descartar"]').addEventListener('click', function () {
+      delete subiendoArch[i];
+      quitarPend('arch', i);
+      repintarArch(i);
+    });
+    return f;
   }
 
   /* La lista que manda el CORE manda (trae los números al día); con un CORE
@@ -1556,7 +1740,7 @@
 
   function quitarArchivo(destino, i, a) {
     if (!a) return;
-    if (subiendoArch[i]) { K.aviso('Espera a que termine de subir el adjunto anterior.', 'aviso', 4000); return; }
+    if (subiendoArch[i]) { K.aviso(subiendoArch[i].error ? 'Primero toca Reintentar o Descartar en el adjunto que quedó sin guardar.' : 'Espera a que termine de subir el adjunto anterior.', 'aviso', 4000); return; }
     K.piezas.confirmar.preguntar({
       titulo: 'Quitar el adjunto',
       texto: 'Vas a quitar «' + sinNum(a.nombre) + '» de la obligación ' + (i + 1) +

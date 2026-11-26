@@ -2058,6 +2058,10 @@
 .arch-ok__t { margin: 0; font-weight: 700; font-size: 14px; color: var(--k-tinta); overflow-wrap: anywhere; }
 .arch-ok__p { margin: 2px 0 0; font-size: 12.5px; color: var(--k-apagado); display: flex; align-items: center; gap: 6px; }
 .arch-ok--sube { border-style: dashed; border-color: rgba(var(--k-marca-rgb), .5); }
+/* 25/11 · adjunto o fotos que no alcanzaron a guardarse: se quedan con Reintentar (no se pierden) */
+.arch-ok--pend, .evi-ok--pend { border-color: color-mix(in srgb, var(--k-aviso) 45%, transparent); background: var(--k-aviso-fondo); }
+.arch-ok--pend .arch-ok__ico, .evi-ok--pend .arch-ok__ico { color: var(--k-aviso); }
+.arch-ok--pend .arch-ok__p, .evi-ok--pend .evi-ok__p { color: var(--k-tinta); display: block; }
 .arch-giro {
   width: 12px; height: 12px;
   border: 2px solid rgba(var(--k-marca-rgb), .25);
