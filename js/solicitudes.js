@@ -420,7 +420,7 @@
     app.appendChild(c);
     var p = K.pedir('solicitudesContratacion', {}, { ms: 60000 }).then(function (r) { DATA = r; return r; });
     K.piezas.esqueletos.mientras(c, p, { forma: 'ficha', cuantos: 2, espera: 'Trayendo tus solicitudes a Contratación' })
-      .then(function () { pintar(c, sub === 'nueva'); })
+      .then(function () { pintar(c, sub === 'nueva' || sub === 'adicion' ? sub : ''); })
       ['catch'](function (e) {
         var er = K.nodo('<section class="kit-tarjeta error"><p class="error__t"></p><button type="button" class="kit-btn kit-btn--plano">Reintentar</button></section>');
         er.querySelector('p').textContent = tildes((e && e.message) || 'No se pudo cargar.');
@@ -431,6 +431,7 @@
   }
 
   function pintar(c, abrirForm) {
+    var yaAd = null;
     c.innerHTML = '';
     c.appendChild(K.nodo(
       '<section class="kit-tarjeta tr-cab">' +
@@ -459,9 +460,20 @@
         zona.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
       c.appendChild(zona);
-      if (abrirForm) boton.click();
+      /* 26/11 · desde «¿Tu contrato tiene adición? → Sí» (borrador o cuenta): el formulario abierto con ADICIÓN marcada,
+         salvo que ya haya una de adición sin responder (entonces se enseña esa) */
+      yaAd = abrirForm === 'adicion' ? (DATA.lista || []).filter(function (x) { return x.tipo === 'ADICION' && x.estado === 'PENDIENTE'; })[0] : null;
+      if (yaAd) K.aviso('Tu solicitud de adición ' + yaAd.id + ' ya está en Contratación. Espera su respuesta.', 'info', 7000);
+      else if (abrirForm) {
+        boton.click();
+        if (abrirForm === 'adicion') {
+          var bAd = zona.querySelector('.tr-tipo[data-v="ADICION"]');
+          if (bAd) bAd.click();
+        }
+      }
     }
     c.appendChild(misSolicitudes());
+    if (yaAd) { var art = c.querySelector('.tr-sol[data-id="' + yaAd.id + '"]'); if (art) art.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
     K.piezas.creditos.montar(c);
   }
 
@@ -635,7 +647,7 @@
     var lista = K.nodo('<div class="tr-lista"></div>');
     L.forEach(function (x) {
       var e = estadoDe(x);
-      var d = K.nodo('<article class="tr-sol tr-sol--' + e.tono + '"></article>');
+      var d = K.nodo('<article class="tr-sol tr-sol--' + e.tono + '" data-id="' + K.esc(x.id) + '"></article>');
       d.appendChild(K.nodo('<div class="tr-sol__cab"><b>' + K.esc(x.id) + '</b><span class="tr-est tr-est--' + e.tono + '">' + K.esc(e.txt) + '</span></div>'));
       d.appendChild(K.nodo('<span class="tr-sol__t">' + K.esc(x.tipoTexto || x.tipo) + '</span>'));
       d.appendChild(K.nodo('<span class="tr-sol__meta">' + K.esc([String(x.fecha || '').split(' ')[0],

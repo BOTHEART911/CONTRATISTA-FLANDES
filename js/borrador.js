@@ -248,6 +248,8 @@
       return;
     }
     if (E.preguntarTotal && !E.total) { caja.appendChild(pedirTotal(caja)); return; }
+    /* 26/11 · penúltima o última cuenta con una adición sin registrar: primero la pregunta (js/adicion.js) */
+    if (E.preguntarAdicion && window.ADICION) { caja.appendChild(preguntaAdicion(caja, sub)); return; }
 
     var n = parseInt(String(sub || ''), 10);
     if (n >= 1 && n <= E.obligaciones.length) editor(caja, n);
@@ -274,6 +276,13 @@
       '  <p class="puerta__p">' + K.esc(E.motivo || '') + '</p>' +
       '</section>'
     );
+    /* 26/11 · ya radicó todas y al contrato le falta una adición por registrar: que la pida */
+    if (E.puerta === 'completa' && E.pedirAdicion) {
+      var bA = K.nodo('<button type="button" class="kit-btn kit-btn--marca">' + K.icono('enviar', 17) + ' </button>');
+      bA.appendChild(document.createTextNode(E.pedirAdicion.texto + ': pedirla'));
+      bA.addEventListener('click', function () { K.vibrar(8); location.hash = '#/contratacion/adicion'; });
+      c.appendChild(bA);
+    }
     if (E.ir) {
       var b = K.nodo('<button type="button" class="kit-btn kit-btn--marca">' +
         K.esc(E.boton || (E.ir === 'cuenta' ? 'Ir a CORREGIR CUENTA' : 'Ir a ESTADO DE CUENTA')) + '</button>');
@@ -281,6 +290,22 @@
       c.appendChild(b);
     }
     return c;
+  }
+
+  /* 26/11 · ¿Tu contrato tiene adición? Con NO, el CORE devuelve el estado
+     ya recalculado en el mismo viaje y se sigue con la cuenta. */
+  function preguntaAdicion(caja, sub) {
+    K.piezas.banner.vista('Mi informe ' + E.informe);
+    return window.ADICION.tarjeta(E.preguntarAdicion, {
+      vista: 'borrador',
+      alResponder: function (d) {
+        if (!d || !d.obligaciones) { E = null; abrir(sub); return; }
+        guardarVisto(d);
+        cargar(d);
+        pintar(caja, sub);
+        precargarAnteriores();
+      }
+    });
   }
 
   /* El total de pagos: se pregunta una sola vez por contrato y de ahí sale

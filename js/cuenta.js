@@ -204,38 +204,41 @@
 
   function cargar() {
     /* sin ancla: la cuenta que se abre la decide el CORE (la E de antes puede ser de otra visita) */
-    return K.pedir('cuentaEstado', EDITANDO ? { editar: true } : {}).then(function (d) {
-      /* un CORE que aún no sabe editar responde la puerta de siempre: se sigue sin el modo */
-      if (EDITANDO && !d.edicion) EDITANDO = false;
-      candadoLocal(d);
-      E = d;
-      D = {};
-      /* Lo que ya esté en la hoja manda sobre el respaldo del teléfono:
-         si se guardó, es lo bueno. El respaldo solo rellena los huecos. */
-      var guardado = K.guardar.leer(RESPALDO + '.' + E.idContrato, null);
-      if (guardado && guardado.informe === E.informe) D = guardado.datos || {};
-      Object.keys(E.campos || {}).forEach(function (k) {
-        if (String(E.campos[k] || '').trim()) D[k] = E.campos[k];
-      });
-      /* 15/10 · el saldo lo pone el CORE (con las adiciones ya sumadas por
-         Contratación): lo guardado en la hoja o el sugerido, nunca el respaldo. */
-      if (E.saldoSugerido && !String((E.campos || {}).saldo || '').trim()) D.saldo = E.saldoSugerido;
-      /* 19/10 · desde la segunda cuenta, el inicio del periodo sale del día
-         siguiente al fin de la cuenta anterior (lo calcula el CORE y solo lo
-         manda al ingresar). Solo rellena el campo vacío: nunca pisa lo
-         guardado en la hoja ni lo que la persona ya escribió. */
-      if (E.inicioSugerido && !String(D.inicioPeriodo || '').trim()) D.inicioPeriodo = E.inicioSugerido;
-      /* 5.2 · contrato cedido: el RP de la cesión es obligatorio en la
-         cuenta mientras Contabilidad no lo haya usado. Se propone el que
-         ya escribió en una cuenta anterior. */
-      var pago = porId('pago');
-      var pide = !!(E.rpCesion && E.rpCesion.pedir);
-      var i = pago.campos.indexOf('rpCesion');
-      if (pide && i < 0) pago.campos.push('rpCesion');
-      if (!pide && i >= 0) pago.campos.splice(i, 1);
-      if (pide && !D.rpCesion && E.rpCesion.final) D.rpCesion = E.rpCesion.final;
-      return E;
+    return K.pedir('cuentaEstado', EDITANDO ? { editar: true } : {}).then(aplicar);
+  }
+
+  /* 26/11 · lo que llega del CORE (cuentaEstado, o adicionRespuesta con el estado recalculado) */
+  function aplicar(d) {
+    /* un CORE que aún no sabe editar responde la puerta de siempre: se sigue sin el modo */
+    if (EDITANDO && !d.edicion) EDITANDO = false;
+    candadoLocal(d);
+    E = d;
+    D = {};
+    /* Lo que ya esté en la hoja manda sobre el respaldo del teléfono:
+       si se guardó, es lo bueno. El respaldo solo rellena los huecos. */
+    var guardado = K.guardar.leer(RESPALDO + '.' + E.idContrato, null);
+    if (guardado && guardado.informe === E.informe) D = guardado.datos || {};
+    Object.keys(E.campos || {}).forEach(function (k) {
+      if (String(E.campos[k] || '').trim()) D[k] = E.campos[k];
     });
+    /* 15/10 · el saldo lo pone el CORE (con las adiciones ya sumadas por
+       Contratación): lo guardado en la hoja o el sugerido, nunca el respaldo. */
+    if (E.saldoSugerido && !String((E.campos || {}).saldo || '').trim()) D.saldo = E.saldoSugerido;
+    /* 19/10 · desde la segunda cuenta, el inicio del periodo sale del día
+       siguiente al fin de la cuenta anterior (lo calcula el CORE y solo lo
+       manda al ingresar). Solo rellena el campo vacío: nunca pisa lo
+       guardado en la hoja ni lo que la persona ya escribió. */
+    if (E.inicioSugerido && !String(D.inicioPeriodo || '').trim()) D.inicioPeriodo = E.inicioSugerido;
+    /* 5.2 · contrato cedido: el RP de la cesión es obligatorio en la
+       cuenta mientras Contabilidad no lo haya usado. Se propone el que
+       ya escribió en una cuenta anterior. */
+    var pago = porId('pago');
+    var pide = !!(E.rpCesion && E.rpCesion.pedir);
+    var i = pago.campos.indexOf('rpCesion');
+    if (pide && i < 0) pago.campos.push('rpCesion');
+    if (!pide && i >= 0) pago.campos.splice(i, 1);
+    if (pide && !D.rpCesion && E.rpCesion.final) D.rpCesion = E.rpCesion.final;
+    return E;
   }
 
   function porId(id) {
@@ -251,6 +254,21 @@
 
   function pintar(caja) {
     caja.innerHTML = '';
+
+    /* 26/11 · penúltima o última cuenta con una adición sin registrar: primero la pregunta (js/adicion.js) */
+    if (E.puerta === 'adicion' && E.preguntarAdicion && window.ADICION) {
+      caja.appendChild(window.ADICION.tarjeta(E.preguntarAdicion, {
+        vista: 'cuenta',
+        alResponder: function (d) {
+          if (!d || !d.puerta) { abrir(); return; }
+          aplicar(d);
+          if (K.piezas.banner) K.piezas.banner.vista(rotulo());
+          pintar(caja);
+        }
+      }));
+      K.piezas.creditos.montar(caja);
+      return;
+    }
 
     if (E.puerta !== 'ingresar' && E.puerta !== 'corregir') {
       caja.appendChild(puertaCerrada());
