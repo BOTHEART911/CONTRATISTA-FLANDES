@@ -1506,6 +1506,10 @@
       flujo = pedirB('evidenciaArchivoPreparar', meta, { ms: 60000 })
         .then(function (p) {
           tm.preparar = Date.now() - t0;
+          /* 26/11 · la fila de la cuenta (la nueva, si preparar la creó) viaja ya en el ancla del listo:
+             el CORE solo la verifica y no recalcula el borrador (Borrador1126.gs) */
+          if (p && p.informe) E.informe = p.informe;
+          if (p && p.fila && !E.fila) E.fila = p.fila;
           if (subiendoArch[i]) subiendoArch[i].nombre = sinNum(p.nombre);
           repintarArch(i);
           var t1 = Date.now();
