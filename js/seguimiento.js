@@ -841,7 +841,11 @@
       sub: 'Tarda unos segundos. No cierres la app.',
       pasos: ['Leyendo tu contrato', 'Armando el documento', 'Poniendo el código de verificación', 'Pasándolo a PDF']
     });
-    K.pedir('certificacion', CERT_ID ? { idContrato: CERT_ID } : {}, { ms: 150000 })
+    /* 27/11 · solo se manda un contrato que esté en la lista de ESTA sesión y si hay de dónde escoger */
+    var lista = misContratos();
+    var idPedido = (lista.length > 1 && lista.some(function (c) { return c.idContrato === CERT_ID; })) ? CERT_ID : '';
+    if (!idPedido) CERT_ID = '';
+    K.pedir('certificacion', idPedido ? { idContrato: idPedido } : {}, { ms: 150000 })
       .then(function (r) {
         K.ocupado = false;
         /* CORE anterior al 15/10: solo sabe la del contrato con que entraste */
@@ -989,6 +993,19 @@
   /* 19/11 · un estado nuevo llegó en vivo: lo precargado y lo recordado ya no valen */
   K.cuando('kit:cuentasVivo', function () { CACHE = null; olvidarVisto(); });
 
+  /* 27/11 · LO DE UNA SESIÓN NO PASA A LA SIGUIENTE. Al cerrar sesión la
+     página no se recargaba y aquí quedaban la certificación generada y el
+     contrato escogido (CERT_ID) de quien estaba antes: la siguiente persona
+     pedía la certificación con el contrato del otro y el CORE respondía
+     "Ese contrato no es tuyo" (TATIANA 1110599630, 27/11, 6 veces). */
+  function olvidarTodo() { CACHE = null; DOCS = {}; PEDIDOS = {}; CERT = null; CERT_ID = ''; S = null; ULTIMO = null; }
+  var DOC_SESION = '';
+  K.cuando('kit:sesion', function (d) {
+    var doc = String((d && d.yo && d.yo.documento) || '');
+    if (!d || !d.entro || (DOC_SESION && doc && doc !== DOC_SESION)) olvidarTodo();
+    DOC_SESION = (d && d.entro) ? doc : '';
+  });
+
   window.SEGUIMIENTO = {
     abrir: function (sub) { abrir(sub); },
     /* 28/09 · al guardar la cuenta, cuenta.js trae a la persona aquí con
@@ -1004,6 +1021,6 @@
     /* para el banco de pruebas */
     _estado: function () { return S || ULTIMO; },
     _reportar: reportar,   /* 14/11 · banco del aviso en cola */
-    _olvidar: function () { CACHE = null; DOCS = {}; PEDIDOS = {}; CERT = null; S = null; ULTIMO = null; }
+    _olvidar: olvidarTodo
   };
 }());

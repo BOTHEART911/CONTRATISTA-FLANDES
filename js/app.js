@@ -337,6 +337,12 @@
     if (K.piezas.asistente) K.piezas.asistente.olvidar();   /* 24/10 · la conversación no pasa a otra sesión */
     K.piezas.sesion.salir();
     location.hash = '';
+    /* 27/11 · al cerrar sesión la página se vuelve a abrir limpia: sin esto,
+       lo que cada vista guardaba en memoria (la certificación y el contrato
+       escogido, el borrador, el estado de cuenta, trámites) pasaba a la
+       siguiente persona que entraba en el mismo equipo. La puerta ya está
+       pintada; esto solo borra la memoria de la página. */
+    setTimeout(function () { if (!K.token()) location.replace(location.pathname + location.search); }, 1200);
   }
 
   /* ══════════════ vistas ══════════════ */

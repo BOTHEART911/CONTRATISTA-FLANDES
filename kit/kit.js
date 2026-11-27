@@ -384,6 +384,22 @@
        devuelve la respuesta ya dada en vez de hacerla dos veces. */
     if (!cuerpo.rid) cuerpo.rid = rid();
     var vistaDeSalida = VISTA.id, vueltasRed = 0;
+
+    /* 27/11 · EL SERVIDOR QUE SE QUEDA COLGADO. Google a veces deja una
+       ejecución pegada hasta que la mata a los 6 min (FC_ERRORES: login de
+       las 10:30:00 del 27/11, "EJECUCION SIN TERMINAR"); la persona veía
+       "El servidor está tardando" al minuto y entraba al segundo intento
+       (10:31:30, 1,6 s). Ahora, en lo que no escribe (el login, elegir
+       contrato y las lecturas que no traen su propio 'ms'), el primer intento
+       se corta a los 25 s y se repite SOLO, UNA vez, con el MISMO 'rid' y 35 s
+       más: si la primera alcanzó a terminar, el CORE devuelve esa misma
+       respuesta; si sigue pegada, la segunda va por otra ejecución. El tope
+       total sigue siendo 60 s y la persona no ve el aviso si el reintento
+       lo resuelve. Una escritura NUNCA se repite por tiempo. */
+    var claveRuta = String(cuerpo.app || '').toUpperCase() + '.' + String(accion || '').toUpperCase();
+    var porTiempoSeRepite = opciones.ms === undefined && (esLectura(cuerpo.app, accion) || REPITE_POR_TIEMPO[claveRuta] === 1);
+    if (porTiempoSeRepite) opciones.ms = TIEMPO_PRIMERO;
+    var t0Pedido = Date.now();
     function intento() {
     return puerta.then(function () {
       /* 29/09 · el token se toma AL SALIR, no al pedir: una llamada que se
@@ -426,10 +442,31 @@
         vueltasRed++;
         return esperarRed(opciones.senal).then(intento);
       }
+      /* 27/11 · ejecución colgada en Google: una vez más, mismo 'rid' (ver arriba) */
+      if (e && e.codigo === 'TIEMPO' && porTiempoSeRepite && !opciones.__tiempo && !(opciones.senal && opciones.senal.aborted)) {
+        opciones.__tiempo = true;
+        opciones.ms = TIEMPO_SEGUNDO;
+        anotarRed(claveRuta, 'reintento por tiempo', Date.now() - t0Pedido);
+        return enviar(cuerpo, opciones).then(function (d) {
+          anotarRed(claveRuta, 'resuelto al reintento', Date.now() - t0Pedido);
+          return d;
+        });
+      }
       throw e;
     });
     }
     return intento();
+  }
+
+  /* 27/11 · lo que no escribe y se puede repetir por tiempo, además de las LECTURAS */
+  var REPITE_POR_TIEMPO = { 'CORE.LOGIN': 1, 'CORE.ELEGIRCONTRATO': 1 };
+  var TIEMPO_PRIMERO = 25000, TIEMPO_SEGUNDO = 35000;
+  /* 27/11 · traza en memoria de los reintentos (K.red.traza() en la consola o en las pruebas) */
+  var TRAZA_RED = [];
+  function anotarRed(ruta, que, ms) {
+    TRAZA_RED.push({ ruta: ruta, que: que, ms: ms, cuando: Date.now() });
+    if (TRAZA_RED.length > 30) TRAZA_RED.shift();
+    try { console.info('[kit] ' + ruta + ' · ' + que + ' · ' + ms + ' ms'); } catch (x) {}
   }
 
   /* ══════════════ 3b) LA RED: SIN RED, LENTA O EL SERVIDOR ══════════════
@@ -955,6 +992,7 @@
     guardar: guardar,
     token: token, ponerToken: ponerToken,
     pedir: pedir, problema: problema, vista: vista, esLectura: esLectura,
+    red: { traza: function () { return TRAZA_RED.slice(); } },   /* 27/11 · reintentos por tiempo */
     sondear: sondear, esDeRed: function (e) { var c = e && e.codigo; return c === 'SIN_RED' || c === 'RED_LENTA'; },
     recuerdo: recuerdo,
     recordado: recordado,
